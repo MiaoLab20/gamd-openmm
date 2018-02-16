@@ -57,9 +57,12 @@ class GamdIntegratorBase(CustomIntegrator):
         self.addComputeGlobal("wcount", "wcount + 1")
         self.addComputeGlobal("currentEnergy", "energy")
 
+        self.addComputeGlobal("Vmax", "max(Vmax,energy)")
+        self.addComputeGlobal("Vmin", "min(Vmin,energy)")
+
         # Stage 1
         self.debugStep(1.0)  # 1.0
-        self.beginIfBlock("count <= " + str(ntcmd))
+        self.beginIfBlock("count <= " + str(self.step_to_begin_adding_boost_potential))
         # Conventional / aMD Run
         self.addComputePerDof("v", "v+dt*fprime/m; fprime=f*((1.0-modify) + modify*(alpha/(alpha+E-energy))^2); modify=step(E-energy)")
         self.addComputePerDof("oldx", "x")
@@ -83,7 +86,14 @@ class GamdIntegratorBase(CustomIntegrator):
         self.beginIfBlock("wcount >= " + str(ntave))
 
         self.update_potential_state_values_with_window_potential_state_values()
+        #
+        #
+        # If we start modifying E prior to the aMD calculations completion, then
+        # it will blow up.
+        #
+        self.beginIfBlock("count >=" + str(self.step_to_begin_adding_boost_potential))
         self.add_calculate_E_k0()
+        self.endBlock()
 
         self.endBlock()  # wcount >= ntave
         self.endBlock()  # count <= step_to_stop_updating_v_values
@@ -111,11 +121,12 @@ class GamdIntegratorBase(CustomIntegrator):
         self.debugStep(.01)  # 2.01
         self.addComputeGlobal("boostPotential", "0.5 * k0 * (E-energy)^2/(Vmax-Vmin)")
         self.debugStep(.01)  # 2.02
-        self.addComputeGlobal("boostForce", "1.0-((k0* (E - energy))/(Vmax - Vmin)) ")
+        self.addComputeGlobal("boostForce", "1.0-((k0 * (E - energy))/(Vmax - Vmin)) ")
         self.debugStep(.01)  # 2.03
         self.addComputePerDof("scalingForce", "f*boostForce")
         self.debugStep(.01)  # 2.04
         self.addComputePerDof("scalingVelocity", "v + scalingForce*dt/m")
+
         self.debugStep(.01)  # 2.05
         self.addComputePerDof("oldv", "v")
         self.debugStep(.01)  # 2.06
@@ -123,18 +134,18 @@ class GamdIntegratorBase(CustomIntegrator):
         self.debugStep(.01)  # 2.07
         self.addComputePerDof("newx", "x + dt * scalingVelocity")
         self.debugStep(.01)  # 2.08
-        self.addComputePerDof("newv", "(newx - oldx)/dt")
-        self.debugStep(.01)  # 2.09
         self.addComputePerDof("x","newx")
-        self.debugStep(.01)  # 2.10
-        self.addComputePerDof("v","newv")
-        self.debugStep(.01)  # 2.11
-        # Save off Debugging Values
+        self.debugStep(.01)  # 2.09
 
-        self.endBlock()
         self.addConstrainPositions()
+        self.debugStep(.01)  # 2.10
         self.addComputePerDof("XafterContrainPosition", "x")
+        self.debugStep(.01)  # 2.11
+        self.addComputePerDof("newv", "(newx - oldx)/dt")
+        self.addComputePerDof("v","newv")
+        self.addConstrainVelocities()
         self.debugStep(.01)   # 2.12
+        self.endBlock()  # count >= step_to_begin_adding_boost_potential
 
 
     def debugStep(self, number):
@@ -142,8 +153,8 @@ class GamdIntegratorBase(CustomIntegrator):
 
     def update_potential_state_values_with_window_potential_state_values(self):
         # Update window variables
-        self.addComputeGlobal("Vmax", "wVmax")
-        self.addComputeGlobal("Vmin", "wVmin")
+        # self.addComputeGlobal("Vmax", "wVmax")
+        # self.addComputeGlobal("Vmin", "wVmin")
         self.addComputeGlobal("Vavg", "wVavg")
         self.addComputeGlobal("sigmaV", "sqrt(wVariance)")
 
@@ -272,6 +283,7 @@ class GamdIntegratorBoostTotalPotential(GamdIntegratorBase):
 
         print("\nCurrent Debug Location:  " + str(self.getGlobalVariableByName("currentLocation")))
         print("Position Variables + " + count + ":")
+        
         self.printDofVariable("oldx")
         self.printDofVariable("newx")
         self.printDofVariable("XafterContrainPosition")
@@ -289,6 +301,22 @@ class GamdIntegratorBoostTotalPotential(GamdIntegratorBase):
         for i in range(len(dofValue)):
             print(dofValue[i])
 
+
+    def printTableOfPositions(self, thefile):
+        oldx = self.getPerDofVariableByName("oldx")
+        newx = self.getPerDofVariableByName("newx")
+        XaCP = self.getPerDofVariableByName("XafterContrainPosition")
+        #boostForce = self.getPerDofVariableByName("boostForce")
+        #f = open(thefile, 'w')
+        #f.write("particle, oldx0,oldx1,oldx2,newx0,newx1,newx2,XaCP0,XaCP1,XaCP2\n")
+        #for i in range(len(oldx)):
+        #    f.write(str(i) + ", " + str(boostForce[i][0]) + ", " + str(boostForce[i][1])+ ", " + str(boostForce[i][2]) +"\n" )
+        #    f.write(str(i) + ", " + str(oldx[i][0]) + ", " + str(oldx[i][1]) + ", " + str(oldx[i][2]) +
+        #    ", " + str(newx[i][0]) + ", " + str(newx[i][0]) + ", " + str(newx[i][0]) +
+        #            ", " + str(XaCP[i][0]) + ", " + str(XaCP[i][0]) + ", " + str(XaCP[i][0]) + "\n")
+
+        #f.close()
+        
 
 class GamdIntegratorBoostTotalPotentialLowerBound(GamdIntegratorBoostTotalPotential):
 
@@ -308,7 +336,7 @@ class GamdIntegratorBoostTotalPotentialUpperBound(GamdIntegratorBoostTotalPotent
 
     def add_calculate_E_k0(self):
         self.addComputeGlobal("k0", "1.0")  # Our Else Case for the If Block
-        self.addComputeGlobal("k0doubleprime", "(1-(sigma0/sigmaV) * (Vmax - Vmin)/(Vavg - Vmin)")
+        self.addComputeGlobal("k0doubleprime", "1-(sigma0/sigmaV) * (Vmax - Vmin)/(Vavg - Vmin)")
         self.beginIfBlock("0.0 < k0doubleprime <= 1.0")
         self.addComputeGlobal("k0", "k0doubleprime")
         self.addComputeGlobal("E", "Vmin + (Vmax - Vmin)/k0")
