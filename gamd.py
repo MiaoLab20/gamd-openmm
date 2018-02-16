@@ -52,7 +52,6 @@ class GamdIntegratorBase(CustomIntegrator):
 
         # Compute Instructions
         #
-        self.addComputeGlobal("currentLocation", "0")
         self.addComputeGlobal("count", "count + 1")
         self.addComputeGlobal("wcount", "wcount + 1")
         self.addComputeGlobal("currentEnergy", "energy")
@@ -61,7 +60,6 @@ class GamdIntegratorBase(CustomIntegrator):
         self.addComputeGlobal("Vmin", "min(Vmin,energy)")
 
         # Stage 1
-        self.debugStep(1.0)  # 1.0
         self.beginIfBlock("count <= " + str(self.step_to_begin_adding_boost_potential))
         # Conventional / aMD Run
         self.addComputePerDof("v", "v+dt*fprime/m; fprime=f*((1.0-modify) + modify*(alpha/(alpha+E-energy))^2); modify=step(E-energy)")
@@ -79,7 +77,6 @@ class GamdIntegratorBase(CustomIntegrator):
         #   * Copy the
         #
         #
-        self.debugStep(.5) # 1.5
         self.beginIfBlock("count <= " + str(self.step_to_stop_updating_v_values))
 
         self.addEnergyValueCalculations()
@@ -102,7 +99,6 @@ class GamdIntegratorBase(CustomIntegrator):
 
 
         # Stage 2 / 3
-        self.debugStep(.5)  # 2.0
         self.beginIfBlock("count >= " + str(self.step_to_begin_adding_boost_potential))
 
         self.addComputePerDof("newx", "0.0")
@@ -118,38 +114,22 @@ class GamdIntegratorBase(CustomIntegrator):
         # Do GaMD Steps to calculate the boostPotential and the scaling Force
         # and then update the position and velocity
         #
-        self.debugStep(.01)  # 2.01
         self.addComputeGlobal("boostPotential", "0.5 * k0 * (E-energy)^2/(Vmax-Vmin)")
-        self.debugStep(.01)  # 2.02
         self.addComputeGlobal("boostForce", "1.0-((k0 * (E - energy))/(Vmax - Vmin)) ")
-        self.debugStep(.01)  # 2.03
         self.addComputePerDof("scalingForce", "f*boostForce")
-        self.debugStep(.01)  # 2.04
         self.addComputePerDof("scalingVelocity", "v + scalingForce*dt/m")
 
-        self.debugStep(.01)  # 2.05
         self.addComputePerDof("oldv", "v")
-        self.debugStep(.01)  # 2.06
         self.addComputePerDof("oldx", "x")
-        self.debugStep(.01)  # 2.07
         self.addComputePerDof("newx", "x + dt * scalingVelocity")
-        self.debugStep(.01)  # 2.08
         self.addComputePerDof("x","newx")
-        self.debugStep(.01)  # 2.09
 
         self.addConstrainPositions()
-        self.debugStep(.01)  # 2.10
         self.addComputePerDof("XafterContrainPosition", "x")
-        self.debugStep(.01)  # 2.11
         self.addComputePerDof("newv", "(newx - oldx)/dt")
         self.addComputePerDof("v","newv")
         self.addConstrainVelocities()
-        self.debugStep(.01)   # 2.12
         self.endBlock()  # count >= step_to_begin_adding_boost_potential
-
-
-    def debugStep(self, number):
-        self.addComputeGlobal("currentLocation", "currentLocation + " + str(number))
 
     def update_potential_state_values_with_window_potential_state_values(self):
         # Update window variables
@@ -195,7 +175,6 @@ class GamdIntegratorBase(CustomIntegrator):
         self.addPerDofVariable("oldx", 0)
 
         # Debugging Values
-        self.addGlobalVariable("currentLocation", 0)
         self.addPerDofVariable("oldv", 0)
         self.addPerDofVariable("newv", 0)
         self.addPerDofVariable("newx", 0)
@@ -281,9 +260,8 @@ class GamdIntegratorBoostTotalPotential(GamdIntegratorBase):
     def printPositions(self):
         count = str(self.getGlobalVariableByName("count"))
 
-        print("\nCurrent Debug Location:  " + str(self.getGlobalVariableByName("currentLocation")))
         print("Position Variables + " + count + ":")
-        
+
         self.printDofVariable("oldx")
         self.printDofVariable("newx")
         self.printDofVariable("XafterContrainPosition")
@@ -316,7 +294,7 @@ class GamdIntegratorBoostTotalPotential(GamdIntegratorBase):
         #            ", " + str(XaCP[i][0]) + ", " + str(XaCP[i][0]) + ", " + str(XaCP[i][0]) + "\n")
 
         #f.close()
-        
+
 
 class GamdIntegratorBoostTotalPotentialLowerBound(GamdIntegratorBoostTotalPotential):
 
