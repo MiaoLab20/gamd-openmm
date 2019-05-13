@@ -1,133 +1,133 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 from sys import stdout
+from sys import exit
 import os
 import traceback
 
 from gamd import *
 
 
-def createGamdSimulationFromAmberFiles(prmtopfile, inpcrdfile):
+def createPositionsFile(integrator, thefile):
+    positions = integrator.get_coordinates()
+    f = open(thefile, 'w')
+    f.write("particle, x, y, z\n")
+    for i in range(len(positions)):
+       f.write(str(i) + ", " + str(positions[i][0]) + ", " + str(positions[i][1])+ ", " + str(positions[i][2]) +"\n" )
+    f.close()
+
+def createGamdLog(gamdLog, filename):
+    with  open(filename, 'w') as f:
+        keys = gamdLog[0].keys()
+        for header in keys[:-1]:
+            f.write(header + ", ")
+        f.write(keys[-1] + "\n")
+        for entry in gamdLog:
+            for header in keys[:-1]:
+                f.write(str(entry[header]) + ", ")
+            f.write(str(entry[keys[-1]]) + "\n")
+
+
+def createGamdSimulationFromAmberFiles(prmtopfile, inpcrdfile, lowerBound=True):
     prmtop = AmberPrmtopFile(prmtopfile)
     inpcrd = AmberInpcrdFile(inpcrdfile)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer, constraints=HBonds)
-    integrator = GamdIntegratorBoostTotalPotentialLowerBound(2.0 * femtoseconds, stage1end, stage2end, ntave,
-                                                             6.0 * kilocalories_per_mole)
-    simulation = Simulation(prmtop.topology, system, integrator)
 
+    if lowerBound:
+        integrator = GamdTotalBoostPotentialIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
+                                                                 number_of_steps_in_stage_2, ntave,
+                                                                 6.0 * kilocalories_per_mole)
+    else:
+        integrator = GamdTotalBoostPotentialIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
+                                                                 number_of_steps_in_stage_2, ntave,
+                                                                 6.0 * kilocalories_per_mole)
+
+    simulation = Simulation(prmtop.topology, system, integrator)
     simulation.context.setPositions(inpcrd.positions)
     if inpcrd.boxVectors is not None:
         simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
+    simulation.minimizeEnergy()
+
+    return [simulation, integrator]
+
+
+def createGamdSimulationFromPdbFile(pdbfile, prmtopfile, lowerBound=True):
+    pdb = PDBFile(pdbfile)
+    prmtop = AmberPrmtopFile(prmtopfile)
+    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1 * nanometer, constraints=HBonds)
+    if lowerBound:
+        integrator = GamdTotalBoostPotentialIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
+                                                                 number_of_steps_in_stage_2, ntave,
+                                                                 6.0 * kilocalories_per_mole)
+    else:
+        integrator = GamdTotalBoostPotentialIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
+                                                                 number_of_steps_in_stage_2, ntave,
+                                                                 6.0 * kilocalories_per_mole)
+    simulation = Simulation(prmtop.topology, system, integrator)
+    simulation.context.setPositions(pdb.positions)
 
     simulation.minimizeEnergy()
 
     return [simulation, integrator]
 
-def createGamdSimulationFromPdbFile(pdbfile):
-    pdb = PDBFile(pdbfile)
-    forcefield = ForceField('amber99sb.xml', 'tip3p.xml')
-    system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME,
-                                     nonbondedCutoff=1 * nanometer, constraints=HBonds)
 
-    integrator = GamdIntegratorBoostTotalPotentialLowerBound(2.0 * femtoseconds, stage1end, stage2end, ntave,
-                                                             6.0 * kilocalories_per_mole)
-    simulation = Simulation(pdb.topology, system, integrator)
-    simulation.context.setPositions(pdb.positions)
-    simulation.minimizeEnergy()
-
-    return simulation
+def create_output_directories(directories):
+    for dir in directories:
+        os.makedirs(dir, 0o755)
 
 
-
-def createAmdSimulationFromAmberFiles(prmtopfile, inpcrdfile):
-    prmtop = AmberPrmtopFile(prmtopfile)
-    inpcrd = AmberInpcrdFile(inpcrdfile)
-    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer, constraints=HBonds)
-    integrator = amd.AMDIntegrator(2.0*femtoseconds, 0, -1E99)
-    simulation = Simulation(prmtop.topology, system, integrator)
-
-    simulation.context.setPositions(inpcrd.positions)
-    if inpcrd.boxVectors is not None:
-        simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
-
-    simulation.minimizeEnergy()
-
-    return simulation
+def upperBoundFunctionWrapper(a_function):
+    def return_function(prmtopfile, coordinatesfile):
+        a_function(prmtopfile, coordinatesfile, False)
+    return return_function
 
 
-def createAmdSimulationFromPdbFile(pdbfile):
-    pdb = PDBFile(pdbfile)
-    forcefield = ForceField('amber99sb.xml', 'tip3p.xml')
-    system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME,
-                                     nonbondedCutoff=1 * nanometer, constraints=HBonds)
-    integrator = amd.AMDIntegrator(2.0 * femtoseconds, 0, -1E99)
+def main():
 
-    simulation = Simulation(pdb.topology, system, integrator)
-    simulation.context.setPositions(pdb.positions)
-    simulation.minimizeEnergy()
+    output_directory = "output"
+    coordinates_file = './data/md-4ns.rst7'
+    prmtop_file =  './data/dip.top'
 
-    return simulation
+    total_number_of_steps = number_of_steps_in_stage_1 + number_of_steps_in_stage_2 + number_of_steps_in_stage_3
+
+    function_dictionary = {'total-lb': {'amber' : createGamdSimulationFromAmberFiles,
+                                        'pdb': createGamdSimulationFromPdbFile},
+                            'total-ub': {'amber' : upperBoundFunctionWrapper(createGamdSimulationFromAmberFiles),
+                                         'pdb': upperBoundFunctionWrapper(createGamdSimulationFromPdbFile) }}
 
 
-def createLangevinSimulationFromAmberFiles(prmtopfile, inpcrdfile):
-    prmtop = AmberPrmtopFile(prmtopfile)
-    inpcrd = AmberInpcrdFile(inpcrdfile)
-    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer, constraints=HBonds)
-    integrator = LangevinIntegrator(300 * kelvin, 1 / picosecond, 0.002 * picoseconds)
-    simulation = Simulation(prmtop.topology, system, integrator)
+    create_output_directories([output_directory, output_directory + "/states/", output_directory + "/positions/",
+                               output_directory + "/pdb/", output_directory + "/checkpoints"])
 
-    simulation.context.setPositions(inpcrd.positions)
-    if inpcrd.boxVectors is not None:
-        simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
 
-    simulation.minimizeEnergy()
-    return simulation
+    (simulation, integrator) = createGamdSimulationFromAmberFiles(prmtop_file, coordinates_file)
 
+
+    simulation.saveState(output_directory + "/states/initial-state.xml")
+    simulation.reporters.append(PDBReporter(output_directory + '/output.pdb', 10000))
+    simulation.reporters.append(StateDataReporter(stdout, 10000, step=True, temperature=True,
+                                                  potentialEnergy=True, totalEnergy=True, volume=True))
+    gamdLog = []
+    for step in range(total_number_of_steps):
+        simulation.step(1)
+        if step % ntave == 0:
+            simulation.saveState(output_directory + "/states/" + str(step) + ".xml")
+            simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step) + ".bin")
+            gamdLog.append({'total_nstep': step,
+                            'Unboosted-Potential-Energy': integrator.get_current_potential_energy(),
+                            'Total-Force-Weight': integrator.get_total_force_scaling_factor(),
+                            'Boost-Energy-Potential': integrator.get_boost_potential() })
+            createPositionsFile(integrator, output_directory + '/positions/coordinates-' + str(step) + '.csv')
+
+    createGamdLog(gamdLog, output_directory + "/gamd.log")
 
 ntave = 1000
-stage1end = 2000
-stage2end = 10000
+number_of_steps_in_stage_1 = 10000
+number_of_steps_in_stage_2 = 100000
+number_of_steps_in_stage_3 = 100000
 
-os.makedirs("output/states/")
-os.makedirs("output/checkpoints")
-
-(simulation, integrator) = createGamdSimulationFromAmberFiles('dip.top', 'dip.crd')
-
-simulation.saveState("output/states/validate.xml")
-simulation.reporters.append(PDBReporter('output/output.pdb', 1000))
-simulation.reporters.append(StateDataReporter(stdout, 1000, step=True, temperature=True,
-                            potentialEnergy=True, totalEnergy=True, volume=True))
-
-# Stage 1 - Conventional MD to gather statistics on Potential Values
-simulation.step(stage1end)
-
-# Debugging Version
-# for step in range(stage1end):
-#         simulation.step(1)
-#         # step = count - 1
-#         if step % ntave == (ntave - 1) or step % ntave == (ntave - 2) or step % ntave == 0 or step % ntave == 1:
-#             integrator.printVariables()
-
-# Stage 2
-for step in range(stage1end + stage2end + 2):
-    try:
-        if step > 50:
-            print("\nStep " + str(step) + " - prior to step:")
-            integrator.printPositions()
-        simulation.step(1)
-        integrator.printVariables()
-        simulation.saveState("output/states/" + str(step) + ".xml")
-        simulation.saveCheckpoint("output/checkpoints/" + str(step) + ".bin")
-    except Exception as err:
-        print("\n\n-----------------------")
-        print("Exception Information for")
-        integrator.printVariables()
-        print("\nException Message: " + str(err))
-        traceback.print_exc(file=sys.stdout)
-        integrator.printPositions()
-        simulation.saveState("output/states/error.xml")
-        simulation.saveCheckpoint("output/checkpoints/error.bin")
-        break
+if __name__ == "__main__":
+    main()
