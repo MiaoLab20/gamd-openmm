@@ -103,12 +103,13 @@ class GamdIntegratorBase(CustomIntegrator):
         self.addPerDofVariable("newx", 0)
         self.addGlobalVariable("currentEnergy", 0)
 
-    def add_stage_1_conventional_md_instructions(self):
+    def add_stage_1_conventional_md_instructions(self, group=''):
         # Stage 1
         self.beginIfBlock("count <= " + str(self.step_to_begin_adding_boost_potential))
 
         # Conventional / aMD Run
-        self.addComputePerDof("v", "v+dt*fprime/m; fprime=f*((1.0-modify) + modify*(alpha/(alpha+E-energy))^2); modify=step(E-energy)")
+        self.addComputePerDof("fg", "f"+str(group))
+        self.addComputePerDof("v", "v+dt*fprime/m; fprime=fg*((1.0-modify) + modify*(alpha/(alpha+E-energy))^2); modify=step(E-energy)" % group)
         self.addComputePerDof("oldx", "x")
         self.addComputePerDof("x", "x+dt*v")
         self.addConstrainPositions()
@@ -251,3 +252,4 @@ class GamdTotalBoostPotentialIntegratorUpperBound(GamdTotalBoostPotentialIntegra
         self.addComputeGlobal("k0", "k0doubleprime")
         self.addComputeGlobal("E", "Vmin + (Vmax - Vmin)/k0")
         self.endBlock()
+        

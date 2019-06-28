@@ -205,17 +205,16 @@ class GamdTotalBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         
         # currentEnergy is the total energy
+        self.addComputeGlobal("currentEnergy", "energy")
+        self.addComputeGlobal("totalEnergy", "currentEnergy")
+        self.addComputeGlobal("Vmax", "max(Vmax,currentEnergy)")
+        self.addComputeGlobal("Vmin", "min(Vmin,currentEnergy)")
         
         self.addUpdateContextState()
         self.add_stage_1_conventional_md_instructions()
         self.add_common_stage_1_and_2_instructions()
         self.add_stage_2_and_3_instructions()
         
-        self.addComputeGlobal("currentEnergy", "energy")
-        self.addComputeGlobal("totalEnergy", "currentEnergy")
-        self.addComputeGlobal("Vmax", "max(Vmax,currentEnergy)")
-        self.addComputeGlobal("Vmin", "min(Vmin,currentEnergy)")
-
         self.addComputePerDof("coordinates","x")
         
     def add_common_variables(self):
@@ -330,17 +329,18 @@ class GamdGroupBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         
         # currentEnergy is the total energy
+        self.addComputeGlobal("groupEnergy", "energy"+str(group))
+        self.addComputeGlobal("currentEnergy", "groupEnergy")
+        self.addComputeGlobal("totalEnergy", "energy")
+        self.addComputeGlobal("Vmax", "max(Vmax,groupEnergy)")
+        self.addComputeGlobal("Vmin", "min(Vmin,groupEnergy)")
         
         self.addUpdateContextState()
         self.add_stage_1_conventional_md_instructions()
         self.add_common_stage_1_and_2_instructions()
         self.add_stage_2_and_3_instructions()
         
-        self.addComputeGlobal("groupEnergy", "energy"+str(group))
-        self.addComputeGlobal("currentEnergy", "groupEnergy")
-        self.addComputeGlobal("totalEnergy", "energy")
-        self.addComputeGlobal("Vmax", "max(Vmax,groupEnergy)")
-        self.addComputeGlobal("Vmin", "min(Vmin,groupEnergy)")
+        
 
         self.addComputePerDof("coordinates","x")
         
@@ -467,12 +467,6 @@ class GamdDualBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         
         # currentEnergy is the total energy
-        
-        self.addUpdateContextState()
-        self.add_stage_1_conventional_md_instructions()
-        self.add_common_stage_1_and_2_instructions()
-        self.add_stage_2_and_3_instructions()
-        
         self.addComputeGlobal("totalEnergy", "energy")
         self.addComputeGlobal("groupEnergy", "energy"+str(group))
         self.addComputeGlobal("currentEnergy", "energy")
@@ -480,7 +474,12 @@ class GamdDualBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         self.addComputeGlobal("Vmin", "min(Vmin,totalEnergy)")
         self.addComputeGlobal("VmaxGroup", "max(VmaxGroup,groupEnergy)")
         self.addComputeGlobal("VminGroup", "min(VminGroup,groupEnergy)")
-
+        
+        self.addUpdateContextState()
+        self.add_stage_1_conventional_md_instructions()
+        self.add_common_stage_1_and_2_instructions()
+        self.add_stage_2_and_3_instructions()
+        
         self.addComputePerDof("coordinates","x")
         
     def add_common_variables(self):

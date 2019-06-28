@@ -31,19 +31,35 @@ def createGamdLog(gamdLog, filename):
             f.write(str(entry[keys[-1]]) + "\n")
 
 
-def createGamdSimulationFromAmberFiles(prmtopfile, inpcrdfile, lowerBound=True):
+def createGamdSimulationFromAmberFiles(prmtopfile, inpcrdfile, lowerBound=True, dihedral_boost=False):
     prmtop = AmberPrmtopFile(prmtopfile)
     inpcrd = AmberInpcrdFile(inpcrdfile)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer, constraints=HBonds)
-
-    if lowerBound:
-        integrator = GamdTotalBoostPotentialIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                 number_of_steps_in_stage_2, ntave,
-                                                                 6.0 * kilocalories_per_mole)
+    if dihedral_boost:
+        # Move torsion terms to force group 1
+        group = 1
+        for force in system.getForces():
+            if force.__class__.__name__ != 'PeriodicTorsionForce':
+                force.setForceGroup(group)
+                break
+        
+        if lowerBound:
+            integrator = GamdGroupBoostPotentialIntegratorLowerBound(2.0 * femtoseconds, group, number_of_steps_in_stage_1,
+                                                                     number_of_steps_in_stage_2, ntave,
+                                                                     6.0 * kilocalories_per_mole)
+        else:
+            integrator = GamdGroupBoostPotentialIntegratorUpperBound(2.0 * femtoseconds, group, number_of_steps_in_stage_1,
+                                                                     number_of_steps_in_stage_2, ntave,
+                                                                     6.0 * kilocalories_per_mole)
     else:
-        integrator = GamdTotalBoostPotentialIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                 number_of_steps_in_stage_2, ntave,
-                                                                 6.0 * kilocalories_per_mole)
+        if lowerBound:
+            integrator = GamdTotalBoostPotentialIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
+                                                                     number_of_steps_in_stage_2, ntave,
+                                                                     6.0 * kilocalories_per_mole)
+        else:
+            integrator = GamdTotalBoostPotentialIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
+                                                                     number_of_steps_in_stage_2, ntave,
+                                                                     6.0 * kilocalories_per_mole)
 
     simulation = Simulation(prmtop.topology, system, integrator)
     simulation.context.setPositions(inpcrd.positions)
@@ -54,18 +70,34 @@ def createGamdSimulationFromAmberFiles(prmtopfile, inpcrdfile, lowerBound=True):
     return [simulation, integrator]
 
 
-def createGamdSimulationFromPdbFile(pdbfile, prmtopfile, lowerBound=True):
+def createGamdSimulationFromPdbFile(pdbfile, prmtopfile, lowerBound=True, dihedral_boost=False):
     pdb = PDBFile(pdbfile)
     prmtop = AmberPrmtopFile(prmtopfile)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1 * nanometer, constraints=HBonds)
-    if lowerBound:
-        integrator = GamdTotalBoostPotentialIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                 number_of_steps_in_stage_2, ntave,
-                                                                 6.0 * kilocalories_per_mole)
+    if dihedral_boost:
+        group = 1
+        for force in system.getForces():
+            if force.__class__.__name__ != 'PeriodicTorsionForce':
+                force.setForceGroup(group)
+                break
+        
+        if lowerBound:
+            integrator = GamdGroupBoostPotentialIntegratorLowerBound(2.0 * femtoseconds, group, number_of_steps_in_stage_1,
+                                                                     number_of_steps_in_stage_2, ntave,
+                                                                     6.0 * kilocalories_per_mole)
+        else:
+            integrator = GamdGroupBoostPotentialIntegratorUpperBound(2.0 * femtoseconds, group, number_of_steps_in_stage_1,
+                                                                     number_of_steps_in_stage_2, ntave,
+                                                                     6.0 * kilocalories_per_mole)
     else:
-        integrator = GamdTotalBoostPotentialIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                 number_of_steps_in_stage_2, ntave,
-                                                                 6.0 * kilocalories_per_mole)
+        if lowerBound:
+            integrator = GamdTotalBoostPotentialIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
+                                                                     number_of_steps_in_stage_2, ntave,
+                                                                     6.0 * kilocalories_per_mole)
+        else:
+            integrator = GamdTotalBoostPotentialIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
+                                                                     number_of_steps_in_stage_2, ntave,
+                                                                     6.0 * kilocalories_per_mole)
     simulation = Simulation(prmtop.topology, system, integrator)
     simulation.context.setPositions(pdb.positions)
 
@@ -83,6 +115,16 @@ def upperBoundFunctionWrapper(a_function):
     def return_function(prmtopfile, coordinatesfile):
         a_function(prmtopfile, coordinatesfile, False)
     return return_function
+  
+def lowerBoundGroupFunctionWrapper(a_function):
+    def return_function(prmtopfile, coordinatesfile):
+        a_function(prmtopfile, coordinatesfile, False, True)
+    return return_function
+  
+def upperBoundGroupFunctionWrapper(a_function):
+    def return_function(prmtopfile, coordinatesfile):
+        a_function(prmtopfile, coordinatesfile, False, True)
+    return return_function
 
 
 def main():
@@ -96,14 +138,18 @@ def main():
     function_dictionary = {'total-lb': {'amber' : createGamdSimulationFromAmberFiles,
                                         'pdb': createGamdSimulationFromPdbFile},
                             'total-ub': {'amber' : upperBoundFunctionWrapper(createGamdSimulationFromAmberFiles),
-                                         'pdb': upperBoundFunctionWrapper(createGamdSimulationFromPdbFile) }}
+                                         'pdb': upperBoundFunctionWrapper(createGamdSimulationFromPdbFile) },
+                           'group-lb': {'amber' : lowerBoundGroupFunctionWrapper(createGamdSimulationFromAmberFiles),
+                                        'pdb': lowerBoundGroupFunctionWrapper(createGamdSimulationFromPdbFile)},
+                            'group-ub': {'amber' : upperBoundGroupFunctionWrapper(createGamdSimulationFromAmberFiles),
+                                         'pdb': upperBoundGroupFunctionWrapper(createGamdSimulationFromPdbFile) }}
 
 
     create_output_directories([output_directory, output_directory + "/states/", output_directory + "/positions/",
                                output_directory + "/pdb/", output_directory + "/checkpoints"])
 
-
-    (simulation, integrator) = createGamdSimulationFromAmberFiles(prmtop_file, coordinates_file)
+    dihedral_boost = True
+    (simulation, integrator) = createGamdSimulationFromAmberFiles(prmtop_file, coordinates_file, dihedral_boost=dihedral_boost)
 
 
     simulation.saveState(output_directory + "/states/initial-state.xml")
