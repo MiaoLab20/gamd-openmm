@@ -149,6 +149,26 @@ def create_output_directories(directories):
     for dir in directories:
         os.makedirs(dir, 0o755)
 
+
+def print_debug_state_information(integrator):
+    print("Vmax:", integrator.getGlobalVariableByName("Vmax"), "Vmin:", integrator.getGlobalVariableByName("Vmin"))
+        print("Vavg:", integrator.getGlobalVariableByName("Vavg"), "boostPotential:", integrator.getGlobalVariableByName("boostPotential"))
+        if mode == 'DihedralBoost':
+            print("groupForceScalingFactor", integrator.getGlobalVariableByName("groupForceScalingFactor"))
+            print("E:", integrator.getGlobalVariableByName("E"), "k0:", integrator.getGlobalVariableByName("k0"))
+            print("groupEnergy:", integrator.getGlobalVariableByName("groupEnergy"), "totalEnergy:", integrator.getGlobalVariableByName("totalEnergy"))
+        elif mode == 'TotalBoost':
+            print("totalForceScalingFactor", integrator.getGlobalVariableByName("totalForceScalingFactor"))
+            print("E:", integrator.getGlobalVariableByName("E"), "k0:", integrator.getGlobalVariableByName("k0"))
+            print("currentEnergy:", integrator.getGlobalVariableByName("currentEnergy"))
+        elif mode == 'DualBoost':
+            print("totalForceScalingFactor", integrator.getGlobalVariableByName("totalForceScalingFactor"))
+            print("E:", integrator.getGlobalVariableByName("E"), "k0:", integrator.getGlobalVariableByName("k0"))
+            print("groupForceScalingFactor", integrator.getGlobalVariableByName("groupForceScalingFactor"))
+            print("EGroup:", integrator.getGlobalVariableByName("EGroup"), "k0Group:", integrator.getGlobalVariableByName("k0Group"))
+            print("groupEnergy:", integrator.getGlobalVariableByName("groupEnergy"), "totalEnergy:", integrator.getGlobalVariableByName("totalEnergy"))
+
+
 def main():
 
     output_directory = "output"
@@ -173,23 +193,8 @@ def main():
         simulation.step(1)
         
         if step % ntave == 0:
-            print("Vmax:", integrator.getGlobalVariableByName("Vmax"), "Vmin:", integrator.getGlobalVariableByName("Vmin"))
-            print("Vavg:", integrator.getGlobalVariableByName("Vavg"), "boostPotential:", integrator.getGlobalVariableByName("boostPotential"))
-            if mode == 'DihedralBoost':
-                print("groupForceScalingFactor", integrator.getGlobalVariableByName("groupForceScalingFactor"))
-                print("E:", integrator.getGlobalVariableByName("E"), "k0:", integrator.getGlobalVariableByName("k0"))
-                print("groupEnergy:", integrator.getGlobalVariableByName("groupEnergy"), "totalEnergy:", integrator.getGlobalVariableByName("totalEnergy"))
-            elif mode == 'TotalBoost':
-                print("totalForceScalingFactor", integrator.getGlobalVariableByName("totalForceScalingFactor"))
-                print("E:", integrator.getGlobalVariableByName("E"), "k0:", integrator.getGlobalVariableByName("k0"))
-                print("currentEnergy:", integrator.getGlobalVariableByName("currentEnergy"))
-            elif mode == 'DualBoost':
-                print("totalForceScalingFactor", integrator.getGlobalVariableByName("totalForceScalingFactor"))
-                print("E:", integrator.getGlobalVariableByName("E"), "k0:", integrator.getGlobalVariableByName("k0"))
-                print("groupForceScalingFactor", integrator.getGlobalVariableByName("groupForceScalingFactor"))
-                print("EGroup:", integrator.getGlobalVariableByName("EGroup"), "k0Group:", integrator.getGlobalVariableByName("k0Group"))
-                print("groupEnergy:", integrator.getGlobalVariableByName("groupEnergy"), "totalEnergy:", integrator.getGlobalVariableByName("totalEnergy"))
-                
+            print_debug_state_information(integrator)
+
             simulation.saveState(output_directory + "/states/" + str(step) + ".xml")
             simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step) + ".bin")
             if mode == 'DihedralBoost':
