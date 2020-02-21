@@ -149,23 +149,6 @@ def create_output_directories(directories):
     for dir in directories:
         os.makedirs(dir, 0o755)
 
-
-def upperBoundFunctionWrapper(a_function):
-    def return_function(prmtopfile, coordinatesfile):
-        a_function(prmtopfile, coordinatesfile, False)
-    return return_function
-  
-def lowerBoundGroupFunctionWrapper(a_function):
-    def return_function(prmtopfile, coordinatesfile):
-        a_function(prmtopfile, coordinatesfile, False, True)
-    return return_function
-  
-def upperBoundGroupFunctionWrapper(a_function):
-    def return_function(prmtopfile, coordinatesfile):
-        a_function(prmtopfile, coordinatesfile, False, True)
-    return return_function
-
-
 def main():
 
     output_directory = "output"
@@ -173,16 +156,6 @@ def main():
     prmtop_file =  './data/dip.top'
 
     total_number_of_steps = number_of_steps_in_stage_1 + number_of_steps_in_stage_2 + number_of_steps_in_stage_3
-
-    function_dictionary = {'total-lb': {'amber' : createGamdSimulationFromAmberFiles,
-                                        'pdb': createGamdSimulationFromPdbFile},
-                            'total-ub': {'amber' : upperBoundFunctionWrapper(createGamdSimulationFromAmberFiles),
-                                         'pdb': upperBoundFunctionWrapper(createGamdSimulationFromPdbFile) },
-                           'group-lb': {'amber' : lowerBoundGroupFunctionWrapper(createGamdSimulationFromAmberFiles),
-                                        'pdb': lowerBoundGroupFunctionWrapper(createGamdSimulationFromPdbFile)},
-                            'group-ub': {'amber' : upperBoundGroupFunctionWrapper(createGamdSimulationFromAmberFiles),
-                                         'pdb': upperBoundGroupFunctionWrapper(createGamdSimulationFromPdbFile) }}
-
 
     create_output_directories([output_directory, output_directory + "/states/", output_directory + "/positions/",
                                output_directory + "/pdb/", output_directory + "/checkpoints"])
