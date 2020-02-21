@@ -32,7 +32,7 @@ class GamdIntegratorBase(CustomIntegrator):
     """
 
     # def __init__(self,dt,alpha,E):
-    def __init__(self, dt=2.0 * femtoseconds, ntcmd=1000000, nteb=1000000, ntave=10000,
+    def __init__(self, dt=2.0 * femtoseconds, ntcmd=1000000, nteb=1000000, ntave=50000,
                  sigma0=6.0 * kilocalories_per_mole):
         """
         Params:
@@ -230,7 +230,7 @@ class GamdTotalBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*dt*fprime/m;fprime=f*((1.0-modify) + modify*(alpha/(alpha+E-currentEnergy))^2); modify=step(E-currentEnergy)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
 
         # R step
         self.addComputePerDof("x", "x + 0.5*dt*v")
@@ -254,7 +254,7 @@ class GamdTotalBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*dt*fprime/m;fprime=f*((1.0-modify) + modify*(alpha/(alpha+E-currentEnergy))^2); modify=step(E-currentEnergy)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
         
         self.endBlock()
         
@@ -273,7 +273,7 @@ class GamdTotalBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*(dt*f*totalForceScalingFactor/m)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
 
         # R step
         self.addComputePerDof("x", "x + 0.5*dt*v")
@@ -300,7 +300,7 @@ class GamdTotalBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*(dt*f*totalForceScalingFactor/m)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
         
         
         self.endBlock()  # count >= step_to_begin_adding_boost_potential
@@ -361,7 +361,7 @@ class GamdGroupBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*dt*fprime/m;fprime=(f+fg*((1.0-modify) + modify*(alpha/(alpha+E-groupEnergy))^2)-fg); modify=step(E-groupEnergy)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
 
         # R step
         self.addComputePerDof("x", "x + 0.5*dt*v")
@@ -386,7 +386,7 @@ class GamdGroupBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*dt*fprime/m;fprime=(f+fg*((1.0-modify) + modify*(alpha/(alpha+E-groupEnergy))^2)-fg); modify=step(E-groupEnergy)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
         
         self.endBlock()
         
@@ -406,7 +406,7 @@ class GamdGroupBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*(dt*(f+(fg*groupForceScalingFactor-fg))/m)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
 
         # R step
         self.addComputePerDof("x", "x + 0.5*dt*v")
@@ -434,7 +434,7 @@ class GamdGroupBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*(dt*(f+(fg*groupForceScalingFactor-fg))/m)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
         
         
         self.endBlock()  # count >= step_to_begin_adding_boost_potential
@@ -520,7 +520,7 @@ class GamdDualBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*dt*fprime/m; fprime=(f+fg*factorGroup-fg)*factorTotal")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
 
         # R step
         self.addComputePerDof("x", "x + 0.5*dt*v")
@@ -550,7 +550,7 @@ class GamdDualBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         
         self.addComputePerDof("v", "v + 0.5*dt*fprime/m; fprime=(f+fg*factorGroup-fg)*factorTotal")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
         
         self.endBlock()
         
@@ -570,7 +570,7 @@ class GamdDualBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*(dt*(f+(fg*groupForceScalingFactor-fg))*totalForceScalingFactor/m)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
 
         # R step
         self.addComputePerDof("x", "x + 0.5*dt*v")
@@ -602,7 +602,7 @@ class GamdDualBoostPotentialLangevinIntegrator(GamdIntegratorBase):
         
         # V step
         self.addComputePerDof("v", "v + 0.5*(dt*(f+(fg*groupForceScalingFactor-fg))*totalForceScalingFactor/m)")
-        self.addConstrainVelocities();
+        self.addConstrainVelocities()
         
         
         self.endBlock()  # count >= step_to_begin_adding_boost_potential
