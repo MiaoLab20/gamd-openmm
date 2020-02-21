@@ -30,11 +30,9 @@ def createGamdLog(gamdLog, filename):
                 f.write(str(entry[header]) + ", ")
             f.write(str(entry[keys[-1]]) + "\n")
 
+def get_integrator(mode, system):
+    integrator = None
 
-def createGamdSimulationFromAmberFiles(prmtopfile, inpcrdfile, lowerBound=True, mode='TotalBoost'):
-    prmtop = AmberPrmtopFile(prmtopfile)
-    inpcrd = AmberInpcrdFile(inpcrdfile)
-    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer, constraints=HBonds)
     if mode == 'DualBoost':
         # Move torsion terms to force group 1
         group = 1
@@ -42,19 +40,25 @@ def createGamdSimulationFromAmberFiles(prmtopfile, inpcrdfile, lowerBound=True, 
             if force.__class__.__name__ != 'PeriodicTorsionForce':
                 force.setForceGroup(group)
                 break
-        
+
         if lowerBound:
             print("group:", group)
-            integrator = GamdDualBoostPotentialLangevinIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole, 6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond, group=group)
+            integrator = GamdDualBoostPotentialLangevinIntegratorLowerBound(2.0 * femtoseconds,
+                                                                            number_of_steps_in_stage_1,
+                                                                            number_of_steps_in_stage_2, ntave,
+                                                                            6.0 * kilocalories_per_mole,
+                                                                            6.0 * kilocalories_per_mole,
+                                                                            temperature=300 * kelvin,
+                                                                            gamma=1 / picosecond, group=group)
         else:
-            integrator = GamdDualBoostPotentialLangevinIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole, 6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond, group=group)
-                                                                     
+            integrator = GamdDualBoostPotentialLangevinIntegratorUpperBound(2.0 * femtoseconds,
+                                                                            number_of_steps_in_stage_1,
+                                                                            number_of_steps_in_stage_2, ntave,
+                                                                            6.0 * kilocalories_per_mole,
+                                                                            6.0 * kilocalories_per_mole,
+                                                                            temperature=300 * kelvin,
+                                                                            gamma=1 / picosecond, group=group)
+
     elif mode == 'DihedralBoost':
         # Move torsion terms to force group 1
         group = 1
@@ -62,32 +66,48 @@ def createGamdSimulationFromAmberFiles(prmtopfile, inpcrdfile, lowerBound=True, 
             if force.__class__.__name__ != 'PeriodicTorsionForce':
                 force.setForceGroup(group)
                 break
-        
+
         if lowerBound:
             print("group:", group)
-            integrator = GamdGroupBoostPotentialLangevinIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond, group=group)
+            integrator = GamdGroupBoostPotentialLangevinIntegratorLowerBound(2.0 * femtoseconds,
+                                                                             number_of_steps_in_stage_1,
+                                                                             number_of_steps_in_stage_2, ntave,
+                                                                             6.0 * kilocalories_per_mole,
+                                                                             temperature=300 * kelvin,
+                                                                             gamma=1 / picosecond, group=group)
         else:
-            integrator = GamdGroupBoostPotentialLangevinIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond, group=group)
+            integrator = GamdGroupBoostPotentialLangevinIntegratorUpperBound(2.0 * femtoseconds,
+                                                                             number_of_steps_in_stage_1,
+                                                                             number_of_steps_in_stage_2, ntave,
+                                                                             6.0 * kilocalories_per_mole,
+                                                                             temperature=300 * kelvin,
+                                                                             gamma=1 / picosecond, group=group)
     elif mode == 'TotalBoost':
         if lowerBound:
-            integrator = GamdTotalBoostPotentialLangevinIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond)
+            integrator = GamdTotalBoostPotentialLangevinIntegratorLowerBound(2.0 * femtoseconds,
+                                                                             number_of_steps_in_stage_1,
+                                                                             number_of_steps_in_stage_2, ntave,
+                                                                             6.0 * kilocalories_per_mole,
+                                                                             temperature=300 * kelvin,
+                                                                             gamma=1 / picosecond)
         else:
-            integrator = GamdTotalBoostPotentialLangevinIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond)
+            integrator = GamdTotalBoostPotentialLangevinIntegratorUpperBound(2.0 * femtoseconds,
+                                                                             number_of_steps_in_stage_1,
+                                                                             number_of_steps_in_stage_2, ntave,
+                                                                             6.0 * kilocalories_per_mole,
+                                                                             temperature=300 * kelvin,
+                                                                             gamma=1 / picosecond)
     else:
         raise Exception, "'mode' option not allowed: %s" % mode
-        
+
+    return integrator
+
+def createGamdSimulationFromAmberFiles(prmtopfile, inpcrdfile, lowerBound=True, mode='TotalBoost'):
+    prmtop = AmberPrmtopFile(prmtopfile)
+    inpcrd = AmberInpcrdFile(inpcrdfile)
+    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer, constraints=HBonds)
+    integrator = get_integrator(mode, system)
+
     print("Global Variables:")
     for i in range(integrator.getNumGlobalVariables()):
         print(i, integrator.getGlobalVariableName(i))
@@ -115,58 +135,7 @@ def createGamdSimulationFromPdbFile(pdbfile, prmtopfile, lowerBound=True, mode='
     pdb = PDBFile(pdbfile)
     prmtop = AmberPrmtopFile(prmtopfile)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1 * nanometer, constraints=HBonds)
-    if mode == 'DualBoost':
-        # Move torsion terms to force group 1
-        group = 1
-        for force in system.getForces():
-            if force.__class__.__name__ != 'PeriodicTorsionForce':
-                force.setForceGroup(group)
-                break
-        
-        if lowerBound:
-            print("group:", group)
-            integrator = GamdDualBoostPotentialLangevinIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole, 6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond, group=group)
-        else:
-            integrator = GamdDualBoostPotentialLangevinIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole, 6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond, group=group)
-                                                                     
-    elif mode == 'DihedralBoost':
-        # Move torsion terms to force group 1
-        group = 1
-        for force in system.getForces():
-            if force.__class__.__name__ != 'PeriodicTorsionForce':
-                force.setForceGroup(group)
-                break
-        
-        if lowerBound:
-            print("group:", group)
-            integrator = GamdGroupBoostPotentialLangevinIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond, group=group)
-        else:
-            integrator = GamdGroupBoostPotentialLangevinIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond, group=group)
-    elif mode == 'TotalBoost':
-        if lowerBound:
-            integrator = GamdTotalBoostPotentialLangevinIntegratorLowerBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond)
-        else:
-            integrator = GamdTotalBoostPotentialLangevinIntegratorUpperBound(2.0 * femtoseconds, number_of_steps_in_stage_1,
-                                                                     number_of_steps_in_stage_2, ntave,
-                                                                     6.0 * kilocalories_per_mole,
-                                                                     temperature=300*kelvin, gamma=1/picosecond)
-    else:
-        raise Exception, "'mode' option not allowed: %s" % mode
+    integrator = get_integrator(mode, system)
         
     simulation = Simulation(prmtop.topology, system, integrator)
     simulation.context.setPositions(pdb.positions)
