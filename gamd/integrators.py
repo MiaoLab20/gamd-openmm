@@ -23,7 +23,7 @@ import numpy
 # base class
 # ============================================================================================
 
-class GamdIntegratorBase(CustomIntegrator):
+class GamdStageIntegrator(CustomIntegrator):
     __metaclass__ = ABCMeta
 
     """
@@ -239,16 +239,49 @@ class GamdIntegratorBase(CustomIntegrator):
         raise NotImplementedError("must implement calculate_E_k0")
 
 
-# ============================================================================================
-# Integrator Classes
-# ============================================================================================
+class GamdLangevinIntegrator(GamdStageIntegrator):
 
-# ============================================================================================
-# Total Boost Integrator Classes
-# ============================================================================================
+    def __init__(self,
+                 dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
+                 ntebprep=200000, nteb=1000000, ntslim=3000000, ntave=50000,
+                 collision_rate=1.0 / unit.picoseconds,
+                 temperature=298.15 * unit.kelvin,
+                 restart_filename=None):
+        """
+         Parameters
+         ----------
+         :param dt:        The Amount of time between each time step.
+         :param ntcmdprep: The number of conventional MD steps for system equilibration.
+         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
+         :param ntebprep:  The number of GaMD pre-equilibration steps.
+         :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
+         :param ntslim:    The total number of simulation steps.
+         :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
+                           running average window size).
+         :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
+         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
+         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
+         """
+
+        self.collision_rate = collision_rate
+        self.temperature = temperature
+        self.restart_filename = restart_filename
+
+        super(GamdLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, ntslim, ntave)
+
+        self.kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
+        self.thermal_energy = self.kB * self.temperature  # kT
+        self.current_velocity_component = numpy.exp(-self.collision_rate * dt)  # a
+        self.random_velocity_component = numpy.sqrt(1 - numpy.exp(- 2 * self.collision_rate * dt))  # b
+
+    def add_common_variables(self):
+        #
+        #  totalEnergy = energy
+        #
+        self.addGlobalVariable("thermal_energy", self.thermal_energy)
 
 
-class GamdTotalPotentialBoostLangevinIntegrator(GamdIntegratorBase, ABC):
+class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
     """ This class is an OpenMM Integrator for doing the total potential boost for
         Gaussian accelerated molecular dynamics.
     """
@@ -279,14 +312,12 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdIntegratorBase, ABC):
         """
 
         self.sigma0 = sigma0
-        self.restart_filename = restart_filename
-        self.collision_rate = collision_rate
-        self.temperature = temperature
         super(GamdTotalPotentialBoostLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb,
-                                                                        ntslim, ntave)
+                                                                        ntslim, ntave, collision_rate, temperature,
+                                                                        restart_filename)
 
     def add_common_variables(self):
-        pass
+        super(GamdTotalPotentialBoostLangevinIntegrator, self).add_common_variables()
 
     def add_conventional_md_instructions(self):
         pass
@@ -300,6 +331,115 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdIntegratorBase, ABC):
     def add_apply_boost_potential_calculations(self):
         pass
 
+
+class GamdDihedralBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
+    """ This class is an OpenMM Integrator for doing the Dihedral Boost for
+        Gaussian accelerated molecular dynamics.
+    """
+
+    def __init__(self, group,
+                 dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
+                 ntslim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
+                 collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
+        """
+        Parameters
+        ----------
+        :param group      The set of particles to boost.
+        :param dt:        The Amount of time between each time step.
+        :param ntcmdprep: The number of conventional MD steps for system equilibration.
+        :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
+        :param ntebprep:  The number of GaMD pre-equilibration steps.
+        :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
+        :param ntslim:    The total number of simulation steps.
+        :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
+                          running average window size).
+        :param sigma0:    The upper limit of the standard deviation of the potential boost that allows for
+                          accurate reweighting.
+        :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
+        :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
+        :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
+        """
+
+        self.group = group
+        self.sigma0 = sigma0
+        super(GamdDihedralBoostLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, ntslim, ntave,
+                                                                  collision_rate, temperature, restart_filename)
+
+    def add_common_variables(self):
+        super(GamdDihedralBoostLangevinIntegrator, self).add_common_variables()
+
+    def add_conventional_md_instructions(self):
+        pass
+
+    def add_boost_parameter_calculations(self):
+        pass
+
+    def set_boost_parameters_for_future_steps(self):
+        pass
+
+    def add_apply_boost_potential_calculations(self):
+        pass
+
+
+class GamdDualBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
+    """ This class is an OpenMM Integrator for doing the boost on both the total potential energy and the
+        dihedral energy for Gaussian accelerated molecular dynamics.
+    """
+
+    def __init__(self, group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000,
+                 nteb=1000000, ntslim=3000000, ntave=50000, sigma0D=6.0 * unit.kilocalories_per_mole,
+                 sigma0P=6.0 * unit.kilocalories_per_mole, collision_rate=1.0 / unit.picoseconds,
+                 temperature=298.15 * unit.kelvin, restart_filename=None):
+        """
+        Parameters
+        ----------
+        :param group      The set of particles to boost.
+        :param dt:        The Amount of time between each time step.
+        :param ntcmdprep: The number of conventional MD steps for system equilibration.
+        :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
+        :param ntebprep:  The number of GaMD pre-equilibration steps.
+        :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
+        :param ntslim:    The total number of simulation steps.
+        :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
+                          running average window size).
+        :param sigma0D:   The upper limit of the standard deviation of the dihedral potential boost that allows for
+                          accurate reweighting.
+        :param sigma0P:   The upper limit of the standard deviation of the total potential boost that allows for
+                          accurate reweighting.
+        :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
+        :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
+        :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
+        """
+
+        self.group = group
+        self.sigma0D = sigma0D
+        self.sigma0P = sigma0P
+        super(GamdDualBoostLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, ntslim, ntave,
+                                                              collision_rate, temperature, restart_filename)
+
+    def add_common_variables(self):
+        super(GamdDualBoostLangevinIntegrator, self).add_common_variables()
+
+    def add_conventional_md_instructions(self):
+        pass
+
+    def add_boost_parameter_calculations(self):
+        pass
+
+    def set_boost_parameters_for_future_steps(self):
+        pass
+
+    def add_apply_boost_potential_calculations(self):
+        pass
+
+
+# ============================================================================================
+# Integrator Classes
+# ============================================================================================
+
+# ============================================================================================
+# Total Boost Integrator Classes
+# ============================================================================================
 
 class GamdTotalPotentialBoostLangevinLowerBoundIntegrator(GamdTotalPotentialBoostLangevinIntegrator):
 
@@ -372,58 +512,6 @@ class GamdTotalPotentialBoostLangevinUpperBoundIntegrator(GamdTotalPotentialBoos
 # ============================================================================================
 
 
-class GamdDihedralBoostLangevinIntegrator(GamdIntegratorBase, ABC):
-    """ This class is an OpenMM Integrator for doing the Dihedral Boost for
-        Gaussian accelerated molecular dynamics.
-    """
-
-    def __init__(self, group,
-                 dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
-                 ntslim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
-                 collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
-        """
-        Parameters
-        ----------
-        :param group      The set of particles to boost.
-        :param dt:        The Amount of time between each time step.
-        :param ntcmdprep: The number of conventional MD steps for system equilibration.
-        :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
-        :param ntebprep:  The number of GaMD pre-equilibration steps.
-        :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
-        :param ntslim:    The total number of simulation steps.
-        :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
-                          running average window size).
-        :param sigma0:    The upper limit of the standard deviation of the potential boost that allows for
-                          accurate reweighting.
-        :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
-        :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
-        :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
-        """
-
-        self.group = group
-        self.sigma0 = sigma0
-        self.collision_rate = collision_rate
-        self.temperature = temperature
-        self.restart_filename = restart_filename
-        super(GamdDihedralBoostLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb,
-                                                                           ntslim, ntave)
-
-    def add_common_variables(self):
-        pass
-
-    def add_conventional_md_instructions(self):
-        pass
-
-    def add_boost_parameter_calculations(self):
-        pass
-
-    def set_boost_parameters_for_future_steps(self):
-        pass
-
-    def add_apply_boost_potential_calculations(self):
-        pass
-
-
 class GamdDihedralBoostLangevinLowerBoundIntegrator(GamdDihedralBoostLangevinIntegrator):
 
     def __init__(self,  group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000,
@@ -491,60 +579,6 @@ class GamdDihedralBoostLangevinUpperBoundIntegrator(GamdDihedralBoostLangevinInt
 # ============================================================================================
 # Dual Boost Integrator Classes
 # ============================================================================================
-
-
-class GamdDualBoostLangevinIntegrator(GamdIntegratorBase, ABC):
-    """ This class is an OpenMM Integrator for doing the boost on both the total potential energy and the
-        dihedral energy for Gaussian accelerated molecular dynamics.
-    """
-
-    def __init__(self, group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000,
-                 nteb=1000000, ntslim=3000000, ntave=50000, sigma0D=6.0 * unit.kilocalories_per_mole,
-                 sigma0P=6.0 * unit.kilocalories_per_mole, collision_rate=1.0 / unit.picoseconds,
-                 temperature=298.15 * unit.kelvin, restart_filename=None):
-        """
-        Parameters
-        ----------
-        :param group      The set of particles to boost.
-        :param dt:        The Amount of time between each time step.
-        :param ntcmdprep: The number of conventional MD steps for system equilibration.
-        :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
-        :param ntebprep:  The number of GaMD pre-equilibration steps.
-        :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
-        :param ntslim:    The total number of simulation steps.
-        :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
-                          running average window size).
-        :param sigma0D:   The upper limit of the standard deviation of the dihedral potential boost that allows for
-                          accurate reweighting.
-        :param sigma0P:   The upper limit of the standard deviation of the total potential boost that allows for
-                          accurate reweighting.
-        :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
-        :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
-        :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
-        """
-
-        self.sigma0D = sigma0D
-        self.sigma0P = sigma0P
-        self.restart_filename = restart_filename
-        self.collision_rate = collision_rate
-        self.temperature = temperature
-        super(GamdDualBoostLangevinIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep, nteb, ntslim,
-                                                              ntave)
-
-    def add_common_variables(self):
-        pass
-
-    def add_conventional_md_instructions(self):
-        pass
-
-    def add_boost_parameter_calculations(self):
-        pass
-
-    def set_boost_parameters_for_future_steps(self):
-        pass
-
-    def add_apply_boost_potential_calculations(self):
-        pass
 
 
 class GamdDualBoostLangevinLowerBoundIntegrator(GamdDualBoostLangevinIntegrator):
