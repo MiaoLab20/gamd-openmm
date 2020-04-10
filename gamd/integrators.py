@@ -106,42 +106,42 @@ class GamdStageIntegrator(CustomIntegrator):
         self.addComputeGlobal("stepCount", "stepCount+1")
 
 
-        self.add_common_variables()
-        self.add_stage_one_instructions()
-        self.add_stage_two_instructions()
-        self.add_stage_three_instructions()
-        self.add_stage_four_instructions()
-        self.add_stage_five_instructions()
+        self._add_common_variables()
+        self._add_stage_one_instructions()
+        self._add_stage_two_instructions()
+        self._add_stage_three_instructions()
+        self._add_stage_four_instructions()
+        self._add_stage_five_instructions()
 
-    def add_stage_one_instructions(self):
+    def _add_stage_one_instructions(self):
         self.beginIfBlock("stepCount <= " + str(self.stage_1_end))
         # -------------------------------
         self.addComputeGlobal("stage", "1")
-        self.add_conventional_md_instructions()
+        self._add_conventional_md_instructions()
         # -------------------------------
         self.endBlock()
 
-    def add_stage_three_instructions(self):
+    def _add_stage_three_instructions(self):
         self.beginIfBlock("stepCount >= " + str(self.stage_3_start))
         self.beginIfBlock("stepCount <= " + str(self.stage_3_end))
         # -------------------------------
         self.addComputeGlobal("stage", "3")
-        self.add_apply_boost_potential_calculations()
+        self._add_apply_boost_potential_calculations()
         # -------------------------------
         self.endBlock()
         self.endBlock()
 
-    def add_stage_five_instructions(self):
+    def _add_stage_five_instructions(self):
         self.beginIfBlock("stepCount >= " + str(self.stage_5_start))
         self.beginIfBlock("stepCount <= " + str(self.stage_5_end))
         # -------------------------------
         self.addComputeGlobal("stage", "5")
-        self.add_apply_boost_potential_calculations()
+        self._add_apply_boost_potential_calculations()
         # -------------------------------
         self.endBlock()
         self.endBlock()
 
-    def add_stage_two_instructions(self):
+    def _add_stage_two_instructions(self):
         self.beginIfBlock("stepCount >= " + str(self.stage_2_start))
         self.beginIfBlock("stepCount <= " + str(self.stage_2_end))
 
@@ -149,23 +149,23 @@ class GamdStageIntegrator(CustomIntegrator):
         self.addComputeGlobal("stage", "2")
         self.addComputeGlobal("windowCount", "windowCount + 1")
 
-        self.add_conventional_md_instructions()
+        self._add_conventional_md_instructions()
 
         # Check to see if we need to calculate boost parameters
         self.beginIfBlock("windowCount = " + str(self.ntave))
-        self.add_boost_parameter_calculations()
+        self._add_boost_parameter_calculations()
         self.addComputeGlobal("windowCount", "0")
         self.endBlock()
 
         self.beginIfBlock("stepCount = " + str(self.stage_2_end))
-        self.set_boost_parameters_for_future_steps()
+        self._set_boost_parameters_for_future_steps()
         self.endBlock()
 
         # -------------------------------
         self.endBlock()
         self.endBlock()
 
-    def add_stage_four_instructions(self):
+    def _add_stage_four_instructions(self):
         self.beginIfBlock("stepCount = " + str(self.stage_4_start))
         self.addComputeGlobal("windowCount", "0")
         self.endBlock()
@@ -179,12 +179,12 @@ class GamdStageIntegrator(CustomIntegrator):
 
         # Check to see if we need to calculate boost parameters
         self.beginIfBlock("windowCount = " + str(self.ntave))
-        self.add_boost_parameter_calculations()
+        self._add_boost_parameter_calculations()
         self.addComputeGlobal("windowCount", "0")
         self.endBlock()
 
-        self.set_boost_parameters_for_future_steps()
-        self.add_apply_boost_potential_calculations()
+        self._set_boost_parameters_for_future_steps()
+        self._add_apply_boost_potential_calculations()
 
         # -------------------------------
         self.endBlock()
@@ -205,7 +205,6 @@ class GamdStageIntegrator(CustomIntegrator):
     def get_coordinates(self):
         return self.getPerDofVariableByName("coordinates")
 
-
     def create_positions_file(self, filename):
         positions = self.get_coordinates()
         with open(filename, 'w') as file:
@@ -215,31 +214,31 @@ class GamdStageIntegrator(CustomIntegrator):
                 file.write(line + "\n")
 
     @abstractmethod
-    def add_common_variables(self):
+    def _add_common_variables(self):
         raise NotImplementedError("must implement add_common_variables")
 
     @abstractmethod
-    def add_conventional_md_instructions(self):
+    def _add_conventional_md_instructions(self):
         raise NotImplementedError("must implement add_conventional_md_instructions")
 
     @abstractmethod
-    def add_boost_parameter_calculations(self):
+    def _add_boost_parameter_calculations(self):
         raise NotImplementedError("must implement add_boost_parameter_calculations")
 
     @abstractmethod
-    def set_boost_parameters_for_future_steps(self):
+    def _set_boost_parameters_for_future_steps(self):
         raise NotImplementedError("must implement set_boost_parameters_for_future_steps")
 
     @abstractmethod
-    def add_apply_boost_potential_calculations(self):
+    def _add_apply_boost_potential_calculations(self):
         raise NotImplementedError("must implement add_apply_boost_potential_calculations")
 
     @abstractmethod
-    def calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         raise NotImplementedError("must implement calculate_E_k0")
 
 
-class GamdLangevinIntegrator(GamdStageIntegrator):
+class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
 
     def __init__(self,
                  dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
@@ -274,11 +273,15 @@ class GamdLangevinIntegrator(GamdStageIntegrator):
         self.current_velocity_component = numpy.exp(-self.collision_rate * dt)  # a
         self.random_velocity_component = numpy.sqrt(1 - numpy.exp(- 2 * self.collision_rate * dt))  # b
 
-    def add_common_variables(self):
+    def _add_common_variables(self):
         #
         #  totalEnergy = energy
         #
         self.addGlobalVariable("thermal_energy", self.thermal_energy)
+        self.addGlobalVariable("current_velocity_component", self.current_velocity_component)
+        self.addGlobalVariable("random_velocity_component", self.random_velocity_component)
+        self.addGlobalVariable("collision_rate", self.collision_rate)
+        self.addPerDofVariable("sigma", 0)
 
 
 class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
@@ -316,19 +319,19 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
                                                                         ntslim, ntave, collision_rate, temperature,
                                                                         restart_filename)
 
-    def add_common_variables(self):
-        super(GamdTotalPotentialBoostLangevinIntegrator, self).add_common_variables()
+    def _add_common_variables(self):
+        super(GamdTotalPotentialBoostLangevinIntegrator, self)._add_common_variables()
 
-    def add_conventional_md_instructions(self):
+    def _add_conventional_md_instructions(self):
         pass
 
-    def add_boost_parameter_calculations(self):
+    def _add_boost_parameter_calculations(self):
         pass
 
-    def set_boost_parameters_for_future_steps(self):
+    def _set_boost_parameters_for_future_steps(self):
         pass
 
-    def add_apply_boost_potential_calculations(self):
+    def _add_apply_boost_potential_calculations(self):
         pass
 
 
@@ -365,19 +368,19 @@ class GamdDihedralBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         super(GamdDihedralBoostLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, ntslim, ntave,
                                                                   collision_rate, temperature, restart_filename)
 
-    def add_common_variables(self):
-        super(GamdDihedralBoostLangevinIntegrator, self).add_common_variables()
+    def _add_common_variables(self):
+        super(GamdDihedralBoostLangevinIntegrator, self)._add_common_variables()
 
-    def add_conventional_md_instructions(self):
+    def _add_conventional_md_instructions(self):
         pass
 
-    def add_boost_parameter_calculations(self):
+    def _add_boost_parameter_calculations(self):
         pass
 
-    def set_boost_parameters_for_future_steps(self):
+    def _set_boost_parameters_for_future_steps(self):
         pass
 
-    def add_apply_boost_potential_calculations(self):
+    def _add_apply_boost_potential_calculations(self):
         pass
 
 
@@ -417,19 +420,19 @@ class GamdDualBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         super(GamdDualBoostLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, ntslim, ntave,
                                                               collision_rate, temperature, restart_filename)
 
-    def add_common_variables(self):
-        super(GamdDualBoostLangevinIntegrator, self).add_common_variables()
+    def _add_common_variables(self):
+        super(GamdDualBoostLangevinIntegrator, self)._add_common_variables()
 
-    def add_conventional_md_instructions(self):
+    def _add_conventional_md_instructions(self):
         pass
 
-    def add_boost_parameter_calculations(self):
+    def _add_boost_parameter_calculations(self):
         pass
 
-    def set_boost_parameters_for_future_steps(self):
+    def _set_boost_parameters_for_future_steps(self):
         pass
 
-    def add_apply_boost_potential_calculations(self):
+    def _add_apply_boost_potential_calculations(self):
         pass
 
 
@@ -469,7 +472,7 @@ class GamdTotalPotentialBoostLangevinLowerBoundIntegrator(GamdTotalPotentialBoos
                                                                                   ntave,  sigma0, collision_rate,
                                                                                   temperature, restart_filename)
 
-    def calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         pass
 
 
@@ -503,7 +506,7 @@ class GamdTotalPotentialBoostLangevinUpperBoundIntegrator(GamdTotalPotentialBoos
                                                                                   ntslim, ntave, collision_rate,
                                                                                   temperature, sigma0, restart_filename)
 
-    def calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         pass
 
 
@@ -540,7 +543,7 @@ class GamdDihedralBoostLangevinLowerBoundIntegrator(GamdDihedralBoostLangevinInt
                                                                             ntslim, ntave, sigma0, collision_rate,
                                                                             temperature, restart_filename)
 
-    def calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         pass
 
 
@@ -572,7 +575,7 @@ class GamdDihedralBoostLangevinUpperBoundIntegrator(GamdDihedralBoostLangevinInt
                                                                             ntslim, ntave, sigma0, collision_rate,
                                                                             temperature, restart_filename)
 
-    def calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         pass
 
 
@@ -611,7 +614,7 @@ class GamdDualBoostLangevinLowerBoundIntegrator(GamdDualBoostLangevinIntegrator)
                                                                         ntslim, ntave, collision_rate, temperature,
                                                                         sigma0D, sigma0P, restart_filename)
 
-    def calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         pass
 
 
@@ -645,5 +648,5 @@ class GamdDualBoostLangevinUpperBoundIntegrator(GamdDualBoostLangevinIntegrator)
                                                                         ntslim, ntave, collision_rate, temperature,
                                                                         sigma0D, sigma0P, restart_filename)
 
-    def calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         pass
