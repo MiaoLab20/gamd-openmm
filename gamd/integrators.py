@@ -105,8 +105,10 @@ class GamdStageIntegrator(CustomIntegrator):
         self.addGlobalVariable("stage", -1)
         self.addComputeGlobal("stepCount", "stepCount+1")
 
-
         self._add_common_variables()
+        self._run_precalculations()
+        self.addUpdateContextState()
+
         self._add_stage_one_instructions()
         self._add_stage_two_instructions()
         self._add_stage_three_instructions()
@@ -215,27 +217,31 @@ class GamdStageIntegrator(CustomIntegrator):
 
     @abstractmethod
     def _add_common_variables(self):
-        raise NotImplementedError("must implement add_common_variables")
+        raise NotImplementedError("must implement _add_common_variables")
+
+    @abstractmethod
+    def _run_precalculations(self):
+        raise NotImplementedError("must implement _run_precalcuations")
 
     @abstractmethod
     def _add_conventional_md_instructions(self):
-        raise NotImplementedError("must implement add_conventional_md_instructions")
+        raise NotImplementedError("must implement _add_conventional_md_instructions")
 
     @abstractmethod
     def _add_boost_parameter_calculations(self):
-        raise NotImplementedError("must implement add_boost_parameter_calculations")
+        raise NotImplementedError("must implement _add_boost_parameter_calculations")
 
     @abstractmethod
     def _set_boost_parameters_for_future_steps(self):
-        raise NotImplementedError("must implement set_boost_parameters_for_future_steps")
+        raise NotImplementedError("must implement _set_boost_parameters_for_future_steps")
 
     @abstractmethod
     def _add_apply_boost_potential_calculations(self):
-        raise NotImplementedError("must implement add_apply_boost_potential_calculations")
+        raise NotImplementedError("must implement _add_apply_boost_potential_calculations")
 
     @abstractmethod
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):
-        raise NotImplementedError("must implement calculate_E_k0")
+        raise NotImplementedError("must implement _calculate_threshold_energy_and_effective_harmonic_constant")
 
 
 class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
@@ -265,13 +271,16 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         self.collision_rate = collision_rate
         self.temperature = temperature
         self.restart_filename = restart_filename
-
-        super(GamdLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, ntslim, ntave)
-
         self.kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
         self.thermal_energy = self.kB * self.temperature  # kT
         self.current_velocity_component = numpy.exp(-self.collision_rate * dt)  # a
         self.random_velocity_component = numpy.sqrt(1 - numpy.exp(- 2 * self.collision_rate * dt))  # b
+
+        #
+        # We need to run our super classes constructor last, since it's going to execute our other methods, which
+        # have dependencies on our variables above being setup.
+        #
+        super(GamdLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, ntslim, ntave)
 
     def _add_common_variables(self):
         #
@@ -282,6 +291,23 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         self.addGlobalVariable("random_velocity_component", self.random_velocity_component)
         self.addGlobalVariable("collision_rate", self.collision_rate)
         self.addPerDofVariable("sigma", 0)
+
+        self.addGlobalVariable("Vmax", -1E99)
+        self.addGlobalVariable("Vmin", 1E99)
+
+
+        # Unverified
+        self.addGlobalVariable("Vavg", 0)
+        self.addGlobalVariable("oldVavg", 0)
+        self.addGlobalVariable("sigmaV", 0)
+
+        self.addGlobalVariable("M2", 0)
+        self.addGlobalVariable("wVmax", -1E99)
+        self.addGlobalVariable("wVmin", 1E99)
+        self.addGlobalVariable("wVavg", 0)
+        self.addGlobalVariable("wVariance", 0)
+
+
 
 
 class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
@@ -321,6 +347,10 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
 
     def _add_common_variables(self):
         super(GamdTotalPotentialBoostLangevinIntegrator, self)._add_common_variables()
+
+    def _run_precalculations(self):
+        self.addComputeGlobal("Vmax", "max(Vmax, energy)")
+        self.addComputeGlobal("Vmin", "min(Vmin, energy)")
 
     def _add_conventional_md_instructions(self):
         pass
