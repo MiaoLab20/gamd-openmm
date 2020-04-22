@@ -34,7 +34,7 @@ def main():
 
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
-    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer, constraints=HBonds)
+    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
 
 #    integrator = GamdTotalPotentialBoostLangevinLowerBoundIntegrator(2.0 * femtoseconds, 2000, 10000, 2000, 10000,
 #                                                                     30000, 500)
