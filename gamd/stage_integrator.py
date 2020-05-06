@@ -116,8 +116,16 @@ class GamdStageIntegrator(CustomIntegrator):
         self._add_common_variables()
 
         self.addGlobalVariable("bEnergy", 0.0)
+
+        # self._add_debug()
+        # self._add_debug_at_step(1)
+        # self._add_debug_at_step(2)
         self.addUpdateContextState()
         self.addComputeGlobal("bEnergy", "energy")
+
+        # self._add_debug()
+        # self._add_debug_at_step(1)
+        # self._add_debug_at_step(2)
 
         self._add_stage_one_instructions()
         self._add_stage_two_instructions()
@@ -125,6 +133,14 @@ class GamdStageIntegrator(CustomIntegrator):
         self._add_stage_four_instructions()
         self._add_stage_five_instructions()
 
+        # self._add_debug()
+        # self._add_debug_at_step(1)
+        # self._add_debug_at_step(2)
+
+    def _add_debug_at_step(self, the_step):
+        self.beginIfBlock("stepCount = " + str(the_step))
+        self._add_debug()
+        self.endBlock()
     #
     # Debugging Methods
     #
@@ -186,6 +202,7 @@ class GamdStageIntegrator(CustomIntegrator):
         self._save_global_debug("windowCount")
         self._save_global_debug("stage")
         self._save_global_debug("stepCount")
+
         self.debug_counter += 1
 
     def _get_global_debug_value(self, counter, name):
@@ -195,9 +212,9 @@ class GamdStageIntegrator(CustomIntegrator):
         return self.getPerDofVariableByName(str(counter) + "_" + name)
 
     def get_debug_step(self, counter):
-        results = {"windowCount": self._get_global_debug_value(counter, "windowCount"),
-                   "stage": self._get_global_debug_value(counter, "stage"),
-                   "stepCount": self._get_global_debug_value(counter, "stepCount")}
+        results = {str(counter) + "_" + "windowCount": self._get_global_debug_value(counter, "windowCount"),
+                   str(counter) + "_" + "stage": self._get_global_debug_value(counter, "stage"),
+                   str(counter) + "_" + "stepCount": self._get_global_debug_value(counter, "stepCount")}
 
         return results
 

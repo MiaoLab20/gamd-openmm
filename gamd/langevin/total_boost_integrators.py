@@ -50,12 +50,13 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         self.total_boost_global_variables = {"Vmax": -1E99, "Vmin": 1E99, "totalForceScalingFactor": 0, "Vavg": 0,
                                              "oldVavg": 0, "sigmaV": 0, "M2": 0,
                                              "wVavg": 0, "wVariance": 0, "k0": 0, "k0prime": 0, "k0doubleprime": 0,
-                                             "currentPotentialEnergy": 0, "sigma0":sigma0}
+                                             "currentPotentialEnergy": 0, "sigma0": sigma0}
         self.total_boost_per_dof_variables = {"newx": 0, "coordinates": 0}
-        self.debug_per_dof_variables = ["x", "v", "f", "m"]
-        self.debug_global_variables = ["dt", "energy"]
+        self.debug_per_dof_variables = []
+        # self.debug_per_dof_variables = ["x", "v", "f", "m"]
+        self.debug_global_variables = ["dt", "energy", "energy0", "energy1", "energy2", "energy3", "energy4"]
         self.sigma0 = sigma0
-
+        self.debuggingIsEnabled = True
 
         super(GamdTotalPotentialBoostLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb,
                                                                         ntslim, ntave, collision_rate, temperature,
@@ -69,17 +70,16 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         return self.getGlobalVariableByName("bEnergy")
 
     def get_current_state(self):
-        results = {}
+        results = {"step": self.getGlobalVariableByName("stepCount")}
 
-        results["step"] = self.getGlobalVariableByName("stepCount")
         for key, value in self.total_boost_global_variables.items():
             results[key] = self.getGlobalVariableByName(key)
         results["threshold_energy"] = self.getGlobalVariableByName("threshold_energy")
+
         
-            #  results = {{ key:self.getGlobalVariableByName(key)} for key, value in self.total_boost_global_variables.items()}
+        #  results = {{ key:self.getGlobalVariableByName(key)} for key, value in self.total_boost_global_variables.items()}
         # garbage = {self.addPerDofVariable(key, value) for key, value in self.total_boost_per_dof_variables.items()}
         return results
-
 
     def _add_common_variables(self):
         garbage = {self.addGlobalVariable(key, value) for key, value in self.total_boost_global_variables.items()}
@@ -178,6 +178,7 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
     #
 
     def _add_debug(self):
+
         """
             This method will save off a copy of all of the variables in use.  Obviously, you don't
             really want to leave these statements in for a normal production run, since they will generate
@@ -187,12 +188,14 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
             in performing the debugging, rather than for an entire simulation.
         :return: none
         """
-        garbage = {self._save_global_debug(key) for key, value in self.total_boost_global_variables.items()}
-        garbage = [self._save_global_debug(name) for name in self.debug_global_variables]
-        garbage = {self._save_per_dof_debug(key) for key, value in self.total_boost_per_dof_variables.items()}
-        garbage = [self._save_per_dof_debug(name) for name in self.debug_per_dof_variables]
 
-        super(GamdTotalPotentialBoostLangevinIntegrator, self)._add_debug()
+        if self.debuggingIsEnabled:
+            garbage = {self._save_global_debug(key) for key, value in self.total_boost_global_variables.items()}
+            garbage = [self._save_global_debug(name) for name in self.debug_global_variables]
+            # garbage = {self._save_per_dof_debug(key) for key, value in self.total_boost_per_dof_variables.items()}
+            garbage = [self._save_per_dof_debug(name) for name in self.debug_per_dof_variables]
+
+            super(GamdTotalPotentialBoostLangevinIntegrator, self)._add_debug()
 
     def get_debug_step(self, counter):
         """
@@ -202,17 +205,24 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         :param counter: an integer
         :return: a dictionary containing the global and per dof debug values for the simulation at that point.
         """
-        results = super(GamdLangevinIntegrator, self).get_debug_step(counter)
-        results = self.__add_to_dictionary(results, self.total_boost_global_variables,
-                                           counter, self._get_global_debug_value)
-        results = self.__add_to_dictionary(results, self.total_boost_per_dof_variables,
-                                           counter, self._get_per_dof_debug_value)
-        for name in self.debug_dof_variables:
-            results[name] = self._get_per_dof_debug_value(self.debug_counter, name)
+        results = super(GamdTotalPotentialBoostLangevinIntegrator, self).get_debug_step(counter)
+        #results.update({k: self._get_global_debug_value(counter, k) for (k, v) in self.total_boost_global_variables.items()})
+
+        results.update(self._get_debug_values_as_dictionary(self.total_boost_global_variables, counter,
+                                                            self._get_global_debug_value))
+        # results.update(self._get_debug_values_as_dictionary(self.total_boost_per_dof_variables, counter,
+        #                                                    self._get_per_dof_debug_value))
+
+        for name in self.debug_per_dof_variables:
+            results[str(counter) + "_" + name] = self._get_per_dof_debug_value(counter, name)
+
         for name in self.debug_global_variables:
-            results[name] = self._get_global_debug_value(self.debug_counter, name)
+            results[str(counter) + "_" + name] = self._get_global_debug_value(counter, name)
 
         return results
+
+#    def _get_global_debug_value(self, counter, name):
+#        super(GamdTotalPotentialBoostLangevinIntegrator, self)._get_global_debug_value(counter, name)
 
     def get_debugging_information(self):
         """
@@ -223,6 +233,8 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         debug_information = {}
         for count in range(0, self.debug_counter):
             debug_information[count] = self.get_debug_step(count)
+
+        return debug_information
 
 
 # ============================================================================================

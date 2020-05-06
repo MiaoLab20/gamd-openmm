@@ -151,8 +151,10 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
     # Debugging Methods
     #
 
-    def __add_to_dictionary(self, results, dictionary, counter, function_to_retrieve_value):
-        for key, value in dictionary:
+    @staticmethod
+    def _get_debug_values_as_dictionary(dictionary, counter, function_to_retrieve_value):
+        results = {}
+        for key, value in dictionary.items():
             results[str(counter) + "_" + key] = function_to_retrieve_value(counter, key)
         return results
 
@@ -164,6 +166,6 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
 
     def get_debug_step(self, counter):
         results = super(GamdLangevinIntegrator, self).get_debug_step(counter)
-        results = self.__add_to_dictionary(results, self.global_variables, counter, self._get_global_debug_value)
-        results = self.__add_to_dictionary(results, self.per_dof_variables, counter, self._get_per_dof_debug_value)
+        results.update(self._get_debug_values_as_dictionary(self.global_variables, counter, self._get_global_debug_value))
+        results.update(self._get_debug_values_as_dictionary(self.per_dof_variables, counter, self._get_per_dof_debug_value))
         return results
