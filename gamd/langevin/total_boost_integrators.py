@@ -17,7 +17,7 @@ from abc import ABC
 from gamd.langevin.base_integrator import GamdLangevinIntegrator
 
 
-class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
+class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
     """ This class is an OpenMM Integrator for doing the total potential boost for
         Gaussian accelerated molecular dynamics.
     """
@@ -58,9 +58,9 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         self.sigma0 = sigma0
         self.debuggingIsEnabled = True
 
-        super(GamdTotalPotentialBoostLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb,
-                                                                        ntslim, ntave, collision_rate, temperature,
-                                                                        restart_filename)
+        super(TotalPotentialBoostIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb,
+                                                            ntslim, ntave, collision_rate, temperature,
+                                                            restart_filename)
         # This makes sure that we get the value for the currentPotentialEnergy at the end of each simulation step.
         self.addComputeGlobal("currentPotentialEnergy", "energy")
 
@@ -85,7 +85,7 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         garbage = {self.addGlobalVariable(key, value) for key, value in self.total_boost_global_variables.items()}
         garbage = {self.addPerDofVariable(key, value) for key, value in self.total_boost_per_dof_variables.items()}
 
-        super(GamdTotalPotentialBoostLangevinIntegrator, self)._add_common_variables()
+        super(TotalPotentialBoostIntegrator, self)._add_common_variables()
 
     def _add_instructions_to_calculate_primary_boost_statistics(self):
         self.addComputeGlobal("Vmax", "max(energy, Vmax)")
@@ -195,7 +195,7 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
             # garbage = {self._save_per_dof_debug(key) for key, value in self.total_boost_per_dof_variables.items()}
             garbage = [self._save_per_dof_debug(name) for name in self.debug_per_dof_variables]
 
-            super(GamdTotalPotentialBoostLangevinIntegrator, self)._add_debug()
+            super(TotalPotentialBoostIntegrator, self)._add_debug()
 
     def get_debug_step(self, counter):
         """
@@ -205,7 +205,7 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         :param counter: an integer
         :return: a dictionary containing the global and per dof debug values for the simulation at that point.
         """
-        results = super(GamdTotalPotentialBoostLangevinIntegrator, self).get_debug_step(counter)
+        results = super(TotalPotentialBoostIntegrator, self).get_debug_step(counter)
         #results.update({k: self._get_global_debug_value(counter, k) for (k, v) in self.total_boost_global_variables.items()})
 
         results.update(self._get_debug_values_as_dictionary(self.total_boost_global_variables, counter,
@@ -222,7 +222,7 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
         return results
 
 #    def _get_global_debug_value(self, counter, name):
-#        super(GamdTotalPotentialBoostLangevinIntegrator, self)._get_global_debug_value(counter, name)
+#        super(TotalPotentialBoostIntegrator, self)._get_global_debug_value(counter, name)
 
     def get_debugging_information(self):
         """
@@ -246,7 +246,7 @@ class GamdTotalPotentialBoostLangevinIntegrator(GamdLangevinIntegrator, ABC):
 # ============================================================================================
 
 
-class GamdTotalPotentialBoostLangevinLowerBoundIntegrator(GamdTotalPotentialBoostLangevinIntegrator):
+class LowerBoundIntegrator(TotalPotentialBoostIntegrator):
 
     def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
                  ntslim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
@@ -269,10 +269,10 @@ class GamdTotalPotentialBoostLangevinLowerBoundIntegrator(GamdTotalPotentialBoos
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
 
-        super(GamdTotalPotentialBoostLangevinLowerBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd,
-                                                                                  ntebprep, nteb, ntslim,
-                                                                                  ntave, sigma0, collision_rate,
-                                                                                  temperature, restart_filename)
+        super(LowerBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd,
+                                                   ntebprep, nteb, ntslim,
+                                                   ntave, sigma0, collision_rate,
+                                                   temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         self.addComputeGlobal("threshold_energy", "Vmax")
@@ -280,7 +280,7 @@ class GamdTotalPotentialBoostLangevinLowerBoundIntegrator(GamdTotalPotentialBoos
         self.addComputeGlobal("k0", "min(1.0, k0prime); ")
 
 
-class GamdTotalPotentialBoostLangevinUpperBoundIntegrator(GamdTotalPotentialBoostLangevinIntegrator):
+class UpperBoundIntegrator(TotalPotentialBoostIntegrator):
 
     def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
                  ntebprep=200000, nteb=1000000, ntslim=3000000,
@@ -306,9 +306,9 @@ class GamdTotalPotentialBoostLangevinUpperBoundIntegrator(GamdTotalPotentialBoos
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
 
-        super(GamdTotalPotentialBoostLangevinUpperBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb,
-                                                                                  ntslim, ntave, collision_rate,
-                                                                                  temperature, sigma0, restart_filename)
+        super(UpperBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb,
+                                                   ntslim, ntave, collision_rate,
+                                                   temperature, sigma0, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         self.addComputeGlobal("k0", "1.0")

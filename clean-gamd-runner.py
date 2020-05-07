@@ -6,7 +6,7 @@ from sys import exit
 import os
 import sys
 import traceback
-from gamd.langevin.total_boost_integrators import GamdTotalPotentialBoostLangevinLowerBoundIntegrator
+from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
 from gamd import utils as utils
 import pprint
 
@@ -48,10 +48,10 @@ def main():
     #     force.setForceGroup(group)
     #     group += 1
 
-#    integrator = GamdTotalPotentialBoostLangevinLowerBoundIntegrator(2.0 * femtoseconds, 2000, 10000, 2000, 10000,
+#    integrator = LowerBoundIntegrator(2.0 * femtoseconds, 2000, 10000, 2000, 10000,
 #                                                                     30000, 500)
 
-    integrator = GamdTotalPotentialBoostLangevinLowerBoundIntegrator()
+    integrator = LowerBoundIntegrator()
 
     simulation = Simulation(prmtop.topology, system, integrator)
     simulation.context.setPositions(inpcrd.positions)
