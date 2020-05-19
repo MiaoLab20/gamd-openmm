@@ -74,7 +74,7 @@ def main():
 #                print("Step ", str(step), " -  Energy Start:  ", integrator.get_boost_potential(), ", End: ",
 #                      integrator.get_current_potential_energy())
 #                print("Step: ", step, " => ", integrator.get_current_state())
-            
+           # print(integrator.get_current_state())
         except Exception as e:
             print("Failure on step " + str(step))
             print(e)
@@ -91,7 +91,7 @@ def main():
             simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step) + ".bin")
             gamdLog.append({'total_nstep': step,
                             'Unboosted-Potential-Energy': integrator.get_current_potential_energy(),
-                            'Total-Force-Weight': integrator.get_total_force_scaling_factor(),
+                            'Total-Force-Weight': integrator.get_force_scaling_factor(),
                             'Boost-Energy-Potential': integrator.get_boost_potential()})
             positions_filename = output_directory + '/positions/coordinates-' + str(step) + '.csv'
             integrator.create_positions_file(positions_filename)

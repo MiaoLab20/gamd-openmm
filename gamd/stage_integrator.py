@@ -394,8 +394,8 @@ class GamdStageIntegrator(CustomIntegrator):
         raise NotImplementedError("must implement get_current_potential_energy")
 
     @abstractmethod
-    def get_total_force_scaling_factor(self):
-        raise NotImplementedError("must implement get_total_force_scaling_factor")
+    def get_force_scaling_factor(self):
+        raise NotImplementedError("must implement get_force_scaling_factor")
 
     @abstractmethod
     def get_boost_potential(self):

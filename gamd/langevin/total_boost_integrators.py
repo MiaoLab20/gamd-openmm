@@ -75,6 +75,8 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
         for key, value in self.total_boost_global_variables.items():
             results[key] = self.getGlobalVariableByName(key)
         results["threshold_energy"] = self.getGlobalVariableByName("threshold_energy")
+        results["boostPotential"] = self.getGlobalVariableByName("boostPotential")
+        results["bEnergy"] = self.getGlobalVariableByName("bEnergy")
 
         
         #  results = {{ key:self.getGlobalVariableByName(key)} for key, value in self.total_boost_global_variables.items()}
@@ -167,7 +169,7 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
     def get_current_potential_energy(self):
         return self.getGlobalVariableByName("currentPotentialEnergy")
 
-    def get_total_force_scaling_factor(self):
+    def get_force_scaling_factor(self):
         return self.getGlobalVariableByName("totalForceScalingFactor")
 
     def get_boost_potential(self):
