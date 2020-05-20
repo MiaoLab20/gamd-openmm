@@ -115,13 +115,13 @@ class GamdStageIntegrator(CustomIntegrator):
 
         self._add_common_variables()
 
-        self.addGlobalVariable("bEnergy", 0.0)
-
+        self.addGlobalVariable("starting_energy", 0.0)
         # self._add_debug()
         # self._add_debug_at_step(1)
         # self._add_debug_at_step(2)
         self.addUpdateContextState()
-        self.addComputeGlobal("bEnergy", "energy")
+        self.addComputeGlobal("starting_energy", "energy")
+
 
         # self._add_debug()
         # self._add_debug_at_step(1)
@@ -296,6 +296,12 @@ class GamdStageIntegrator(CustomIntegrator):
         self.beginIfBlock("stepCount <= " + str(self.stage_3_end))
         # -------------------------------
         self.addComputeGlobal("stage", "3")
+        #
+        # We recalculate the threshold energy and the effective harmonic constant at each step in stage 3.
+        # These values shouldn't change though, since Vmax, Vmin, Vavg, sigma0, and sigmaV aren't changing.
+        #
+        self._calculate_threshold_energy_and_effective_harmonic_constant()
+
         self._add_gamd_instructions()
         # -------------------------------
         self.endBlock()
@@ -306,6 +312,7 @@ class GamdStageIntegrator(CustomIntegrator):
         self.beginIfBlock("stepCount <= " + str(self.stage_5_end))
         # -------------------------------
         self.addComputeGlobal("stage", "5")
+
         self._add_gamd_instructions()
         # -------------------------------
         self.endBlock()
