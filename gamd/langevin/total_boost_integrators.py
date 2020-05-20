@@ -50,7 +50,7 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.total_boost_global_variables = {"Vmax": -1E99, "Vmin": 1E99, "totalForceScalingFactor": 0, "Vavg": 0,
                                              "oldVavg": 0, "sigmaV": 0, "M2": 0,
                                              "wVavg": 0, "wVariance": 0, "k0": 0, "k0prime": 0, "k0doubleprime": 0,
-                                             "currentPotentialEnergy": 0, "sigma0": sigma0}
+                                             "currentPotentialEnergy": 0, "boosted_energy": 0, "sigma0": sigma0}
         self.total_boost_per_dof_variables = {"newx": 0, "coordinates": 0}
         self.debug_per_dof_variables = []
         # self.debug_per_dof_variables = ["x", "v", "f", "m"]
