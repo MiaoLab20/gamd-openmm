@@ -66,8 +66,8 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         self.addComputePerDof("coordinates", "x")
 
-    def get_b_energy(self):
-        return self.getGlobalVariableByName("bEnergy")
+    def get_starting_energy(self):
+        return self.getGlobalVariableByName("starting_energy")
 
     def get_current_state(self):
         results = {"step": self.getGlobalVariableByName("stepCount")}
@@ -76,7 +76,7 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
             results[key] = self.getGlobalVariableByName(key)
         results["threshold_energy"] = self.getGlobalVariableByName("threshold_energy")
         results["boostPotential"] = self.getGlobalVariableByName("boostPotential")
-        results["bEnergy"] = self.getGlobalVariableByName("bEnergy")
+        results["starting_energy"] = self.getGlobalVariableByName("starting_energy")
 
         
         #  results = {{ key:self.getGlobalVariableByName(key)} for key, value in self.total_boost_global_variables.items()}
