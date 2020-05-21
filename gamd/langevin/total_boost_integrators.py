@@ -147,9 +147,20 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
         # We don't actually apply the boost potential to the energy value, since energy is a read only value.
         #
         self.addComputeGlobal("boostPotential", "0.5 * k0 * (threshold_energy - energy)^2/(Vmax-Vmin)")
+        self.addComputeGlobal("boosted_energy", "energy + boostPotential")
+
+        self.beginIfBlock("boosted_energy >= threshold_energy")
+
+        self.addComputeGlobal("boostPotential", "0")
+        self.addComputeGlobal("boosted_energy", "energy")
+
+        self.endBlock()
 
     def _add_gamd_boost_calculations_step(self):
         self.addComputeGlobal("totalForceScalingFactor", "1.0-((k0 * (threshold_energy - energy))/(Vmax - Vmin))")
+        self.beginIfBlock("boosted_energy >= threshold_energy")
+        self.addComputeGlobal("totalForceScalingFactor", "1.0")
+        self.endBlock()
 
     def _add_gamd_position_update_step(self):
         self.addComputePerDof("x", "x + 0.5*dt*v")
@@ -174,6 +185,9 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
 
     def get_boost_potential(self):
         return self.getGlobalVariableByName("boostPotential")
+
+    def get_boosted_total_energy(self):
+        return self.getGlobalVariableByName("boosted_energy")
 
     #
     # Debugging Methods
