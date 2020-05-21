@@ -61,8 +61,7 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
                                  "random_velocity_component": self.random_velocity_component,
                                  "collision_rate": self.collision_rate,
                                  "threshold_energy": -1E99,
-                                 "alpha": 0,
-                                 "boostPotential": 0}
+                                 "boostPotential": 0.0}
 
         self.per_dof_variables = {"sigma": 0}
 
