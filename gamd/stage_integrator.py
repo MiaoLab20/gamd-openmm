@@ -408,6 +408,13 @@ class GamdStageIntegrator(CustomIntegrator):
     def get_boost_potential(self):
         raise NotImplementedError("must implement get_boost_potential")
 
+    @abstractmethod
+    def get_dihedral_boost(self):
+        raise NotImplementedError("must implement get_dihedral_boost")
+
+
+
+
     def get_stage(self):
         return self.getGlobalVariableByName("stage")
 

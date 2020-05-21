@@ -189,6 +189,9 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
     def get_boosted_total_energy(self):
         return self.getGlobalVariableByName("boosted_energy")
 
+    def get_dihedral_boost(self):
+        return 0.0
+
     #
     # Debugging Methods
     #
