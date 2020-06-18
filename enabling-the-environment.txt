@@ -1,0 +1,9 @@
+eval "$(/home/dyelar/group-projects/y147m353/openmm-gamd/anaconda/bin/conda shell.bash hook)"
+
+conda activate OpenMM-GaMD
+
+cd gamd
+
+python3 clean-gamd-runner.py >results.txt 
+
+
