@@ -41,7 +41,9 @@ def main():
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
-
+    for i, force in enumerate(system.getForces()):
+        force.setForceGroup(i)
+        
     # group = 1
     # for force in system.getForces():
     #     print(force.__class__.__name__)
@@ -60,8 +62,8 @@ def main():
     simulation.minimizeEnergy()
 
     simulation.saveState(output_directory + "/states/initial-state.xml")
-    simulation.reporters.append(PDBReporter(output_directory + '/output.pdb', 10000))
-    simulation.reporters.append(StateDataReporter(stdout, 10000, step=True, temperature=True,
+    simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', 1))
+    simulation.reporters.append(utils.ExpandedStateDataReporter(system, stdout, 1, step=True, brokenOutForceEnergies=True, temperature=True,
                                                   potentialEnergy=True, totalEnergy=True, volume=True))
     gamdLog = []
     for step in range(1, integrator.get_total_simulation_steps() + 1):
