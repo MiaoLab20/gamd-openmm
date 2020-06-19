@@ -63,44 +63,41 @@ def main():
 
     simulation.saveState(output_directory + "/states/initial-state.xml")
     simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', 1))
-    simulation.reporters.append(utils.ExpandedStateDataReporter(system, stdout, 1, step=True, brokenOutForceEnergies=True, temperature=True,
+    simulation.reporters.append(utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', 1, step=True, brokenOutForceEnergies=True, temperature=True,
                                                   potentialEnergy=True, totalEnergy=True, volume=True))
-    gamdLog = []
-    for step in range(1, integrator.get_total_simulation_steps() + 1):
-    # for step in range(1, 3):
-        try:
-            # print(integrator.get_current_state())
-            simulation.step(1)
-            # print(integrator.get_current_state())
-#            if step > 9400 and step < 10100:
-#                print("Step ", str(step), " -  Energy Start:  ", integrator.get_boost_potential(), ", End: ",
-#                      integrator.get_current_potential_energy())
-#                print("Step: ", step, " => ", integrator.get_current_state())
-           # print(integrator.get_current_state())
-        except Exception as e:
-            print("Failure on step " + str(step))
-            print(e)
-            print(integrator.get_current_state())
-            sys.exit(2)
 
-        # debug_information = integrator.get_debugging_information()
+    with open(output_directory + "/gamd.log", 'w') as gamdLog:
+        gamdLog.write("total_nstep, Unboosted-Potential-Energy, Total-Force-Weight, Boost-Energy-Potential\n")
+        
+        for step in range(1, integrator.get_total_simulation_steps() + 1):
+           try:
+                # print(integrator.get_current_state())
+               simulation.step(1)
+               gamdLog.write(str(step) + "," + str(integrator.get_current_potential_energy()) + "," + str(integrator.get_force_scaling_factor()) + "," +
+                             str(integrator.get_boost_potential()) + "\n")
 
+                # print(integrator.get_current_state())
+           except Exception as e:
+               print("Failure on step " + str(step))
+               print(e)
+               print(integrator.get_current_state())
+               gamdLog.write("Fail Step " + str(step) + "," + str(integrator.get_current_potential_energy()) + "," + str(integrator.get_force_scaling_factor()) + "," +
+                              str(integrator.get_boost_potential()) + "\n")
+               sys.exit(2)
 
-        # getGlobalVariableNames(integrator)
-        if step % integrator.ntave == 0:
-        # if step % 1 == 0:
-            simulation.saveState(output_directory + "/states/" + str(step) + ".xml")
-            simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step) + ".bin")
-            gamdLog.append({'total_nstep': step,
-                            'Unboosted-Potential-Energy': integrator.get_current_potential_energy(),
-                            'Total-Force-Weight': integrator.get_force_scaling_factor(),
-                            'Boost-Energy-Potential': integrator.get_boost_potential()})
-            positions_filename = output_directory + '/positions/coordinates-' + str(step) + '.csv'
-            integrator.create_positions_file(positions_filename)
+           # debug_information = integrator.get_debugging_information()
+           # getGlobalVariableNames(integrator)
+        
+           if step % integrator.ntave == 0:
+            # if step % 1 == 0:
 
-    utils.create_gamd_log(gamdLog, output_directory + "/gamd.log")
-    # pp = pprint.PrettyPrinter(indent=2)
-    # pp.pprint(debug_information)
+               simulation.saveState(output_directory + "/states/" + str(step) + ".xml")
+               simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step) + ".bin")
+               positions_filename = output_directory + '/positions/coordinates-' + str(step) + '.csv'
+               integrator.create_positions_file(positions_filename)
+               # pp = pprint.PrettyPrinter(indent=2)
+               # pp.pprint(debug_information)
 
+               
 if __name__ == "__main__":
     main()
