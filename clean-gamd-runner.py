@@ -7,7 +7,7 @@ import os
 import sys
 import time
 import traceback
-from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
+from gamd.langevin.total_boost_integrators import UpperBoundIntegrator #LowerBoundIntegrator
 from gamd import utils as utils
 import pprint
 
@@ -54,15 +54,15 @@ def main():
 #    integrator = LowerBoundIntegrator(2.0 * femtoseconds, 2000, 10000, 2000, 10000,
 #                                                                     30000, 500)
 
-    integrator = LowerBoundIntegrator()
-    #integrator = UpperBoundIntegrator()
+    #integrator = LowerBoundIntegrator()
+    integrator = UpperBoundIntegrator()
 
     simulation = Simulation(prmtop.topology, system, integrator)
     simulation.context.setPositions(inpcrd.positions)
     if inpcrd.boxVectors is not None:
         simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
     simulation.minimizeEnergy()
-    simulation.context.setVelocitiesToTemperature(298.15*unit.kelvin)
+    simulation.context.setVelocitiesToTemperature(298.15*kelvin)
     simulation.saveState(output_directory + "/states/initial-state.xml")
     simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', 100))
     simulation.reporters.append(utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', 100, step=True, brokenOutForceEnergies=True, temperature=True,

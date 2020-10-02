@@ -356,13 +356,14 @@ class UpperBoundIntegrator(TotalPotentialBoostIntegrator):
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
 
-        super(UpperBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb,
-                                                   ntslim, ntave, collision_rate,
-                                                   temperature, sigma0, restart_filename)
+        super(UpperBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd,
+                                                   ntebprep, nteb, ntslim,
+                                                   ntave, sigma0, collision_rate,
+                                                   temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         self.addComputeGlobal("k0", "1.0")
-        self.addComputeGlobal("k0doubleprime", "1-(sigma0/sigmaV) * (Vmax - Vmin)/(Vavg - Vmin)")
+        self.addComputeGlobal("k0doubleprime", "(1-(sigma0/sigmaV)) * (Vmax - Vmin)/(Vavg - Vmin)")
         #
         # We don't have an else statement in OpenMM, so we are going to set the value assuming that k0doubleprime
         # is between 0 and 1.  Then, we will override those values, if it is between them.
@@ -374,9 +375,9 @@ class UpperBoundIntegrator(TotalPotentialBoostIntegrator):
         #self.beginIfBlock("k0doubleprime < 1.0")
         self.addComputeGlobal("k0doubleprime_window", "(-k0doubleprime)*(1-k0doubleprime)")
         
-        self.beginIfBlock("k0doubleprime_window <= 0.0")
+        self.beginIfBlock("k0doubleprime_window >= 0.0")
         self.addComputeGlobal("threshold_energy", "Vmax")
-        self.addComputeGlobal("k0prime", "sigma0")
-
+        self.addComputeGlobal("k0prime", "(sigma0/sigmaV) * (Vmax - Vmin)/(Vmax - Vavg)")
+        self.addComputeGlobal("k0", "min(1.0, k0prime); ")
         self.endBlock()
         #self.endBlock()
