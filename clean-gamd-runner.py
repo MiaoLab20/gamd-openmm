@@ -5,6 +5,7 @@ from sys import stdout
 from sys import exit
 import os
 import sys
+import time
 import traceback
 from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
 from gamd import utils as utils
@@ -22,7 +23,7 @@ def getGlobalVariableNames(integrator):
 
 
 def main():
-
+    starttime = time.time()
     if len(sys.argv) == 1:
         output_directory = "output"
     else:
@@ -54,25 +55,26 @@ def main():
 #                                                                     30000, 500)
 
     integrator = LowerBoundIntegrator()
+    #integrator = UpperBoundIntegrator()
 
     simulation = Simulation(prmtop.topology, system, integrator)
     simulation.context.setPositions(inpcrd.positions)
     if inpcrd.boxVectors is not None:
         simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
     simulation.minimizeEnergy()
-
+    simulation.context.setVelocitiesToTemperature(298.15*unit.kelvin)
     simulation.saveState(output_directory + "/states/initial-state.xml")
-    simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', 1))
-    simulation.reporters.append(utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', 1, step=True, brokenOutForceEnergies=True, temperature=True,
+    simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', 100))
+    simulation.reporters.append(utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', 100, step=True, brokenOutForceEnergies=True, temperature=True,
                                                   potentialEnergy=True, totalEnergy=True, volume=True))
-
+    print("startup time:", time.time() - starttime)
     with open(output_directory + "/gamd.log", 'w') as gamdLog:
         gamdLog.write("total_nstep, Unboosted-Potential-Energy, Total-Force-Weight, Boost-Energy-Potential\n")
         
-        for step in range(1, integrator.get_total_simulation_steps() + 1):
+        for step in range(1, (integrator.get_total_simulation_steps() // 100) + 1):
            try:
                 # print(integrator.get_current_state())
-               simulation.step(1)
+               simulation.step(100)
                gamdLog.write(str(step) + "," + str(integrator.get_current_potential_energy()) + "," + str(integrator.get_force_scaling_factor()) + "," +
                              str(integrator.get_boost_potential()) + "\n")
 

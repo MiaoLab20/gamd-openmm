@@ -112,6 +112,12 @@ class GamdStageIntegrator(CustomIntegrator):
         self.addGlobalVariable("windowCount", 0)
         self.addGlobalVariable("stage", -1)
         self.addComputeGlobal("stepCount", "stepCount+1")
+        
+        self.addGlobalVariable("window1", 0)
+        self.addGlobalVariable("window2", 0)
+        self.addGlobalVariable("window3", 0)
+        self.addGlobalVariable("window4", 0)
+        self.addGlobalVariable("window5", 0)
 
         self._add_common_variables()
 
@@ -121,7 +127,12 @@ class GamdStageIntegrator(CustomIntegrator):
         # self._add_debug_at_step(2)
         self.addUpdateContextState()
         self.addComputeGlobal("starting_energy", "energy")
-
+        
+        self.addComputeGlobal("window1", "(%s-stepCount)*(%s-stepCount)" % (self.stage_1_start, self.stage_1_end))
+        self.addComputeGlobal("window2", "(%s-stepCount)*(%s-stepCount)" % (self.stage_2_start, self.stage_2_end))
+        self.addComputeGlobal("window3", "(%s-stepCount)*(%s-stepCount)" % (self.stage_3_start, self.stage_3_end))
+        self.addComputeGlobal("window4", "(%s-stepCount)*(%s-stepCount)" % (self.stage_4_start, self.stage_4_end))
+        self.addComputeGlobal("window5", "(%s-stepCount)*(%s-stepCount)" % (self.stage_5_start, self.stage_5_end))
 
         # self._add_debug()
         # self._add_debug_at_step(1)
@@ -227,8 +238,9 @@ class GamdStageIntegrator(CustomIntegrator):
         self.endBlock()
 
     def _add_stage_two_instructions(self):
-        self.beginIfBlock("stepCount >= " + str(self.stage_2_start))
-        self.beginIfBlock("stepCount <= " + str(self.stage_2_end))
+        #self.beginIfBlock("stepCount >= " + str(self.stage_2_start))
+        #self.beginIfBlock("stepCount <= " + str(self.stage_2_end))
+        self.beginIfBlock("window2 <= 0")
 
         # -------------------------------
         self.addComputeGlobal("stage", "2")
@@ -249,9 +261,9 @@ class GamdStageIntegrator(CustomIntegrator):
         #
         # Just to make sure that our windowCount is set to correct the value for this point in our simulation.
         #
-        self.beginIfBlock("stepCount = " + str(self.stage_2_last_ntave_window_start))
-        self.addComputeGlobal("windowCount", "0")
-        self.endBlock()
+        #self.beginIfBlock("stepCount = " + str(self.stage_2_last_ntave_window_start))
+        #self.addComputeGlobal("windowCount", "0")
+        #self.endBlock()
 
         #
         # We only need to calculate the Vavg and sigmaV for the last ntave window in stage 2, since otherwise,
@@ -263,7 +275,10 @@ class GamdStageIntegrator(CustomIntegrator):
         # This helps us keep track of where we are in the ntave window.  We utilize this variable to keep a running
         # count of the average and the variance for the window.
         #
-        self.addComputeGlobal("windowCount", "windowCount + 1")
+        #self.addComputeGlobal("windowCount", "windowCount + 1")
+        
+        self.addComputeGlobal("windowCount", "(1-delta(%d-stepCount))*(windowCount + 1)" % self.stage_2_last_ntave_window_start)
+        
         #
         # These calculations help us to keep track of the running ntave window Vavg and variance.
         #
@@ -289,11 +304,13 @@ class GamdStageIntegrator(CustomIntegrator):
 
         # -------------------------------
         self.endBlock()
-        self.endBlock()
+        #self.endBlock()
 
     def _add_stage_three_instructions(self):
-        self.beginIfBlock("stepCount >= " + str(self.stage_3_start))
-        self.beginIfBlock("stepCount <= " + str(self.stage_3_end))
+        #self.beginIfBlock("stepCount >= " + str(self.stage_3_start))
+        #self.beginIfBlock("stepCount <= " + str(self.stage_3_end))
+        self.beginIfBlock("window3 <= 0")
+        
         # -------------------------------
         self.addComputeGlobal("stage", "3")
         #
@@ -305,29 +322,32 @@ class GamdStageIntegrator(CustomIntegrator):
         self._add_gamd_instructions()
         # -------------------------------
         self.endBlock()
-        self.endBlock()
+        #self.endBlock()
 
     def _add_stage_five_instructions(self):
-        self.beginIfBlock("stepCount >= " + str(self.stage_5_start))
-        self.beginIfBlock("stepCount <= " + str(self.stage_5_end))
+        #self.beginIfBlock("stepCount >= " + str(self.stage_5_start))
+        #self.beginIfBlock("stepCount <= " + str(self.stage_5_end))
+        self.beginIfBlock("window5 <= 0")
         # -------------------------------
         self.addComputeGlobal("stage", "5")
 
         self._add_gamd_instructions()
         # -------------------------------
         self.endBlock()
-        self.endBlock()
+        #self.endBlock()
 
     def _add_stage_four_instructions(self):
         #
         # Set our window count to zero, since this is what it should be at the start of stage 4.
         #
-        self.beginIfBlock("stepCount = " + str(self.stage_4_start))
-        self.addComputeGlobal("windowCount", "0")
-        self.endBlock()
+        #self.beginIfBlock("stepCount = " + str(self.stage_4_start))
+        #self.addComputeGlobal("windowCount", "0")
+        #self.endBlock()
+        
 
-        self.beginIfBlock("stepCount >= " + str(self.stage_4_start))
-        self.beginIfBlock("stepCount <= " + str(self.stage_4_end))
+        #self.beginIfBlock("stepCount >= " + str(self.stage_4_start))
+        #self.beginIfBlock("stepCount <= " + str(self.stage_4_end))
+        self.beginIfBlock("window4 <= 0")
         # -------------------------------
         self.addComputeGlobal("stage", "4")
         self.addComputeGlobal("windowCount", "windowCount + 1")
@@ -366,7 +386,7 @@ class GamdStageIntegrator(CustomIntegrator):
 
         # -------------------------------
         self.endBlock()
-        self.endBlock()
+        #self.endBlock()
 
     @abstractmethod
     def _add_common_variables(self):

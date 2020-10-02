@@ -48,8 +48,8 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         self.restart_filename = restart_filename
         self.kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
         self.thermal_energy = self.kB * self.temperature  # kT
-        self.current_velocity_component = numpy.exp(-self.collision_rate * dt)  # a
-        self.random_velocity_component = numpy.sqrt(1 - numpy.exp(- 2 * self.collision_rate * dt))  # b
+        #self.current_velocity_component = numpy.exp(-self.collision_rate * dt)  # a
+        #self.random_velocity_component = numpy.sqrt(1 - numpy.exp(- 2 * self.collision_rate * dt))  # b
 
         #
         # Generally, I'm trying to put variables here that I know will be used across all implementations WITHOUT the
@@ -57,11 +57,14 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         # I got it perfectly correct, but that is the idea.
         #
         self.global_variables = {"thermal_energy": self.thermal_energy,
-                                 "current_velocity_component": self.current_velocity_component,
-                                 "random_velocity_component": self.random_velocity_component,
+                                 #"current_velocity_component": self.current_velocity_component,
+                                 #"random_velocity_component": self.random_velocity_component,
                                  "collision_rate": self.collision_rate,
                                  "threshold_energy": -1E99,
-                                 "boostPotential": 0.0}
+                                 "boostPotential": 0.0,
+                                 "vscale": 0.0, "fscale": 0.0,
+                                 "noisescale": 0.0
+                                 }
 
         self.per_dof_variables = {"sigma": 0}
 
@@ -74,11 +77,11 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
     def _add_common_variables(self):
         garbage = {self.addGlobalVariable(key, value) for key, value in self.global_variables.items()}
         garbage = {self.addPerDofVariable(key, value) for key, value in self.per_dof_variables.items()}
-
+    
     @abstractmethod
     def _add_conventional_md_pre_calc_step(self):  # O Step
         raise NotImplementedError("must implement _add_conventional_md_pre_calc_step")
-
+    '''
     @abstractmethod
     def _add_conventional_md_position_update_step(self):  # R Step
         raise NotImplementedError("must implement _add_conventional_md_position_update_step")
@@ -86,11 +89,15 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
     @abstractmethod
     def _add_conventional_md_velocity_update_step(self):  # V Step
         raise NotImplementedError("must implement _add_conventional_md_velocity_update_step")
-
+    
     @abstractmethod
     def _add_conventional_md_stochastic_velocity_update_step(self):  # O Step
         raise NotImplementedError("must implement _add_conventional_md_stochastic_velocity_update_step")
-
+    '''
+    @abstractmethod
+    def _add_conventional_md_update_step(self):
+        raise NotImplementedError("must implement _add_conventional_md_update_step")
+    '''
     @abstractmethod
     def _add_gamd_position_update_step(self):  # R Step
         raise NotImplementedError("must implement _add_gamd_position_update_step")
@@ -98,11 +105,15 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
     @abstractmethod
     def _add_gamd_velocity_update_step(self):  # V Step
         raise NotImplementedError("must implement _add_gamd_velocity_update_step")
-
+    
     @abstractmethod
     def _add_gamd_stochastic_velocity_update_step(self):  # O Step
         raise NotImplementedError("must implement _add_gamd_stochastic_velocity_update_step")
-
+    '''
+    @abstractmethod
+    def _add_gamd_update_step(self):
+        raise NotImplementedError("must implement _add_gamd_update_step")
+    
     @abstractmethod
     def _add_gamd_pre_calc_step(self):
         raise NotImplementedError("must implement _add_gamd_pre_calc_step")
@@ -121,17 +132,21 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
 
     def _add_conventional_md_instructions(self):
         self._add_conventional_md_pre_calc_step()
+        '''
         self._add_conventional_md_velocity_update_step()
         self._add_conventional_md_position_update_step()
         self._add_conventional_md_stochastic_velocity_update_step()
         self._add_conventional_md_position_update_step()
         self._add_conventional_md_velocity_update_step()
+        '''
+        self._add_conventional_md_update_step()
 
     def _add_gamd_instructions(self):
         self.addUpdateContextState()
         self._add_gamd_pre_calc_step()
         self._add_gamd_boost_calculations_step()
-
+        
+        '''
         self._add_gamd_velocity_update_step()
         self._add_gamd_position_update_step()
         self._add_gamd_stochastic_velocity_update_step()
@@ -145,7 +160,8 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         #self._add_gamd_boost_calculations_step()
 
         self._add_gamd_velocity_update_step()
-
+        '''
+        self._add_gamd_update_step()
     #
     # Debugging Methods
     #

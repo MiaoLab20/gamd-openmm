@@ -50,6 +50,7 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.total_boost_global_variables = {"Vmax": -1E99, "Vmin": 1E99, "totalForceScalingFactor": 0, "Vavg": 0,
                                              "oldVavg": 0, "sigmaV": 0, "M2": 0,
                                              "wVavg": 0, "wVariance": 0, "k0": 0, "k0prime": 0, "k0doubleprime": 0,
+                                             "k0doubleprime_window": 0,
                                              "currentPotentialEnergy": 0, "boosted_energy": 0, "sigma0": sigma0}
         self.total_boost_per_dof_variables = {"newx": 0, "coordinates": 0}
         self.debug_per_dof_variables = []
@@ -110,13 +111,17 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         # reset variables
         self.addComputeGlobal("M2", "0")
-        self.addComputeGlobal("wVavg", "0")
-        self.addComputeGlobal("oldVavg", "0")
+        self.addComputeGlobal("wVavg", "energy")
+        self.addComputeGlobal("oldVavg", "energy")
         self.addComputeGlobal("wVariance", "0")
 
     def _add_conventional_md_pre_calc_step(self):
-        self.addComputePerDof("sigma", "sqrt(thermal_energy/m)")
-
+        #self.addComputePerDof("sigma", "sqrt(thermal_energy/m)")
+        self.addComputeGlobal("vscale", "exp(-dt*collision_rate)");
+        self.addComputeGlobal("fscale", "(1-vscale)/collision_rate");
+        self.addComputeGlobal("noisescale", "sqrt(thermal_energy*(1-vscale*vscale))")
+    
+    '''
     def _add_conventional_md_position_update_step(self):
         self.addComputePerDof("x", "x + 0.5*dt*v")
         self.addComputePerDof("newx", "x")
@@ -140,28 +145,42 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
     def _add_conventional_md_stochastic_velocity_update_step(self):
         self.addComputePerDof("v", "current_velocity_component * v + random_velocity_component * sigma * gaussian")
         self.addConstrainVelocities()
+    '''
+    def _add_conventional_md_update_step(self):
+        self.addComputePerDof("newx", "x");
+        self.addComputePerDof("v", "vscale*v + fscale*f/m + noisescale*gaussian/sqrt(m)");
+        self.addComputePerDof("x", "x+dt*v");
+        self.addConstrainPositions();
+        self.addComputePerDof("v", "(x-newx)/dt");
 
     def _add_gamd_pre_calc_step(self):
-        self.addComputePerDof("sigma", "sqrt(thermal_energy/m)")
+        #self.addComputePerDof("sigma", "sqrt(thermal_energy/m)")
+        self.addComputeGlobal("vscale", "exp(-dt*collision_rate)");
+        self.addComputeGlobal("fscale", "(1-vscale)/collision_rate");
+        self.addComputeGlobal("noisescale", "sqrt(thermal_energy*(1-vscale*vscale))")
         #
         # We don't actually apply the boost potential to the energy value, since energy is a read only value.
         #
         self.addComputeGlobal("boostPotential", "0.5 * k0 * (threshold_energy - energy)^2/(Vmax-Vmin)")
+        
+        #self.beginIfBlock("boosted_energy >= threshold_energy")
+
+        #self.addComputeGlobal("boostPotential", "0")
+        #self.addComputeGlobal("boosted_energy", "energy")
+
+        #self.endBlock()
+        
+        self.addComputeGlobal("boostPotential", "boostPotential*step(threshold_energy-boosted_energy)")
         self.addComputeGlobal("boosted_energy", "energy + boostPotential")
-
-        self.beginIfBlock("boosted_energy >= threshold_energy")
-
-        self.addComputeGlobal("boostPotential", "0")
-        self.addComputeGlobal("boosted_energy", "energy")
-
-        self.endBlock()
 
     def _add_gamd_boost_calculations_step(self):
         self.addComputeGlobal("totalForceScalingFactor", "1.0-((k0 * (threshold_energy - energy))/(Vmax - Vmin))")
         self.beginIfBlock("boosted_energy >= threshold_energy")
         self.addComputeGlobal("totalForceScalingFactor", "1.0")
         self.endBlock()
-
+        
+        
+    '''
     def _add_gamd_position_update_step(self):
         self.addComputePerDof("x", "x + 0.5*dt*v")
         self.addComputePerDof("newx", "x")
@@ -176,7 +195,14 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
     def _add_gamd_stochastic_velocity_update_step(self):
         self.addComputePerDof("v", "current_velocity_component*v + random_velocity_component*sigma*gaussian")
         self.addConstrainVelocities()
-
+    '''
+    def _add_gamd_update_step(self):
+        self.addComputePerDof("newx", "x");
+        self.addComputePerDof("v", "vscale*v + fscale*f*totalForceScalingFactor/m + noisescale*gaussian/sqrt(m)");
+        self.addComputePerDof("x", "x+dt*v");
+        self.addConstrainPositions();
+        self.addComputePerDof("v", "(x-newx)/dt");
+        
     def get_current_potential_energy(self):
         return self.getGlobalVariableByName("currentPotentialEnergy")
 
@@ -301,12 +327,17 @@ class LowerBoundIntegrator(TotalPotentialBoostIntegrator):
 
 class UpperBoundIntegrator(TotalPotentialBoostIntegrator):
 
-    def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
+    def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
+                 ntslim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
+                 collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
+            
+        '''self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
                  ntebprep=200000, nteb=1000000, ntslim=3000000,
                  ntave=50000,
                  collision_rate=1.0 / unit.picoseconds,
                  temperature=298.15 * unit.kelvin,
                  sigma0=6.0 * unit.kilocalories_per_mole, restart_filename=None):
+                 '''
         """
         Parameters
         ----------
@@ -339,10 +370,13 @@ class UpperBoundIntegrator(TotalPotentialBoostIntegrator):
         self.addComputeGlobal("k0", "k0doubleprime")
         self.addComputeGlobal("threshold_energy", "Vmin + (Vmax - Vmin)/k0")
 
-        self.beginIfBlock("k0doubleprime <= 0.0")
-        self.beginIfBlock("k0doubleprime > 1.0")
+        #self.beginIfBlock("k0doubleprime >= 0.0")
+        #self.beginIfBlock("k0doubleprime < 1.0")
+        self.addComputeGlobal("k0doubleprime_window", "(-k0doubleprime)*(1-k0doubleprime)")
+        
+        self.beginIfBlock("k0doubleprime_window <= 0.0")
         self.addComputeGlobal("threshold_energy", "Vmax")
         self.addComputeGlobal("k0prime", "sigma0")
 
         self.endBlock()
-        self.endBlock()
+        #self.endBlock()
