@@ -7,7 +7,7 @@ import os
 import sys
 import time
 import traceback
-from gamd.langevin.total_boost_integrators import UpperBoundIntegrator #LowerBoundIntegrator
+from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
 from gamd import utils as utils
 import pprint
 
@@ -54,8 +54,8 @@ def main():
 #    integrator = LowerBoundIntegrator(2.0 * femtoseconds, 2000, 10000, 2000, 10000,
 #                                                                     30000, 500)
 
-    #integrator = LowerBoundIntegrator()
-    integrator = UpperBoundIntegrator()
+    integrator = LowerBoundIntegrator()
+    #integrator = UpperBoundIntegrator()
 
     simulation = Simulation(prmtop.topology, system, integrator)
     simulation.context.setPositions(inpcrd.positions)
