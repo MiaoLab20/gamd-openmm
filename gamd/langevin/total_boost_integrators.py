@@ -23,8 +23,8 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
     """
 
     def __init__(self,
-                 dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
-                 ntebprep=200000, nteb=1000000, ntslim=3000000, ntave=50000,
+                 dt=2.0 * unit.femtoseconds, ntcmdprep=2000, ntcmd=10000,
+                 ntebprep=2000, nteb=10000, ntslim=30000, ntave=500,
                  sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds,
                  temperature=298.15 * unit.kelvin,
@@ -205,9 +205,15 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
         
     def get_current_potential_energy(self):
         return self.getGlobalVariableByName("currentPotentialEnergy")
-
-    def get_force_scaling_factor(self):
+    
+    def get_current_dihedral_energy(self):
+        return ("Implemented in clean_gamd_runner\n")
+    
+    def get_total_force_scaling_factor(self):
         return self.getGlobalVariableByName("totalForceScalingFactor")
+        
+    def get_dihedral_force_scaling_factor(self):
+        return 1.000000000000
 
     def get_boost_potential(self):
         return self.getGlobalVariableByName("boostPotential")
@@ -216,7 +222,7 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
         return self.getGlobalVariableByName("boosted_energy")
 
     def get_dihedral_boost(self):
-        return 0.0
+        return 0.000000000000
 
     #
     # Debugging Methods
@@ -293,8 +299,8 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
 
 class LowerBoundIntegrator(TotalPotentialBoostIntegrator):
 
-    def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
-                 ntslim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
+    def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000, nteb=10000,
+                 ntslim=30000, ntave=500, sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
         """
         Parameters
@@ -327,8 +333,8 @@ class LowerBoundIntegrator(TotalPotentialBoostIntegrator):
 
 class UpperBoundIntegrator(TotalPotentialBoostIntegrator):
 
-    def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
-                 ntslim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
+    def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000, nteb=10000,
+                 ntslim=30000, ntave=500, sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
             
         '''self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,

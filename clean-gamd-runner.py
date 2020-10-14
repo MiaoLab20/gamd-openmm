@@ -42,13 +42,15 @@ def main():
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
-    for i, force in enumerate(system.getForces()):
-        force.setForceGroup(i)
+    # for i, force in enumerate(system.getForces()):
+    #    force.setForceGroup(i)
         
-    # group = 1
-    # for force in system.getForces():
+    group = 1
+    for force in system.getForces():
     #     print(force.__class__.__name__)
-    #     force.setForceGroup(group)
+        if force.__class__.__name__ == 'PeriodicTorsionForce':
+            force.setForceGroup(group)
+            break
     #     group += 1
 
 #    integrator = LowerBoundIntegrator(2.0 * femtoseconds, 2000, 10000, 2000, 10000,
@@ -69,22 +71,26 @@ def main():
                                                   potentialEnergy=True, totalEnergy=True, volume=True))
     print("startup time:", time.time() - starttime)
     with open(output_directory + "/gamd.log", 'w') as gamdLog:
-        gamdLog.write("total_nstep, Unboosted-Potential-Energy, Total-Force-Weight, Boost-Energy-Potential\n")
-        
+        gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
+        gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
+        gamdLog.write("# ntwx,total_nstep,Unboosted-Potential-Energy,Unboosted-Dihedral-Energy,Total-Force-Weight,Dihedral-Force-Weight,Boost-Energy-Potential,Boost-Energy-Dihedral\n")
+
         for step in range(1, (integrator.get_total_simulation_steps() // 100) + 1):
            try:
-                # print(integrator.get_current_state())
+               # print(integrator.get_current_state())
                simulation.step(100)
-               gamdLog.write(str(step) + "," + str(integrator.get_current_potential_energy()) + "," + str(integrator.get_force_scaling_factor()) + "," +
-                             str(integrator.get_boost_potential()) + "\n")
+               state = simulation.context.getState(getEnergy=True, groups={group})
+               gamdLog.write("\t" + str(100) + "\t" + str(step*100) + "\t" + str(integrator.get_current_potential_energy()/4.184) + "\t" + str(state.getPotentialEnergy()/(kilojoules_per_mole*4.184)) + "\t" +  str(integrator.get_total_force_scaling_factor()) + "\t" + str(integrator.get_dihedral_force_scaling_factor()) + "\t" +
+                             str(integrator.get_boost_potential()/4.184) + "\t" +  str(integrator.get_dihedral_boost()/4.184) + "\n")
 
                 # print(integrator.get_current_state())
            except Exception as e:
-               print("Failure on step " + str(step))
+               print("Failure on step " + str(step*100))
                print(e)
                print(integrator.get_current_state())
-               gamdLog.write("Fail Step " + str(step) + "," + str(integrator.get_current_potential_energy()) + "," + str(integrator.get_force_scaling_factor()) + "," +
-                              str(integrator.get_boost_potential()) + "\n")
+               state = simulation.context.getState(getEnergy=True, groups={group})
+               gamdLog.write("Fail Step: " + str(step*100) + "\t" + str(integrator.get_current_potential_energy()/4.184) + "\t" + str(state.getPotentialEnergy()/(4.184*kilojoules_per_mole)) + "\t" + str(integrator.get_total_force_scaling_factor()) + "\t" + str(integrator.get_dihedral_force_scaling_factor()) + "\t" +
+                              str(integrator.get_boost_potential()/4.184) + "\t" + str(integrator.get_dihedral_boost()/4.184) + "\n")
                sys.exit(2)
 
            # debug_information = integrator.get_debugging_information()
