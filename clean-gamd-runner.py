@@ -99,9 +99,9 @@ def main():
            if step % integrator.ntave == 0:
             # if step % 1 == 0:
 
-               simulation.saveState(output_directory + "/states/" + str(step) + ".xml")
-               simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step) + ".bin")
-               positions_filename = output_directory + '/positions/coordinates-' + str(step) + '.csv'
+               simulation.saveState(output_directory + "/states/" + str(step*100) + ".xml")
+               simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step*100) + ".bin")
+               positions_filename = output_directory + '/positions/coordinates-' + str(step*100) + '.csv'
                integrator.create_positions_file(positions_filename)
                # pp = pprint.PrettyPrinter(indent=2)
                # pp.pprint(debug_information)
