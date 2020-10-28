@@ -31,12 +31,19 @@ def main():
 
     coordinates_file = './data/md-4ns.rst7'
     prmtop_file = './data/dip.top'
-
-    create_output_directories([output_directory, output_directory + "/states/", output_directory + "/positions/",
+    
+    restarting = True
+    restart_checkpoint_frequency = 1000
+    restart_checkpoint_filename = "gamd.backup"
+    
+    if not restarting:
+        create_output_directories([output_directory, output_directory + "/states/", output_directory + "/positions/",
                                output_directory + "/pdb/", output_directory + "/checkpoints"])
 
     # dihedral_boost = True
-
+    
+    
+    
     # (simulation, integrator) = createGamdSimulationFromAmberFiles(prmtop_file, coordinates_file, dihedral_boost=dihedral_boost)
 
     prmtop = AmberPrmtopFile(prmtop_file)
@@ -60,52 +67,75 @@ def main():
     #integrator = UpperBoundIntegrator()
 
     simulation = Simulation(prmtop.topology, system, integrator)
-    simulation.context.setPositions(inpcrd.positions)
-    if inpcrd.boxVectors is not None:
-        simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
-    simulation.minimizeEnergy()
-    simulation.context.setVelocitiesToTemperature(298.15*kelvin)
-    simulation.saveState(output_directory + "/states/initial-state.xml")
-    simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', 100))
-    simulation.reporters.append(utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', 100, step=True, brokenOutForceEnergies=True, temperature=True,
-                                                  potentialEnergy=True, totalEnergy=True, volume=True))
-    print("startup time:", time.time() - starttime)
-    with open(output_directory + "/gamd.log", 'w') as gamdLog:
-        gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
-        gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
-        gamdLog.write("# ntwx,total_nstep,Unboosted-Potential-Energy,Unboosted-Dihedral-Energy,Total-Force-Weight,Dihedral-Force-Weight,Boost-Energy-Potential,Boost-Energy-Dihedral\n")
-
-        for step in range(1, (integrator.get_total_simulation_steps() // 100) + 1):
-           try:
-               # print(integrator.get_current_state())
-               simulation.step(100)
-               state = simulation.context.getState(getEnergy=True, groups={group})
-               gamdLog.write("\t" + str(100) + "\t" + str(step*100) + "\t" + str(integrator.get_current_potential_energy()/4.184) + "\t" + str(state.getPotentialEnergy()/(kilojoules_per_mole*4.184)) + "\t" +  str(integrator.get_total_force_scaling_factor()) + "\t" + str(integrator.get_dihedral_force_scaling_factor()) + "\t" +
+    if restarting:
+        simulation.loadCheckpoint(restart_checkpoint_filename)
+        write_mode = "a"
+        start_step = int(integrator.getGlobalVariableByName("stepCount") // 100)
+        print("restarting from saved checkpoint:", restart_checkpoint_filename,
+              "at step:", start_step)
+    else:
+        simulation.context.setPositions(inpcrd.positions)
+        if inpcrd.boxVectors is not None:
+            simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
+        simulation.minimizeEnergy()
+        simulation.context.setVelocitiesToTemperature(298.15*kelvin)
+        simulation.saveState(output_directory + "/states/initial-state.xml")
+        simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', 100))
+        simulation.reporters.append(utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', 100, step=True, brokenOutForceEnergies=True, temperature=True,
+                                                      potentialEnergy=True, totalEnergy=True, volume=True))
+        print("startup time:", time.time() - starttime)
+        write_mode = "w"
+        start_step = 1
+    with open(output_directory + "/gamd.log", write_mode) as gamdLog:
+        if not restarting:
+            gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
+            gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
+            gamdLog.write("# ntwx,total_nstep,Unboosted-Potential-Energy,Unboosted-Dihedral-Energy,Total-Force-Weight,Dihedral-Force-Weight,Boost-Energy-Potential,Boost-Energy-Dihedral\n")
+        
+        for step in range(start_step, (integrator.get_total_simulation_steps() // 100) + 1):
+            if step % restart_checkpoint_frequency // 100 == 0:
+                simulation.saveCheckpoint(restart_checkpoint_filename)
+            
+            # TEST
+            if step == 250 and not restarting:
+                print("sudden, unexpected interruption!")
+                exit()
+            # END TEST
+            
+            try:
+                # print(integrator.get_current_state())
+                simulation.step(100)
+                state = simulation.context.getState(getEnergy=True, groups={group})
+                gamdLog.write("\t" + str(100) + "\t" + str(step*100) + "\t" + str(integrator.get_current_potential_energy()/4.184) + "\t" + str(state.getPotentialEnergy()/(kilojoules_per_mole*4.184)) + "\t" +  str(integrator.get_total_force_scaling_factor()) + "\t" + str(integrator.get_dihedral_force_scaling_factor()) + "\t" +
                              str(integrator.get_boost_potential()/4.184) + "\t" +  str(integrator.get_dihedral_boost()/4.184) + "\n")
 
                 # print(integrator.get_current_state())
-           except Exception as e:
-               print("Failure on step " + str(step*100))
-               print(e)
-               print(integrator.get_current_state())
-               state = simulation.context.getState(getEnergy=True, groups={group})
-               gamdLog.write("Fail Step: " + str(step*100) + "\t" + str(integrator.get_current_potential_energy()/4.184) + "\t" + str(state.getPotentialEnergy()/(4.184*kilojoules_per_mole)) + "\t" + str(integrator.get_total_force_scaling_factor()) + "\t" + str(integrator.get_dihedral_force_scaling_factor()) + "\t" +
+            except Exception as e:
+                print("Failure on step " + str(step*100))
+                print(e)
+                print(integrator.get_current_state())
+                state = simulation.context.getState(getEnergy=True, groups={group})
+                gamdLog.write("Fail Step: " + str(step*100) + "\t" + str(integrator.get_current_potential_energy()/4.184) + "\t" + str(state.getPotentialEnergy()/(4.184*kilojoules_per_mole)) + "\t" + str(integrator.get_total_force_scaling_factor()) + "\t" + str(integrator.get_dihedral_force_scaling_factor()) + "\t" +
                               str(integrator.get_boost_potential()/4.184) + "\t" + str(integrator.get_dihedral_boost()/4.184) + "\n")
-               sys.exit(2)
-
-           # debug_information = integrator.get_debugging_information()
-           # getGlobalVariableNames(integrator)
+                sys.exit(2)
+            
+            
+            #simulation.loadCheckpoint('/tmp/testcheckpoint')
+            
+            # debug_information = integrator.get_debugging_information()
+            # getGlobalVariableNames(integrator)
         
-           if step % integrator.ntave == 0:
-            # if step % 1 == 0:
+            if step % integrator.ntave == 0:
+                # if step % 1 == 0:
 
-               simulation.saveState(output_directory + "/states/" + str(step*100) + ".xml")
-               simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step*100) + ".bin")
-               positions_filename = output_directory + '/positions/coordinates-' + str(step*100) + '.csv'
-               integrator.create_positions_file(positions_filename)
-               # pp = pprint.PrettyPrinter(indent=2)
-               # pp.pprint(debug_information)
-
+                simulation.saveState(output_directory + "/states/" + str(step*100) + ".xml")
+                simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step*100) + ".bin")
+                positions_filename = output_directory + '/positions/coordinates-' + str(step*100) + '.csv'
+                integrator.create_positions_file(positions_filename)
+                # pp = pprint.PrettyPrinter(indent=2)
+                # pp.pprint(debug_information)
+                
+            
                
 if __name__ == "__main__":
     main()
