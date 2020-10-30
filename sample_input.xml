@@ -11,19 +11,19 @@
    <overwrite_output>True</overwrite_output>
    <chunk_size>100</chunk_size>
    <nonbonded_method>PME</nonbonded_method>
-   <nonbonded_cutoff>0.9</nonbonded_cutoff>
+   <nonbonded_cutoff>0.9</nonbonded_cutoff> <!-- units.picoseconds -->
    <constraints>HBonds</constraints>
    <integrator_type>langevin</integrator_type>
-   <friction_coefficient>1.0</friction_coefficient>
-   <target_temperature>298.15</target_temperature>
+   <friction_coefficient>1.0</friction_coefficient> <!-- units.picoseconds**-1 -->
+   <target_temperature>298.15</target_temperature> <!-- units.kelvin -->
    <random_seed>-1</random_seed>
-   <dt>0.002</dt>
+   <dt>0.002</dt> <!-- units.picoseconds -->
    <use_barostat>False</use_barostat>
-   <barostat_target_pressure>1.0</barostat_target_pressure>
-   <barostat_target_temperature>298.15</barostat_target_temperature>
+   <barostat_target_pressure>1.0</barostat_target_pressure> <!-- units.bar -->
+   <barostat_target_temperature>298.15</barostat_target_temperature> <!-- units.kelvin -->
    <barostat_frequency>25</barostat_frequency>
    <run_minimization>True</run_minimization>
-   <initial_temperature>298.15</initial_temperature>
+   <initial_temperature>298.15</initial_temperature> <!-- units.kelvin -->
    <energy_reporter_frequency>5000</energy_reporter_frequency>
    <coordinates_reporter_frequency>5000</coordinates_reporter_frequency>
    <coordinates_reporter_file_type>DCD</coordinates_reporter_file_type>
@@ -36,7 +36,7 @@
    <num_steps_per_averaging>500</num_steps_per_averaging>
    <num_steps_gamd_equilibration>10000</num_steps_gamd_equilibration>
    <num_steps_gamd_equilibration_prep>2000</num_steps_gamd_equilibration_prep>
-   <sigma0P>6.0</sigma0P>
+   <sigma0P>6.0</sigma0P> <!-- units.kilocalories_per_mole -->
    <sigma0groups/>
    <restart_checkpoint_filename>gamd_restart.checkpoint</restart_checkpoint_filename>
    <restart_checkpoint_frequency>1000</restart_checkpoint_frequency>
