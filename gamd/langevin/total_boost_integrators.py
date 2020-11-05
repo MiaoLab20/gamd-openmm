@@ -24,7 +24,7 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
 
     def __init__(self,
                  dt=2.0 * unit.femtoseconds, ntcmdprep=2000, ntcmd=10000,
-                 ntebprep=2000, nteb=10000, ntslim=30000, ntave=500,
+                 ntebprep=2000, nteb=10000, nstlim=30000, ntave=500,
                  sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds,
                  temperature=298.15 * unit.kelvin,
@@ -37,7 +37,7 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
         :param ntebprep:  The number of GaMD pre-equilibration steps.
         :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
-        :param ntslim:    The total number of simulation steps.
+        :param nstlim:    The total number of simulation steps.
         :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
                           running average window size).
         :param sigma0:    The upper limit of the standard deviation of the potential boost that allows for
@@ -60,7 +60,7 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.debuggingIsEnabled = True
 
         super(TotalPotentialBoostIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb,
-                                                            ntslim, ntave, collision_rate, temperature,
+                                                            nstlim, ntave, collision_rate, temperature,
                                                             restart_filename)
         # This makes sure that we get the value for the currentPotentialEnergy at the end of each simulation step.
         self.addComputeGlobal("currentPotentialEnergy", "energy")
@@ -300,7 +300,7 @@ class TotalPotentialBoostIntegrator(GamdLangevinIntegrator, ABC):
 class LowerBoundIntegrator(TotalPotentialBoostIntegrator):
 
     def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000, nteb=10000,
-                 ntslim=30000, ntave=500, sigma0=6.0 * unit.kilocalories_per_mole,
+                 nstlim=30000, ntave=500, sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
         """
         Parameters
@@ -310,7 +310,7 @@ class LowerBoundIntegrator(TotalPotentialBoostIntegrator):
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
         :param ntebprep:  The number of GaMD pre-equilibration steps.
         :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
-        :param ntslim:    The total number of simulation steps.
+        :param nstlim:    The total number of simulation steps.
         :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
                           running average window size).
         :param sigma0:    The upper limit of the standard deviation of the potential boost that allows for
@@ -321,7 +321,7 @@ class LowerBoundIntegrator(TotalPotentialBoostIntegrator):
         """
 
         super(LowerBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd,
-                                                   ntebprep, nteb, ntslim,
+                                                   ntebprep, nteb, nstlim,
                                                    ntave, sigma0, collision_rate,
                                                    temperature, restart_filename)
 
@@ -334,11 +334,11 @@ class LowerBoundIntegrator(TotalPotentialBoostIntegrator):
 class UpperBoundIntegrator(TotalPotentialBoostIntegrator):
 
     def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000, nteb=10000,
-                 ntslim=30000, ntave=500, sigma0=6.0 * unit.kilocalories_per_mole,
+                 nstlim=30000, ntave=500, sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
             
         '''self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
-                 ntebprep=200000, nteb=1000000, ntslim=3000000,
+                 ntebprep=200000, nteb=1000000, nstlim=3000000,
                  ntave=50000,
                  collision_rate=1.0 / unit.picoseconds,
                  temperature=298.15 * unit.kelvin,
@@ -352,7 +352,7 @@ class UpperBoundIntegrator(TotalPotentialBoostIntegrator):
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
         :param ntebprep:  The number of GaMD pre-equilibration steps.
         :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
-        :param ntslim:    The total number of simulation steps.
+        :param nstlim:    The total number of simulation steps.
         :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
                           running average window size).
         :param sigma0:    The upper limit of the standard deviation of the potential boost that allows for
@@ -363,7 +363,7 @@ class UpperBoundIntegrator(TotalPotentialBoostIntegrator):
         """
 
         super(UpperBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd,
-                                                   ntebprep, nteb, ntslim,
+                                                   ntebprep, nteb, nstlim,
                                                    ntave, sigma0, collision_rate,
                                                    temperature, restart_filename)
 

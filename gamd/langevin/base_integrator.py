@@ -23,7 +23,7 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
 
     def __init__(self,
                  dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
-                 ntebprep=200000, nteb=1000000, ntslim=3000000, ntave=50000,
+                 ntebprep=200000, nteb=1000000, nstlim=3000000, ntave=50000,
                  collision_rate=1.0 / unit.picoseconds,
                  temperature=298.15 * unit.kelvin,
                  restart_filename=None):
@@ -35,7 +35,7 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
          :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be multiple of ntave)
          :param ntebprep:  The number of GaMD pre-equilibration steps.
          :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
-         :param ntslim:    The total number of simulation steps.
+         :param nstlim:    The total number of simulation steps.
          :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to
                            a running average window size).
          :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
@@ -72,7 +72,7 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         # We need to run our super classes constructor last, since it's going to execute our other methods, which
         # have dependencies on our variables above being setup.
         #
-        super(GamdLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, ntslim, ntave)
+        super(GamdLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave)
 
     def _add_common_variables(self):
         garbage = {self.addGlobalVariable(key, value) for key, value in self.global_variables.items()}

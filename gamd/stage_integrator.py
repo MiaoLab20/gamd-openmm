@@ -36,7 +36,7 @@ class GamdStageIntegrator(CustomIntegrator):
 
     # def __init__(self,dt,alpha,E):
     def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
-                 ntebprep=200000, nteb=1000000, ntslim=3000000, ntave=50000):
+                 ntebprep=200000, nteb=1000000, nstlim=3000000, ntave=50000):
         """
         Parameters
         ----------
@@ -45,7 +45,7 @@ class GamdStageIntegrator(CustomIntegrator):
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
         :param ntebprep:  The number of GaMD pre-equilibration steps.
         :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
-        :param ntslim:    The total number of simulation steps.
+        :param nstlim:    The total number of simulation steps.
         :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
                           running average window size).
         """
@@ -91,14 +91,14 @@ class GamdStageIntegrator(CustomIntegrator):
         self.stage_4_start = ntcmd + ntebprep + 1
         self.stage_4_end = ntcmd + nteb
         self.stage_5_start = ntcmd + nteb + 1
-        self.stage_5_end = ntslim
+        self.stage_5_end = nstlim
 
         self.dt = dt
         self.ntcmdprep = ntcmdprep
         self.ntcmd = ntcmd
         self.ntebprep = ntebprep
         self.nteb = nteb
-        self.ntslim = ntslim
+        self.nstlim = nstlim
         self.ntave = ntave
 
         #
@@ -444,7 +444,7 @@ class GamdStageIntegrator(CustomIntegrator):
         return self.getGlobalVariableByName("windowCount")
 
     def get_total_simulation_steps(self):
-        return self.ntslim
+        return self.nstlim
 
     def get_coordinates(self):
         return self.getPerDofVariableByName("coordinates")
