@@ -276,7 +276,10 @@ class GamdStageIntegrator(CustomIntegrator):
         # count of the average and the variance for the window.
         #
         #self.addComputeGlobal("windowCount", "windowCount + 1")
-        
+
+        #
+        # TODO:  Discussion how this change works with Lane.  What does the delta function do?
+        #
         self.addComputeGlobal("windowCount", "(1-delta(%d-stepCount))*windowCount + 1" % self.stage_2_last_ntave_window_start)
         #
         # These calculations help us to keep track of the running ntave window Vavg and variance.
@@ -416,23 +419,12 @@ class GamdStageIntegrator(CustomIntegrator):
         raise NotImplementedError("must implement _calculate_threshold_energy_and_effective_harmonic_constant")
 
     @abstractmethod
-    def get_current_potential_energy(self):
-        raise NotImplementedError("must implement get_current_potential_energy")
-
-    @abstractmethod
-    def get_force_scaling_factor(self):
+    def get_force_scaling_factors(self):
         raise NotImplementedError("must implement get_force_scaling_factor")
 
     @abstractmethod
-    def get_boost_potential(self):
+    def get_boost_potentials(self):
         raise NotImplementedError("must implement get_boost_potential")
-
-    @abstractmethod
-    def get_dihedral_boost(self):
-        raise NotImplementedError("must implement get_dihedral_boost")
-
-
-
 
     def get_stage(self):
         return self.getGlobalVariableByName("stage")

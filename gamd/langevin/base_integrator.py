@@ -61,7 +61,7 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
                                  #"random_velocity_component": self.random_velocity_component,
                                  "collision_rate": self.collision_rate,
                                  "threshold_energy": -1E99,
-                                 "boostPotential": 0.0,
+                                 "BoostPotential": 0.0,
                                  "vscale": 0.0, "fscale": 0.0,
                                  "noisescale": 0.0
                                  }
@@ -184,3 +184,297 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         results.update(self._get_debug_values_as_dictionary(self.global_variables, counter, self._get_global_debug_value))
         results.update(self._get_debug_values_as_dictionary(self.per_dof_variables, counter, self._get_per_dof_debug_value))
         return results
+
+#
+#  This integrator is the basis for all of our single boost type integrators
+#  to perform them in a generic way that will work across boost types.
+#
+
+
+class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
+    """ This class is an OpenMM Integrator for doing the dihedral boost for Gaussian accelerated molecular dynamics.
+    """
+
+    def __init__(self, system_group, group_name, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
+                 collision_rate, temperature, restart_filename):
+        """
+        Parameters
+        ----------
+        :param system_group:    This value indicates what value should be appended to system names (energy, force) for accessing the correct group's variable.
+        :param group_name:  This variable along with the system_group is used to create a unique name for each of our variables, so that if you are composing groups for boosts, they do not overwrite.
+        :param dt:        The Amount of time between each time step.
+        :param ntcmdprep: The number of conventional MD steps for system equilibration.
+        :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
+        :param ntebprep:  The number of GaMD pre-equilibration steps.
+        :param nteb:      The number of GaMD equilibration steps (including ntebprep). (must be a multiple of ntave)
+        :param nstlim:    The total number of simulation steps.
+        :param ntave:     The number of steps used to smooth the average and sigma of potential energy (corresponds to a
+                          running average window size).
+        :param sigma0:    The upper limit of the standard deviation of the potential boost that allows for
+                          accurate reweighting.
+        :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
+        :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
+        :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
+        """
+        #
+        # These variables are generated per type of boost being performed
+        #
+        self.global_variables_by_boost_type = {"Vmax": -1E99, "Vmin": 1E99, "ForceScalingFactor": 0, "Vavg": 0,
+                                               "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0, "wVariance": 0, "k0": 0,
+                                               "k0prime": 0, "k0doubleprime": 0, "k0doubleprime_window": 0,
+                                               "boosted_energy": 0, "check_boost": 0, "sigma0": sigma0}
+        #
+        # These variables are always kept for reporting, regardless of boost type
+        #
+
+        # TODO:  Work out whether we have everything for the gamd.log file.
+        self.global_variables = {"currentPotentialEnergy": 0, "BoostPotential": 0}
+        self.per_dof_variables = {"newx": 0, "coordinates": 0}
+
+        #
+        # We have to set this value seperate from the others, so that when we do a non-total boost, we will still
+        # have a total boost to report back.  In that condition, the above forceScalingFactor will get setup for
+        # appropriate boost type.
+        #
+        # NOTE:  THIS VALUE WILL NEED TO BE FIXED SOMEHOW FOR DUAL BOOST.
+        #
+        self.addGlobalVariable("TotalForceScalingFactor", 1.0)
+        self.addGlobalVariable("TotalBoostPotential", 0.0)
+
+        self.debug_per_dof_variables = []
+        # self.debug_per_dof_variables = ["x", "v", "f", "m"]
+        self.debug_global_variables = ["dt", "energy", "energy0", "energy1", "energy2", "energy3", "energy4"]
+        self.sigma0 = sigma0
+        self.debuggingIsEnabled = True
+
+        self.__system_group = system_group
+        self.__group_name = group_name
+
+        super(GroupBoostIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, collision_rate,
+                                                   temperature, restart_filename)
+
+        # This is to make sure that we get the value for the currentPotentialEnergy at the end of each simulation step.
+        # self.addGlobalVariable("currentPotentialEnergy", 0)
+        self.addComputeGlobal("currentPotentialEnergy", "energy")
+        self.addComputePerDof("coordinates", "x")
+
+    #
+    # The following methods are our utility methods for managing which kind of boost we are trying to perform.
+    #
+    #
+    #
+    def _get_group_energy_name(self):
+        return self.__append_group("energy")
+
+    def _get_group_name(self):
+        return str(self.__group_name) + str(self.__system_group)
+
+    # This method will append a unique group name to the end of the variable.
+    #
+    def _append_group_name(self, name):
+        return name + self.__get_group_name()
+
+    # This method will append the group variable to the string. It is primarily used for referencing system names. We use __apend_group_name for referencing values we are creating.
+    #
+    def _append_group(self, name):
+        return name + str(self.__system_group)
+
+    #
+    #
+    #
+    #
+    # def get_starting_energy(self):
+    # return self.getGlobalVariableByName("starting_energy")
+
+    # def get_current_state(self):
+    # results = {"step": self.getGlobalVariableByName("stepCount")}
+
+    # return results
+    # pass
+
+    def _add_common_variables(self):
+        unused_return_values = {self.addGlobalVariable(self._append_group_name(key), value) for key, value in
+                                self.global_variables.items()}
+        unused_return_values = {self.addPerDofVariable(key, value) for key, value in self.per_dof_variables.items()}
+        unused_return_values = {self.addGlobalVariable(self._append_group_name(key), value) for key, value in
+                                self.global_variables_by_boost_type.items()}
+
+        super(GroupBoostIntegrator, self)._add_common_variables()
+
+    def _update_potential_state_values_with_window_potential_state_values(self):
+        # Update window variables
+        self.addComputeGlobal(self._append_group_name("Vavg"), "wVavg")
+        self.addComputeGlobal(self._append_group_name("sigmaV"), "sqrt(wVariance)")
+
+        # Reset variables
+        self.addComputeGlobal(self._append_group_name("M2"), "0")
+        self.addComputeGlobal(self._append_group_name("wVavg"), self._append_group("energy"))
+        self.addComputeGlobal(self._append_group_name("oldVavg"), self._append_group("energy"))
+        self.addComputeGlobal(self._append_group_name("wVariance"), "0")
+
+    def _add_instructions_to_calculate_primary_boost_statistics(self):
+        self.addComputeGlobal(self.__append_group_name("Vmax"), "max({0}, {1})".format(self._append_group("energy"),
+                                                                                       self._append_group_name("VMax")))
+        self.addComputeGlobal(self.__append_group_name("Vmin"), "max({0}, {1})".format(self._append_group("energy"),
+                                                                                       self._append_group_name("VMin")))
+
+    def _add_instructions_to_calculate_secondary_boost_statistics(self):
+        #
+        # The following calculations are used to keep a running average,
+        # rather than calculating the average at the ntave % 0 step
+        #
+        self.addComputeGlobal(self._append_group_name("oldVavg"), self._append_group_name("wVavg"))
+        self.addComputeGlobal(self._append_group_name("wVavg"), "{0} + ({1}-{0})/windowCount".format(
+            self._append_group_name("wVavg"), self._append_group("energy")))
+
+        self.addComputeGlobal(self._append_group_name("M2"), "{0} + ({1}-{2})*({1}-{3})".format(
+            self._append_group_name("M2"), self._append_group("energy"), self._append_group_name("oldVavg"),
+            self._append_group_name("wVavg")))
+
+        self.addComputeGlobal(self._append_group_name("wVariance"), "select(windowCount - 1,{0}/(windowCount - 1),0)"
+                              .format(self._append_group_name("M2")))
+
+    def _add_conventional_md_pre_calc_step(self):
+        self.addComputeGlobal("vscale", "exp(-dt*collision_rate)")
+        self.addComputeGlobal("fscale", "(1-vscale)/collision_rate")
+        self.addComputeGlobal("noisescale", "sqrt(thermal_energy*(1-vscale*vscale))")
+
+    def _add_conventional_md_update_step(self):
+        self.addComputePerDof("newx", "x")
+        self.addComputePerDof("v", "vscale*v + fscale*f/m + noisescale*gaussian/sqrt(m)")
+        self.addComputePerDof("x", "x+dt*v")
+        self.addConstrainPositions()
+        self.addComputePerDof("v", "(x-newx)/dt")
+
+    def _add_gamd_pre_calc_step(self):
+        self.addComputeGlobal("vscale", "exp(-dt*collision_rate)")
+        self.addComputeGlobal("fscale", "(1-vscale)/collision_rate")
+        self.addComputeGlobal("noisescale", "sqrt(thermal_energy*(1-vscale*vscale))")
+        #
+        # We do not apply the boost potential to the energy value since energy is read only.
+        #
+        self.addComputeGlobal(self._append_group_name("BoostPotential"), "0.5 * {0} * ({1} - {2})^2 / ({3} - {4})".
+                              format(self._append_group_name("k0"), self._append_group_name("threshold_energy"),
+                                     self._append_group("k0"), self._append_group_name("Vmax"),
+                                     self._append_group_name("Vmin")))
+
+        #
+        # TODO:  Determine if the threshold_energy is a per force energy value or a total energy value.
+        #
+        # "boostPotential*step(threshold_energy-boosted_energy)")
+        self.addComputeGlobal(self._append_group_name("BoostPotential"), "{0}*step({1} - {2})".format(
+            self._append_group_name("BoostPotential"), self._append_group_name("threshold_energy"),
+            self._append_group_name("boosted_energy")))
+
+        # "boosted_energy" = "energy + boostPotential"
+        self.addComputeGlobal(self._append_group_name("boosted_energy"), "{0} + {1}".format(
+            self._append_group("energy"),
+            self.append_group_name("BoostPotential")))
+
+    def _add_gamd_boost_calculations_step(self):
+        self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - (({0} * ({1} - {2}))/({3} - {4}))"
+                              .format(self._append_group_name("k0"), self._append_group_name("threshold_energy"),
+                                      self._append_group("energy"), self._append_group_name("Vmax"),
+                                      self._append_group_name("Vmin")))
+
+        # This is the psuedo code of what we are about to do, in case it helps you read it.
+        #
+        # self.beginIfBlock("boosted_energy >= threshold_energy")
+        #
+        self.addComputeGlobal("check_boost", "{0} - {1}".format(
+            self._append_group_name("threshold_energy"), self._append_group_name("boosted_energy")))
+
+        #
+        #  When the boosted energy is greater than or equal to the threshold energy, the value of check_boost will be 0.
+        #  This will cause the following equation to change the forceScalingFactor to 1.0.  When the boosted_energy
+        #  is less than the threshold energy, we are in our normal good condition, and just want to keep the
+        #  forceScalingFactor the same.
+        #
+        #   NOTE:  We do these odd computational gymnastics to counteract the problem within OpenMM with
+        #          if statements causing the JIT compiler to take an exponentially larger amount of time to start.
+        #
+        #   1.0 - 1.0 * check_boost + check_boost * forceScalingFactor"
+        self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - 1.0 * {0} + {0} * {1}"
+                              .format("check_boost", self._append_group_name("ForceScalingFactor")))
+
+    def _add_gamd_update_step(self):
+        self.addComputePerDof("newx", "x")
+        #
+        #
+        # TODO:  Ask Yinglong why is it that if the forceScalingFactor is going to be 1 or less, then we
+        # TODO:  end up reducing the amount of velocity from the force we are adding.  Shouldn't it be
+        #        increasing the velocity more to get us out of the energy well.
+        #
+        self.addComputePerDof("v", "vscale*v + fscale*{0}*{1}/m + noisescale*gaussian/sqrt(m)"
+                              .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
+        #
+        #
+
+        self.addComputePerDof("x", "x+dt*v")
+        self.addConstrainPositions()
+        self.addComputePerDof("v", "(x-newx)/dt")
+
+    def get_current_potential_energy(self):
+        return self.getGlobalVariableByName("currentPotentialEnergy")
+
+    # TODO Remove this method, since it appears we can get it from the state now.
+    def get_current_dihedral_energy(self):
+        return ("Implemented in the clean_gamd_runner\n")
+
+    def get_force_scaling_factors(self):
+        forceScalingFactors = {}
+        forceScalingFactors["TotalForceScalingFactor"] = self.getGlobalVariableByName("TotalForceScalingFactor")
+        forceScalingFactors[self._append_group_name("ForceScalingFactor")] = self.getGlobalVariaableByName(
+            self._append_group_name("ForceScalingFactor"))
+        return forceScalingFactors
+
+    def get_boost_potentials(self):
+        boostPotentials = {}
+        boostPotentials["TotalBoostPotential"] = self.getGlobalVariableByName("TotalBoostPotential")
+        boostPotentials[self._append_group_name("BoostPotential")] = self.getGlobalVariaableByName(
+            self._append_group_name("BoostPotential"))
+        return boostPotentials
+
+    def __upper_bound_calculate_threshold_energy_and_effective_harmonic_constant(self):
+        self.addComputeGlobal(self._append_group_name("k0"), "1.0")
+        # "1 - (sigma0/sigmaV) * (Vmax - Vmin)/(Vavg - Vmin)"
+        self.addComputeGlobal(self._append_group_name("k0doubleprime"),
+                              "1 - ({0}/{1}) * ({2} - {3})/({4} - {3})".format(self._append_group_name("sigma0"),
+                                                                               self._append_group_name("sigmaV"),
+                                                                               self._append_group_name("Vmax"),
+                                                                               self._append_group_name("Vmin"),
+                                                                               self._append_group_name("Vavg")))
+        #
+        #
+        #
+        #
+        self.addComputeGlobal(self._append_group_name("k0"), "k0doubleprime")
+        # "Vmin + (Vmax - Vmin)/k0"
+        self.addComputeGlobal(self._append_group_name("threshold_energy"),
+                              "{0} + ({1} - {0})/{2}".format(self._append_group_name("Vmin"),
+                                                             self._append_group_name("Vmax"),
+                                                             self._append_group_name("k0")))
+
+        # self.beginIfBlock("{0} <= 0.0".format(self._append_group_name("k0doubleprime")))
+        # self.beginIfBlock("{0} > 1.0".format(self._append_group_name("k0doubleprime")))
+        # "k0doubleprime_window = (-k0doubleprime) * (1 - k0doubleprime)"
+        self.addComputeGlobal(self._append_group_name("k0doubleprime_window"),
+                              "(-{0} * (1 - {0})".format(self._append_group_name("k0doubleprime")))
+
+        self.beginIfBlock("k0doubleprime_window >= 0.0")
+        self.addComputeGlobal(self._append_group_name("threshold_energy"), self._append_group_name("Vmax"))
+        self.addComputeGlobal(self._append_group_name("k0prime"),
+                              "({0}/{1}) * ({2} - {3}) / ({2} - {4})".format(self._append_group_name("sigma0"),
+                                                                             self._append_group_name("sigmaV"),
+                                                                             self._append_group_name("Vmax"),
+                                                                             self._append_group_name("Vmin"),
+                                                                             self._append_group_name("Vavg")))
+        self.addComputeGlobal(self._append_group_name("k0"),
+                              "min(1.0, {0}); ".format(self._append_group_name("k0prime")))
+        self.endBlock()
+
+    def __lower_bound_calculate_threshold_energy_and_effective_harmonic_constant(self):
+        self.addComputeGlobal(self._append_group_name("threshold_energy"), self._append_group_name("Vmax"))
+        # "(sigma0/sigmaV) * (Vmax - Vmin)/(Vmax - Vavg)"
+        self.addComputeGlobal(self._append_group_name("k0prime"), "({0}/{1}) * ({2} - {3}) / ({2} - {4})".format(self._append_group_name("sigma0"), self._append_group_name("sigmaV"), self._append_group_name("Vmax"), self._append_group_name("Vmin"), self._append_group_name("Vavg")))
+        self.addComputeGlobal(self._append_group_name("k0"), "min(1.0, {0}); ".format(self._append_group_name("k0prime")))
