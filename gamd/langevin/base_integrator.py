@@ -233,7 +233,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         #
         # We have to set this value seperate from the others, so that when we do a non-total boost, we will still
-        # have a total boost to report back.  In that condition, the above forceScalingFactor will get setup for
+        # have a total boost to report back.  In that condition, the above ForceScalingFactor will get setup for
         # appropriate boost type.
         #
         # NOTE:  THIS VALUE WILL NEED TO BE FIXED SOMEHOW FOR DUAL BOOST.
@@ -361,12 +361,12 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         # TODO:  Determine if the threshold_energy is a per force energy value or a total energy value.
         #
-        # "boostPotential*step(threshold_energy-boosted_energy)")
+        # "BoostPotential*step(threshold_energy-boosted_energy)")
         self.addComputeGlobal(self._append_group_name("BoostPotential"), "{0}*step({1} - {2})".format(
             self._append_group_name("BoostPotential"), self._append_group_name("threshold_energy"),
             self._append_group_name("boosted_energy")))
 
-        # "boosted_energy" = "energy + boostPotential"
+        # "boosted_energy" = "energy + BoostPotential"
         self.addComputeGlobal(self._append_group_name("boosted_energy"), "{0} + {1}".format(
             self._append_group("energy"),
             self.append_group_name("BoostPotential")))
@@ -386,14 +386,14 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         #
         #  When the boosted energy is greater than or equal to the threshold energy, the value of check_boost will be 0.
-        #  This will cause the following equation to change the forceScalingFactor to 1.0.  When the boosted_energy
+        #  This will cause the following equation to change the ForceScalingFactor to 1.0.  When the boosted_energy
         #  is less than the threshold energy, we are in our normal good condition, and just want to keep the
-        #  forceScalingFactor the same.
+        #  ForceScalingFactor the same.
         #
         #   NOTE:  We do these odd computational gymnastics to counteract the problem within OpenMM with
         #          if statements causing the JIT compiler to take an exponentially larger amount of time to start.
         #
-        #   1.0 - 1.0 * check_boost + check_boost * forceScalingFactor"
+        #   1.0 - 1.0 * check_boost + check_boost * ForceScalingFactor"
         self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - 1.0 * {0} + {0} * {1}"
                               .format("check_boost", self._append_group_name("ForceScalingFactor")))
 
@@ -401,7 +401,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addComputePerDof("newx", "x")
         #
         #
-        # TODO:  Ask Yinglong why is it that if the forceScalingFactor is going to be 1 or less, then we
+        # TODO:  Ask Yinglong why is it that if the ForceScalingFactor is going to be 1 or less, then we
         # TODO:  end up reducing the amount of velocity from the force we are adding.  Shouldn't it be
         #        increasing the velocity more to get us out of the energy well.
         #
