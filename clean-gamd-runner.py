@@ -136,9 +136,9 @@ def main():
                 simulation.saveCheckpoint(restart_checkpoint_filename)
             
             # TEST
-            if step == 250 and not restarting:
-                print("sudden, unexpected interruption!")
-                exit()
+#            if step == 250 and not restarting:
+#                print("sudden, unexpected interruption!")
+#                exit()
             # END TEST
             
             try:
