@@ -8,6 +8,7 @@ Contributors: Lane Votapka
 """
 
 from __future__ import absolute_import
+from enum import Enum
 
 __author__ = "Matthew Copeland"
 __version__ = "1.0"
@@ -16,6 +17,15 @@ from simtk.openmm import CustomIntegrator
 from simtk import unit as unit
 from abc import ABCMeta, ABC
 from abc import abstractmethod
+
+# ================
+# Boost Types
+# ================
+
+
+class BoostType(Enum):
+    TOTAL = "Total"
+    DIHEDRAL = "DiHedral"
 
 
 # ============================================================================================
