@@ -47,6 +47,9 @@ class GamdStageIntegrator(CustomIntegrator):
     # def __init__(self,dt,alpha,E):
     def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
                  ntebprep=200000, nteb=1000000, nstlim=3000000, ntave=50000):
+
+        super(GamdStageIntegrator, self).__init__(dt)
+
         """
         Parameters
         ----------

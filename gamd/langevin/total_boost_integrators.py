@@ -72,7 +72,7 @@ class LowerBoundIntegrator(TotalBoostIntegrator):
                                                    collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):
-        self.__lower_bound_calculate_threshold_energy_and_effective_harmonic_constant()
+        super()._lower_bound_calculate_threshold_energy_and_effective_harmonic_constant()
 
 
 class UpperBoundIntegrator(TotalBoostIntegrator):
@@ -101,4 +101,4 @@ class UpperBoundIntegrator(TotalBoostIntegrator):
                                                       collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):
-        self.__upper_bound_calculate_threshold_energy_and_effective_harmonic_constant()
+        self._upper_bound_calculate_threshold_energy_and_effective_harmonic_constant()

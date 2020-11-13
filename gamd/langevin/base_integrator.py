@@ -61,8 +61,6 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
                                  #"current_velocity_component": self.current_velocity_component,
                                  #"random_velocity_component": self.random_velocity_component,
                                  "collision_rate": self.collision_rate,
-                                 "threshold_energy": -1E99,
-                                 "BoostPotential": 0.0,
                                  "vscale": 0.0, "fscale": 0.0,
                                  "noisescale": 0.0
                                  }
@@ -223,32 +221,16 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.global_variables_by_boost_type = {"Vmax": -1E99, "Vmin": 1E99,  "Vavg": 0,
                                                "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0, "wVariance": 0, "k0": 0,
                                                "k0prime": 0, "k0doubleprime": 0, "k0doubleprime_window": 0,
-                                               "boosted_energy": 0, "check_boost": 0, "sigma0": sigma0}
+                                               "boosted_energy": 0, "check_boost": 0, "sigma0": sigma0,
+                                               "threshold_energy": -1E99,                                                }
         #
         # These variables are always kept for reporting, regardless of boost type
         #
 
-        self.global_variables = {"currentPotentialEnergy": 0}
-        self.per_dof_variables = {"newx": 0, "coordinates": 0}
-
-        #
-        # We have to set this value seperate from the others, so that when we do a non-total boost, we will still
-        # have a total boost to report back.  In that condition, the above ForceScalingFactor will get setup for
-        # appropriate boost type.
-        #
-        # NOTE:  THIS VALUE WILL NEED TO BE FIXED SOMEHOW FOR DUAL BOOST.
-        #
-        self.addGlobalVariable(self._append_group_name_by_type("ForceScalingFactor", BoostType.TOTAL), 1.0)
-        self.addGlobalVariable(self._append_group_name_by_type("BoostPotential", BoostType.TOTAL), 0.0)
-
-        if self.__group_name == BoostType.TOTAL or self.__group_name == BoostType.DIHEDRAL:
-            self.addGlobalVariable(self._append_group_name_by_type("ForceScalingFactor", BoostType.DIHEDRAL), 1.0)
-            self.addGlobalVariable(self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL), 0.0)
-        else:
-            self.addGlobalVariable(self._append_group_name("ForceScalingFactor"), 1.0)
-            self.addGlobalVariable(self._append_group_name("BoostPotential"), 0.0)
-
+        self.boost_global_variables = {"currentPotentialEnergy": 0}
+        self.boost_per_dof_variables = {"newx": 0, "coordinates": 0}
         self.debug_per_dof_variables = []
+
         # self.debug_per_dof_variables = ["x", "v", "f", "m"]
         self.debug_global_variables = ["dt", "energy", "energy0", "energy1", "energy2", "energy3", "energy4"]
         self.sigma0 = sigma0
@@ -259,6 +241,28 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         super(GroupBoostIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, collision_rate,
                                                    temperature, restart_filename)
+
+
+        #
+        # We have to set this value separate from the others, so that when we do a non-total boost, we will still
+        # have a total boost to report back.  In that condition, the above ForceScalingFactor will get setup for
+        # appropriate boost type.
+        #
+        # NOTE:  THIS VALUE WILL NEED TO BE FIXED SOMEHOW FOR DUAL BOOST.
+        #
+        self.addGlobalVariable(self._append_group_name_by_type("ForceScalingFactor", BoostType.TOTAL), 1.0)
+        self.addGlobalVariable(self._append_group_name_by_type("BoostPotential", BoostType.TOTAL), 0.0)
+
+
+        if self.__group_name == BoostType.TOTAL or self.__group_name == BoostType.DIHEDRAL:
+            self.addGlobalVariable(self._append_group_name_by_type("ForceScalingFactor", BoostType.DIHEDRAL), 1.0)
+            self.addGlobalVariable(self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL), 0.0)
+        else:
+            self.addGlobalVariable(self._append_group_name("ForceScalingFactor"), 1.0)
+            self.addGlobalVariable(self._append_group_name("BoostPotential"), 0.0)
+
+
+
 
         # This is to make sure that we get the value for the currentPotentialEnergy at the end of each simulation step.
         # self.addGlobalVariable("currentPotentialEnergy", 0)
@@ -271,7 +275,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     #
     #
     def _get_group_energy_name(self):
-        return self.__append_group("energy")
+        return self._append_group("energy")
 
     def _get_group_name(self):
         return str(self.__group_name.value)
@@ -283,12 +287,12 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     # This method will append a unique group name to the end of the variable.
     #
     def _append_group_name(self, name):
-        return name + self.__get_group_name()
+        return str(self._get_group_name() + name)
 
     # This method will append a unique group name to the end of the variable based on the type specified.
     #
     def _append_group_name_by_type(self, name, boost_type):
-        return name + self._get_group_name_by_type(boost_type)
+        return str(self._get_group_name_by_type(boost_type) + name)
 
     # This method will append the group variable to the string. It is primarily used for referencing system names. We
     # use __apend_group_name for referencing values we are creating.
@@ -310,9 +314,10 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     # pass
 
     def _add_common_variables(self):
-        unused_return_values = {self.addGlobalVariable(self._append_group_name(key), value) for key, value in
-                                self.global_variables.items()}
-        unused_return_values = {self.addPerDofVariable(key, value) for key, value in self.per_dof_variables.items()}
+        unused_return_values = {self.addGlobalVariable(key, value) for key, value in
+                                self.boost_global_variables.items()}
+        unused_return_values = {self.addPerDofVariable(key, value) for key, value in
+                                self.boost_per_dof_variables.items()}
         unused_return_values = {self.addGlobalVariable(self._append_group_name(key), value) for key, value in
                                 self.global_variables_by_boost_type.items()}
 
@@ -330,9 +335,9 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addComputeGlobal(self._append_group_name("wVariance"), "0")
 
     def _add_instructions_to_calculate_primary_boost_statistics(self):
-        self.addComputeGlobal(self.__append_group_name("Vmax"), "max({0}, {1})".format(self._append_group("energy"),
+        self.addComputeGlobal(self._append_group_name("Vmax"), "max({0}, {1})".format(self._append_group("energy"),
                                                                                        self._append_group_name("VMax")))
-        self.addComputeGlobal(self.__append_group_name("Vmin"), "max({0}, {1})".format(self._append_group("energy"),
+        self.addComputeGlobal(self._append_group_name("Vmin"), "max({0}, {1})".format(self._append_group("energy"),
                                                                                        self._append_group_name("VMin")))
 
     def _add_instructions_to_calculate_secondary_boost_statistics(self):
@@ -384,7 +389,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # "boosted_energy" = "energy + BoostPotential"
         self.addComputeGlobal(self._append_group_name("boosted_energy"), "{0} + {1}".format(
             self._append_group("energy"),
-            self.append_group_name("BoostPotential")))
+            self._append_group_name("BoostPotential")))
 
     def _add_gamd_boost_calculations_step(self):
         self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - (({0} * ({1} - {2}))/({3} - {4}))"
@@ -396,7 +401,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         # self.beginIfBlock("boosted_energy >= threshold_energy")
         #
-        self.addComputeGlobal("check_boost", "{0} - {1}".format(
+        self.addComputeGlobal(self._append_group_name("check_boost"), "{0} - {1}".format(
             self._append_group_name("threshold_energy"), self._append_group_name("boosted_energy")))
 
         #
@@ -410,7 +415,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         #   1.0 - 1.0 * check_boost + check_boost * ForceScalingFactor"
         self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - 1.0 * {0} + {0} * {1}"
-                              .format("check_boost", self._append_group_name("ForceScalingFactor")))
+                              .format(self._append_group_name("check_boost"),
+                                      self._append_group_name("ForceScalingFactor")))
 
     def _add_gamd_update_step(self):
         self.addComputePerDof("newx", "x")
@@ -445,7 +451,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         if self.__group_name == BoostType.TOTAL or self.__group_name == BoostType.DIHEDRAL:
             boost_potentials[self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL)] = \
-                self.getGlobalVariaableByName(self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL))
+                self.getGlobalVariableByName(self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL))
         else:
             boost_potentials[self._append_group_name("BoostPotential")] = self.getGlobalVariableByName(
                 self._append_group_name("BoostPotential"))
@@ -464,7 +470,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addComputeGlobal(self._append_group_name("k0"),
                               "min(1.0, {0}); ".format(self._append_group_name("k0prime")))
 
-    def __upper_bound_calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _upper_bound_calculate_threshold_energy_and_effective_harmonic_constant(self):
         self.addComputeGlobal(self._append_group_name("k0"), "1.0")
         # "1 - (sigma0/sigmaV) * (Vmax - Vmin)/(Vavg - Vmin)"
         self.addComputeGlobal(self._append_group_name("k0doubleprime"),
@@ -494,5 +500,5 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.__calculate_simple_threshold_energy_and_effective_harmonic_constant()
         self.endBlock()
 
-    def __lower_bound_calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _lower_bound_calculate_threshold_energy_and_effective_harmonic_constant(self):
         self.__calculate_simple_threshold_energy_and_effective_harmonic_constant()
