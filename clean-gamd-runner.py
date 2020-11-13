@@ -17,7 +17,7 @@ def create_output_directories(directories):
         os.makedirs(dir, 0o755)
 
 
-def getGlobalVariableNames(integrator):
+def get_global_variable_names(integrator):
     for index in range(0, integrator.getNumGlobalVariables()):
         print(integrator.getGlobalVariableName(index))
 
@@ -63,8 +63,20 @@ def main():
 #    integrator = LowerBoundIntegrator(2.0 * femtoseconds, 2000, 10000, 2000, 10000,
 #                                                                     30000, 500)
 
+    for i, force in enumerate(system.getForces()):
+        force.setForceGroup(i)
+        if force.__class__.__name__ == 'PeriodicTorsionForce':
+            group = i
+
+
+    # Total Boost
     integrator = LowerBoundIntegrator()
     #integrator = UpperBoundIntegrator()
+
+    # Dihedral Boost
+    # integrator = LowerBoundIntegrator(group)
+    # integrator = UpperBoundIntegrator(group)
+
 
     simulation = Simulation(prmtop.topology, system, integrator)
     if restarting:
