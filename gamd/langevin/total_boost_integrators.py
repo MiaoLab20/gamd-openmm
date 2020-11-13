@@ -17,6 +17,7 @@ from gamd.langevin.base_integrator import GroupBoostIntegrator
 
 from abc import ABC
 from simtk import unit as unit
+from ..stage_integrator import BoostType
 
 
 class TotalBoostIntegrator(GroupBoostIntegrator, ABC):
@@ -39,7 +40,7 @@ class TotalBoostIntegrator(GroupBoostIntegrator, ABC):
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
-        group_name = "Total"
+        group_name = BoostType.TOTAL
         group = ""
         super(TotalBoostIntegrator, self).__init__(group, group_name, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
                                                    ntave, sigma0, collision_rate, temperature, restart_filename)

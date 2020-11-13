@@ -2,6 +2,7 @@ from abc import ABC
 
 from gamd.langevin.base_integrator import GroupBoostIntegrator
 from simtk import unit as unit
+from ..stage_integrator import BoostType
 
 
 class DihedralBoostIntegrator(GroupBoostIntegrator, ABC):
@@ -26,7 +27,7 @@ class DihedralBoostIntegrator(GroupBoostIntegrator, ABC):
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
         self.__group = group
-        group_name = "Dihedral"
+        group_name = BoostType.DIHEDRAL
 
         super(DihedralBoostIntegrator, self).__init__(group, group_name, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
                                                       ntave, sigma0, collision_rate, temperature, restart_filename)
