@@ -84,6 +84,9 @@ ENV/
 .idea/**/libraries 
 *.iws /out/ 
 
+.idea*
+temp/
+
 # Sublime Text
 *.tmlanguage.cache 
 *.tmPreferences.cache 
