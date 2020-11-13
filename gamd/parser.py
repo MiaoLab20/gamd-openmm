@@ -6,16 +6,16 @@ GaMD simulation parameters.
 
 @author: lvotapka
 '''
+
 from __future__ import absolute_import
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from abc import ABCMeta, ABC
 from abc import abstractmethod
-
 from simtk import unit
-
 from gamd import config
-        
+
+
 class Parser:
     def __init__(self):
         self.config = config.Config()
@@ -284,7 +284,8 @@ class XmlParser(Parser):
             else:
                 print("Warning: parameter in XML not found in config. "\
                       "Spelling error?", tag.tag)
-        
+
+
 class ParserFactory:
     def __init__(self):
         return
@@ -299,6 +300,7 @@ class ParserFactory:
             raise Exception("input type not implemented: %s", input_type)
         
         return config
+
 
 if __name__ == "__main__":
     myparser = XmlParser()
