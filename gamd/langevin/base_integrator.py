@@ -401,7 +401,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         # self.beginIfBlock("boosted_energy >= threshold_energy")
         #
-        self.addComputeGlobal(self._append_group_name("check_boost"), "{0} - {1}".format(
+        self.addComputeGlobal(self._append_group_name("check_boost"), "step({0} - {1})".format(
             self._append_group_name("threshold_energy"), self._append_group_name("boosted_energy")))
 
         #
