@@ -90,11 +90,14 @@ def main():
 #    integrator = LowerBoundIntegrator(2.0 * femtoseconds, 2000, 10000, 2000, 10000,
 #                                                                     30000, 500)
 
-    for i, force in enumerate(system.getForces()):
-        force.setForceGroup(i)
-        if force.__class__.__name__ == 'PeriodicTorsionForce':
-            group = i
-
+    #
+    #   NOTE:  Don't do this.  It moves the forces into seperate groups, so that they don't get handled properly.
+    #
+    #    for i, force in enumerate(system.getForces()):
+    #        print(str(i) + "     " + force.__class__.__name__)
+    #        force.setForceGroup(i)
+    #        if force.__class__.__name__ == 'PeriodicTorsionForce':
+    #            group = i
 
     # Total Boost
     integrator = LowerBoundIntegrator()
