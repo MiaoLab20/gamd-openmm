@@ -421,9 +421,19 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     def _add_gamd_update_step(self):
         self.addComputePerDof("newx", "x")
         #
-        self.addComputePerDof("v", "vscale*v + fscale*{0}*{1}/m + noisescale*gaussian/sqrt(m)"
-                              .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
-        #
+
+        if self.__group_name == BoostType.TOTAL:
+            self.addComputePerDof("v", "vscale*v + fscale*{0}*{1}/m + noisescale*gaussian/sqrt(m)"
+                                  .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
+        elif self.__group_name == BoostType.DIHEDRAL:
+            # We take care of all of the forces that aren't the dihedral.
+            self.addComputePerDof("v", "vscale*v + fscale*f0/m + noisescale*gaussian/sqrt(m)")
+            # We boost the dihedral force.
+            self.addComputePerDof("v", "vscale*v + fscale*{0}*{1}/m + noisescale*gaussian/sqrt(m)"
+                                  .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
+        else:
+            print("Failure in detecting boost type to determine proper boost methodolgy.")
+
         self.addComputePerDof("x", "x+dt*v")
         self.addConstrainPositions()
         self.addComputePerDof("v", "(x-newx)/dt")
