@@ -35,9 +35,10 @@ def create_output_directories(directories, overwrite_output=False):
         os.makedirs(dir, 0o755)
 
 
-def getGlobalVariableNames(integrator):
+def get_global_variable_names(integrator):
     for index in range(0, integrator.getNumGlobalVariables()):
         print(integrator.getGlobalVariableName(index))
+
 
 class Runner:
     def __init__(self, config, gamdSimulation):
@@ -206,12 +207,12 @@ def main():
     
     args = argparser.parse_args() # parse the args into a dictionary
     args = vars(args)
-    input_filename = args['input_file']
-    input_file_type = args['input_file_type']
+    config_filename = args['input_file']
+    config_file_type = args['input_file_type']
     restart = args['restart']
     
     parserFactory = parser.ParserFactory()
-    config = parserFactory.parse_file(input_filename, input_file_type)
+    config = parserFactory.parse_file(config_filename, config_file_type)
     gamdSimulationFactory = gamdSimulation.GamdSimulationFactory()
     gamdSim = gamdSimulationFactory.createGamdSimulation(config)
     
