@@ -222,7 +222,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                                                "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0, "wVariance": 0, "k0": 0,
                                                "k0prime": 0, "k0doubleprime": 0, "k0doubleprime_window": 0,
                                                "boosted_energy": 0, "check_boost": 0, "sigma0": sigma0,
-                                               "threshold_energy": -1E99,                                                }
+                                               "threshold_energy": -1E99}
         #
         # These variables are always kept for reporting, regardless of boost type
         #
@@ -325,8 +325,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
     def _update_potential_state_values_with_window_potential_state_values(self):
         # Update window variables
-        self.addComputeGlobal(self._append_group_name("Vavg"), "wVavg")
-        self.addComputeGlobal(self._append_group_name("sigmaV"), "sqrt(wVariance)")
+        self.addComputeGlobal(self._append_group_name("Vavg"), self._append_group_name("wVavg"))
+        self.addComputeGlobal(self._append_group_name("sigmaV"), "sqrt(" + self._append_group_name("wVariance") + ")");
 
         # Reset variables
         self.addComputeGlobal(self._append_group_name("M2"), "0")
@@ -493,7 +493,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         #
         #
-        self.addComputeGlobal(self._append_group_name("k0"), "k0doubleprime")
+        self.addComputeGlobal(self._append_group_name("k0"), self._append_group_name("k0doubleprime"))
         # "Vmin + (Vmax - Vmin)/k0"
         self.addComputeGlobal(self._append_group_name("threshold_energy"),
                               "{0} + ({1} - {0})/{2}".format(self._append_group_name("Vmin"),
