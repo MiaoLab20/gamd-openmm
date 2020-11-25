@@ -336,9 +336,9 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
     def _add_instructions_to_calculate_primary_boost_statistics(self):
         self.addComputeGlobal(self._append_group_name("Vmax"), "max({0}, {1})".format(self._append_group("energy"),
-                                                                                       self._append_group_name("VMax")))
+                                                                                       self._append_group_name("Vmax")))
         self.addComputeGlobal(self._append_group_name("Vmin"), "max({0}, {1})".format(self._append_group("energy"),
-                                                                                       self._append_group_name("VMin")))
+                                                                                       self._append_group_name("Vmin")))
 
     def _add_instructions_to_calculate_secondary_boost_statistics(self):
         #
