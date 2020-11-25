@@ -100,7 +100,8 @@ def main():
     #            group = i
 
     # Total Boost
-    integrator = LowerBoundIntegrator()
+    integrator = LowerBoundIntegrator(dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
+                                      nteb=10000, nstlim=30000, ntave=500)
     #integrator = UpperBoundIntegrator()
 
     # Dihedral Boost
