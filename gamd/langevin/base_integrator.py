@@ -377,7 +377,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         self.addComputeGlobal(self._append_group_name("BoostPotential"), "0.5 * {0} * ({1} - {2})^2 / ({3} - {4})".
                               format(self._append_group_name("k0"), self._append_group_name("threshold_energy"),
-                                     self._append_group("k0"), self._append_group_name("Vmax"),
+                                     self._append_group("energy"), self._append_group_name("Vmax"),
                                      self._append_group_name("Vmin")))
 
         #
@@ -392,6 +392,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             self._append_group_name("BoostPotential")))
 
     def _add_gamd_boost_calculations_step(self):
+
         self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - (({0} * ({1} - {2}))/({3} - {4}))"
                               .format(self._append_group_name("k0"), self._append_group_name("threshold_energy"),
                                       self._append_group("energy"), self._append_group_name("Vmax"),
