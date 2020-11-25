@@ -26,6 +26,17 @@ def get_global_variable_names(integrator):
         print(integrator.getGlobalVariableName(index))
 
 
+
+
+def print_global_variables(integrator):
+    for index in range(0, integrator.getNumGlobalVariables()):
+        name = integrator.getGlobalVariableName(index)
+        value = integrator.getGlobalVariableByName(name)
+        print(name + ":  " + str(value))
+
+
+
+
 def write_to_gamd_log(gamd_log, step, group, simulation, integrator):
     state = simulation.context.getState(getEnergy=True)
     dihedral_state = simulation.context.getState(getEnergy=True, groups={group})
@@ -148,12 +159,19 @@ def main():
             try:
                 # print(integrator.get_current_state())
                 simulation.step(1)
+                print("-----------------------------")
+                print_global_variables(integrator)
+                print("-----------------------------")
                 write_to_gamd_log(gamdLog, step, group, simulation, integrator)
 
                 # print(integrator.get_current_state())
             except Exception as e:
                 print("Failure on step " + str(step*1))
                 print(e)
+                print("BLOWING UP!!!")
+                print("-----------------------------------")
+                print_global_variables(integrator)
+                print("-----------------------------")
                 # print(integrator.get_current_state())
                 write_to_gamd_log(gamdLog, step, group, simulation, integrator)
                 sys.exit(2)
