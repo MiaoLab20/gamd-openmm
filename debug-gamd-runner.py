@@ -7,10 +7,10 @@ import os
 import sys
 import time
 import traceback
-from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
+# from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
 # from gamd.langevin.total_boost_integrators import UpperBoundIntegrator
-# from gamd.langevin.dihedral_boost_integrators import import LowerBountIntegrator
-# from gamd.langevin.dihedral_boost_integrators import import UpperBoundIntegrator
+from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator
+# from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator
 from gamd.stage_integrator import BoostType
 from gamd import utils as utils
 import pprint
@@ -111,13 +111,16 @@ def main():
     #            group = i
 
     # Total Boost
-    integrator = LowerBoundIntegrator(dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
-                                      nteb=10000, nstlim=30000, ntave=500)
-    #integrator = UpperBoundIntegrator()
+    # integrator = LowerBoundIntegrator(dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
+    #                                  nteb=10000, nstlim=30000, ntave=500)
+    #integrator = UpperBoundIntegrator(dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
+    #                                  nteb=10000, nstlim=30000, ntave=500)
 
     # Dihedral Boost
-    # integrator = LowerBoundIntegrator(group)
-    # integrator = UpperBoundIntegrator(group)
+    integrator = LowerBoundIntegrator(group, dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
+                                      nteb=10000, nstlim=30000, ntave=500)
+    # integrator = UpperBoundIntegrator(group, dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
+    #                                   nteb=10000, nstlim=30000, ntave=500)
 
 
     simulation = Simulation(prmtop.topology, system, integrator)
