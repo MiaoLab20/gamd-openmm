@@ -39,6 +39,11 @@ def get_global_variable_names(integrator):
     for index in range(0, integrator.getNumGlobalVariables()):
         print(integrator.getGlobalVariableName(index))
 
+def print_global_variables(integrator):
+    for index in range(0, integrator.getNumGlobalVariables()):
+        name = integrator.getGlobalVariableName(index)
+        value = integrator.getGlobalVariableByName(name)
+        print(name + ":  " + str(value))
 
 class Runner:
     def __init__(self, config, gamdSimulation):
@@ -68,15 +73,8 @@ class Runner:
         integrator = self.gamdSim.integrator
         #force_groups = self.gamdSim.force_groups
         traj_reporter = self.gamdSim.traj_reporter
-        
-        # TODO: this whole paragraph needs to be adapted for generic integrator
         group = self.config.dihedral_group
-        for force in system.getForces():
-        #     print(force.__class__.__name__)
-            if force.__class__.__name__ == 'PeriodicTorsionForce':
-                force.setForceGroup(group)
-                break
-        #     group += 1
+        
         extension = self.config.coordinates_reporter_file_type
         if restart:
             simulation.loadCheckpoint(restart_checkpoint_filename)
@@ -121,7 +119,7 @@ class Runner:
         # instead of the config object
         end_chunk = int(integrator.get_total_simulation_steps() \
                         // chunk_size) + 1
-            
+        
         with open(os.path.join(output_directory, "gamd.log"), write_mode) \
                 as gamdLog:
             if not restart:
@@ -159,6 +157,7 @@ class Runner:
                 
                 try:
                     simulation.step(chunk_size)
+                    #print_global_variables(integrator)
                     state = simulation.context.getState(
                         getEnergy=True, groups={group})
                     

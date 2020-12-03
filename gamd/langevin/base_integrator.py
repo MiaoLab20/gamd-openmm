@@ -422,7 +422,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     def _add_gamd_update_step(self):
         self.addComputePerDof("newx", "x")
         #
-        print("self.__group_name:", self.__group_name)
         if self.__group_name == BoostType.TOTAL:
             self.addComputePerDof("v", "vscale*v + fscale*{0}*{1}/m + noisescale*gaussian/sqrt(m)"
                                   .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))

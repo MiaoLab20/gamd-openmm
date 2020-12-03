@@ -187,6 +187,7 @@ class GamdSimulationFactory:
                         collision_rate=config.friction_coefficient,
                         temperature=config.target_temperature,
                         restart_filename=None)
+                        
                 elif config.gamd_bound == 'upper':
                     gamdSimulation.integrator = DihedralUpperBoundIntegrator(
                         group=config.dihedral_group,
@@ -222,6 +223,14 @@ class GamdSimulationFactory:
                 config.barostat_target_temperature,
                 config.barostat_frequency)
             gamdSimulation.system.addForce(barostat)
+        
+        # TODO: only dihedrals being boosted at this time.
+        group = config.dihedral_group
+        for force in gamdSimulation.system.getForces():
+        #     print(force.__class__.__name__)
+            if force.__class__.__name__ == 'PeriodicTorsionForce':
+                force.setForceGroup(group)
+                break        
         
         gamdSimulation.simulation = openmm_app.Simulation(
             topology.topology, gamdSimulation.system, 
