@@ -14,8 +14,10 @@ from simtk import unit
 
 from gamd import parser
 # change to generic integrator someday
-from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
-from gamd.langevin.total_boost_integrators import UpperBoundIntegrator
+from gamd.langevin.total_boost_integrators import TotalLowerBoundIntegrator
+from gamd.langevin.total_boost_integrators import TotalUpperBoundIntegrator
+from gamd.langevin.dihedral_boost_integrators import  DihedralLowerBoundIntegrator
+from gamd.langevin.dihedral_boost_integrators import DihedralUpperBoundIntegrator
 
 class GamdSimulation:
     def __init__(self):
@@ -139,36 +141,77 @@ class GamdSimulationFactory:
                   "OpenMM files not made.")
         
         if config.integrator_type == "langevin":
-            if config.gamd_bound == 'lower':
-                gamdSimulation.integrator = LowerBoundIntegrator(
-                    dt=config.dt, 
-                    ntcmdprep=config.num_steps_conventional_md_prep, 
-                    ntcmd=config.num_steps_conventional_md, 
-                    ntebprep=config.num_steps_gamd_equilibration_prep, 
-                    nteb=config.num_steps_gamd_equilibration, 
-                    nstlim=config.total_simulation_length, 
-                    ntave=config.num_steps_per_averaging,
-                    sigma0=config.sigma0P,
-                    collision_rate=config.friction_coefficient,
-                    temperature=config.target_temperature,
-                    restart_filename=None)
-            elif config.gamd_bound == 'upper':
-                gamdSimulation.integrator = UpperBoundIntegrator(
-                    dt=config.dt, 
-                    ntcmdprep=config.num_steps_conventional_md_prep, 
-                    ntcmd=config.num_steps_conventional_md, 
-                    ntebprep=config.num_steps_gamd_equilibration_prep, 
-                    nteb=config.num_steps_gamd_equilibration, 
-                    nstlim=config.total_simulation_length, 
-                    ntave=config.num_steps_per_averaging,
-                    sigma0=config.sigma0P,
-                    collision_rate=config.friction_coefficient,
-                    temperature=config.target_temperature,
-                    restart_filename=None)
+            if config.total_boost and not config.dihedral_boost:
+                if config.gamd_bound == 'lower':
+                    gamdSimulation.integrator = TotalLowerBoundIntegrator(
+                        dt=config.dt, 
+                        ntcmdprep=config.num_steps_conventional_md_prep, 
+                        ntcmd=config.num_steps_conventional_md, 
+                        ntebprep=config.num_steps_gamd_equilibration_prep, 
+                        nteb=config.num_steps_gamd_equilibration, 
+                        nstlim=config.total_simulation_length, 
+                        ntave=config.num_steps_per_averaging,
+                        sigma0=config.total_boost_sigma0,
+                        collision_rate=config.friction_coefficient,
+                        temperature=config.target_temperature,
+                        restart_filename=None)
+                elif config.gamd_bound == 'upper':
+                    gamdSimulation.integrator = TotalUpperBoundIntegrator(
+                        dt=config.dt, 
+                        ntcmdprep=config.num_steps_conventional_md_prep, 
+                        ntcmd=config.num_steps_conventional_md, 
+                        ntebprep=config.num_steps_gamd_equilibration_prep, 
+                        nteb=config.num_steps_gamd_equilibration, 
+                        nstlim=config.total_simulation_length, 
+                        ntave=config.num_steps_per_averaging,
+                        sigma0=config.total_boost_sigma0,
+                        collision_rate=config.friction_coefficient,
+                        temperature=config.target_temperature,
+                        restart_filename=None)
+                else:
+                    raise Exception(
+                        "This type of langevin integrator not implemented:",
+                        config.gamd_bound)
+            elif not config.total_boost and config.dihedral_boost:
+                if config.gamd_bound == 'lower':
+                    gamdSimulation.integrator = DihedralLowerBoundIntegrator(
+                        group=config.dihedral_group,
+                        dt=config.dt, 
+                        ntcmdprep=config.num_steps_conventional_md_prep, 
+                        ntcmd=config.num_steps_conventional_md, 
+                        ntebprep=config.num_steps_gamd_equilibration_prep, 
+                        nteb=config.num_steps_gamd_equilibration, 
+                        nstlim=config.total_simulation_length, 
+                        ntave=config.num_steps_per_averaging,
+                        sigma0=config.dihedral_boost_sigma0,
+                        collision_rate=config.friction_coefficient,
+                        temperature=config.target_temperature,
+                        restart_filename=None)
+                        
+                elif config.gamd_bound == 'upper':
+                    gamdSimulation.integrator = DihedralUpperBoundIntegrator(
+                        group=config.dihedral_group,
+                        dt=config.dt, 
+                        ntcmdprep=config.num_steps_conventional_md_prep, 
+                        ntcmd=config.num_steps_conventional_md, 
+                        ntebprep=config.num_steps_gamd_equilibration_prep, 
+                        nteb=config.num_steps_gamd_equilibration, 
+                        nstlim=config.total_simulation_length, 
+                        ntave=config.num_steps_per_averaging,
+                        sigma0=config.dihedral_boost_sigma0,
+                        collision_rate=config.friction_coefficient,
+                        temperature=config.target_temperature,
+                        restart_filename=None)
+                else:
+                    raise Exception(
+                        "This type of langevin integrator not implemented:",
+                        config.gamd_bound)
             else:
                 raise Exception(
-                    "This type of langevin integrator not implemented:",
-                    config.gamd_bound)
+                        "This combination of total and dihedral boosts "\
+                        "not allowed or not yet implemented: Total_boost:",
+                        config.total_boost, "Dihedral_boost:", 
+                        config.dihedral_boost)
                 
         else:
             raise Exception("Integrator type not implemented:", 
@@ -180,6 +223,14 @@ class GamdSimulationFactory:
                 config.barostat_target_temperature,
                 config.barostat_frequency)
             gamdSimulation.system.addForce(barostat)
+        
+        # TODO: only dihedrals being boosted at this time.
+        group = config.dihedral_group
+        for force in gamdSimulation.system.getForces():
+        #     print(force.__class__.__name__)
+            if force.__class__.__name__ == 'PeriodicTorsionForce':
+                force.setForceGroup(group)
+                break        
         
         gamdSimulation.simulation = openmm_app.Simulation(
             topology.topology, gamdSimulation.system, 

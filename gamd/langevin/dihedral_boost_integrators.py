@@ -33,7 +33,7 @@ class DihedralBoostIntegrator(GroupBoostIntegrator, ABC):
                                                       ntave, sigma0, collision_rate, temperature, restart_filename)
 
 
-class LowerBoundIntegrator(DihedralBoostIntegrator):
+class DihedralLowerBoundIntegrator(DihedralBoostIntegrator):
     def __init__(self, group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
                  nstlim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
@@ -56,14 +56,14 @@ class LowerBoundIntegrator(DihedralBoostIntegrator):
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
         self.__group = 1
-        super(LowerBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
+        super(DihedralLowerBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
                                                    collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         super()._lower_bound_calculate_threshold_energy_and_effective_harmonic_constant()
 
 
-class UpperBoundIntegrator(DihedralBoostIntegrator):
+class DihedralUpperBoundIntegrator(DihedralBoostIntegrator):
     def __init__(self, group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
                  nstlim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
@@ -86,7 +86,7 @@ class UpperBoundIntegrator(DihedralBoostIntegrator):
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
         self.__group = 1
-        super(DihedralBoostIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
+        super(DihedralUpperBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
                                                       collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):

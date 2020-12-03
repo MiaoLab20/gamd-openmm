@@ -15,6 +15,18 @@ from abc import abstractmethod
 from simtk import unit
 from gamd import config
 
+def strBool(bool_str):
+    """
+    Take the string "true" or "false" of any case and returns a 
+    boolean object.
+    """
+    if bool_str.lower() == "true":
+        return True
+    elif bool_str.lower() == "false":
+        return False
+    else:
+        raise Exception(
+            "argument for strBool must be string either 'True' or 'False'.")
 
 class Parser:
     def __init__(self):
@@ -65,7 +77,7 @@ class XmlParser(Parser):
                         elif amber_tag.tag == \
                                 "load_box_vectors_from_coordinates_file":
                             amber_config.load_box_vecs_from_coords_file = \
-                                self.assign_tag(amber_tag, bool)
+                                self.assign_tag(amber_tag, strBool)
                         
                         elif amber_tag.tag == "type":
                             pass
@@ -165,7 +177,7 @@ class XmlParser(Parser):
                 self.config.output_directory = self.assign_tag(tag, str)
                 
             elif tag.tag == "overwrite_output":
-                self.config.overwrite_output = self.assign_tag(tag, bool)
+                self.config.overwrite_output = self.assign_tag(tag, strBool)
                 
             elif tag.tag == "chunk_size":
                 self.config.chunk_size = self.assign_tag(tag, int)
@@ -200,7 +212,7 @@ class XmlParser(Parser):
                     tag, float, useunit=unit.picosecond)
                 
             elif tag.tag == "use_barostat":
-                self.config.use_barostat = self.assign_tag(tag, bool)
+                self.config.use_barostat = self.assign_tag(tag, strBool)
             
             elif tag.tag == "barostat_target_pressure":
                 self.config.barostat_target_pressure = self.assign_tag(
@@ -214,7 +226,7 @@ class XmlParser(Parser):
                 self.config.barostat_frequency = self.assign_tag(tag, int)
             
             elif tag.tag == "run_minimization":
-                self.config.run_minimization = self.assign_tag(tag, bool)
+                self.config.run_minimization = self.assign_tag(tag, strBool)
                 
             elif tag.tag == "initial_temperature":
                 self.config.initial_temperature = self.assign_tag(
@@ -239,11 +251,18 @@ class XmlParser(Parser):
                 self.config.total_simulation_length = self.assign_tag(tag, int)
             
             elif tag.tag == "total_boost":
-                self.config.total_boost = self.assign_tag(tag, bool)
+                self.config.total_boost = self.assign_tag(tag, strBool)
+                
+            elif tag.tag == "total_boost_sigma0":
+                self.config.total_boost_sigma0 = self.assign_tag(
+                    tag, float, useunit=unit.kilocalories_per_mole)
             
-            elif tag.tag == "groups_boost_list":
-                for groups_tag in tag:
-                    raise Exception("groups boost not yet implemented")
+            elif tag.tag == "dihedral_boost":
+                self.config.dihedral_boost = self.assign_tag(tag, strBool)
+                
+            elif tag.tag == "dihedral_boost_sigma0":
+                self.config.dihedral_boost_sigma0 = self.assign_tag(
+                    tag, float, useunit=unit.kilocalories_per_mole)
             
             elif tag.tag == "num_steps_conventional_md":
                 self.config.num_steps_conventional_md = self.assign_tag(
@@ -264,14 +283,6 @@ class XmlParser(Parser):
             elif tag.tag == "num_steps_gamd_equilibration_prep":
                 self.config.num_steps_gamd_equilibration_prep = self.assign_tag(
                     tag, int)
-                
-            elif tag.tag == "sigma0P":
-                self.config.sigma0P = self.assign_tag(
-                    tag, float, useunit=unit.kilocalories_per_mole)
-            
-            elif tag.tag == "sigma0groups":
-                for sigma0group in tag:
-                    raise Exception("sigma0groups not yet implemented")
             
             elif tag.tag == "restart_checkpoint_filename":
                 self.config.restart_checkpoint_filename = self.assign_tag(

@@ -28,16 +28,16 @@
    <coordinates_reporter_frequency>5000</coordinates_reporter_frequency>
    <coordinates_reporter_file_type>DCD</coordinates_reporter_file_type>
    <total_simulation_length>30000</total_simulation_length>
-   <total_boost>True</total_boost>
-   <groups_boost_list/>
+   <total_boost>False</total_boost>
+   <total_boost_sigma0>6.0</total_boost_sigma0> <!-- units.kilocalories_per_mole -->
+   <dihedral_boost>True</dihedral_boost>
+   <dihedral_boost_sigma0>6.0</dihedral_boost_sigma0>
    <gamd_bound>lower</gamd_bound>
    <num_steps_conventional_md>10000</num_steps_conventional_md>
    <num_steps_conventional_md_prep>2000</num_steps_conventional_md_prep>
    <num_steps_per_averaging>500</num_steps_per_averaging>
    <num_steps_gamd_equilibration>10000</num_steps_gamd_equilibration>
    <num_steps_gamd_equilibration_prep>2000</num_steps_gamd_equilibration_prep>
-   <sigma0P>6.0</sigma0P> <!-- units.kilocalories_per_mole -->
-   <sigma0groups/>
    <restart_checkpoint_filename>gamd_restart.checkpoint</restart_checkpoint_filename>
    <restart_checkpoint_frequency>1000</restart_checkpoint_frequency>
 </gamd>

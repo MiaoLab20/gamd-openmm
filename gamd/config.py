@@ -182,18 +182,20 @@ class Config:
         self.gamd_bound = 'lower'
         self.total_simulation_length = 30000
         self.total_boost = True
-        self.groups_boost_list = []
+        self.total_boost_sigma0 = 6.0 * unit.kilocalories_per_mole
+        self.dihedral_boost = False
+        self.dihedral_boost_sigma0 = 6.0 * unit.kilocalories_per_mole
         self.num_steps_conventional_md = 10000
         self.num_steps_conventional_md_prep = 2000
         self.num_steps_per_averaging = 500
         self.num_steps_gamd_equilibration = 10000
         self.num_steps_gamd_equilibration_prep = 2000
-        self.sigma0P = 6.0 * unit.kilocalories_per_mole
-        self.sigma0groups = []
         
         # backup checkpoints
         self.restart_checkpoint_filename = "gamd.backup"
         self.restart_checkpoint_frequency = 1000
+        
+        self.dihedral_group=1
     
     def serialize(self, filename):
         root = ET.Element('gamd')
@@ -240,11 +242,13 @@ class Config:
         assign_tag(root, "total_simulation_length", 
                    self.total_simulation_length)
         assign_tag(root, "total_boost", self.total_boost)
-        
-        xmlGroupsBoostList = ET.SubElement(root, 'groups_boost_list')
-        for groups_boost in self.groups_boost_list:
-            raise Exception("groups boost not yet implemented")
-        
+        assign_tag(root, "total_boost_sigma0", 
+                   self.total_boost_sigma0.value_in_unit(
+                       unit.kilocalories_per_mole))
+        assign_tag(root, "dihedral_boost", self.dihedral_boost)
+        assign_tag(root, "dihedral_boost_sigma0", 
+                   self.dihedral_boost_sigma0.value_in_unit(
+                       unit.kilocalories_per_mole))
         assign_tag(root, "num_steps_conventional_md", 
                    self.num_steps_conventional_md)
         assign_tag(root, "num_steps_conventional_md_prep", 
@@ -255,18 +259,13 @@ class Config:
                    self.num_steps_gamd_equilibration)
         assign_tag(root, "num_steps_gamd_equilibration_prep", 
                    self.num_steps_gamd_equilibration_prep)
-        assign_tag(root, "sigma0P", 
-                   self.sigma0P.value_in_unit(unit.kilocalories_per_mole))
-        
-        xmlSigma0Groups = ET.SubElement(root, 'sigma0groups')
-        for sigma0group in self.sigma0groups:
-            assign_tag(xmlSigma0Groups, "sigma0", 
-                       sigma0group.value_in_unit(unit.kilocalories_per_mole))
         
         assign_tag(root, "restart_checkpoint_filename", 
                    self.restart_checkpoint_filename)
         assign_tag(root, "restart_checkpoint_frequency", 
                    self.restart_checkpoint_frequency)
+        
+        assign_tag(root, "dihedral_group", self.dihedral_group)
         
         xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(
             indent="   ")
