@@ -17,10 +17,10 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 
-from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
 from gamd import utils as utils
 from gamd import parser
 from gamd import gamdSimulation
+from gamd.stage_integrator import BoostType
 
 
 def create_output_directories(directories, overwrite_output=False):
@@ -70,7 +70,7 @@ class Runner:
         traj_reporter = self.gamdSim.traj_reporter
         
         # TODO: this whole paragraph needs to be adapted for generic integrator
-        group = 1
+        group = self.config.dihedral_group
         for force in system.getForces():
         #     print(force.__class__.__name__)
             if force.__class__.__name__ == 'PeriodicTorsionForce':
@@ -146,6 +146,16 @@ class Runner:
                     exit()
                 # END TEST
                 '''
+                state = simulation.context.getState(getEnergy=True)
+                dihedral_state = simulation.context.getState(getEnergy=True, groups={group})
+                force_scaling_factors = integrator.get_force_scaling_factors()
+                boost_potentials = integrator.get_boost_potentials()
+                total_potential_energy = str(state.getPotentialEnergy() / (kilojoules_per_mole * 4.184))
+                dihedral_energy = str(dihedral_state.getPotentialEnergy() / (kilojoules_per_mole * 4.184))
+                total_force_scaling_factor = str(force_scaling_factors[BoostType.TOTAL.value + "ForceScalingFactor"])
+                dihedral_force_scaling_factor = str(force_scaling_factors[BoostType.DIHEDRAL.value + "ForceScalingFactor"])
+                total_boost_potential = str(boost_potentials[BoostType.TOTAL.value + "BoostPotential"] / 4.184)
+                dihedral_boost_potential = str(boost_potentials[BoostType.DIHEDRAL.value + "BoostPotential"] / 4.184)
                 
                 try:
                     simulation.step(chunk_size)
@@ -155,29 +165,26 @@ class Runner:
                     # TODO: deal with these strange units issues
                     gamdLog.write("\t".join((
                         str(chunk_size), str(chunk*chunk_size), 
-                        str(integrator.get_current_potential_energy()/4.184),
-                        str(state.getPotentialEnergy()/(kilojoules_per_mole*4.184)),
-                        str(integrator.get_total_force_scaling_factor()),
-                        str(integrator.get_dihedral_force_scaling_factor()),
-                        str(integrator.get_boost_potential()/4.184),
-                        str(integrator.get_dihedral_boost()/4.184) + "\n")))
+                        total_potential_energy, dihedral_energy,
+                        total_force_scaling_factor, 
+                        dihedral_force_scaling_factor,
+                        total_boost_potential, dihedral_boost_potential))+"\n")
     
                 except Exception as e:
                     print("Failure on step " + str(chunk*chunk_size))
                     print(e)
-                    print(integrator.get_current_state())
                     state = simulation.context.getState(
                         getEnergy=True, groups={group})
                     gamdLog.write("\t".join((
-                        "Fail Step: " + str(chunk*chunk_size),
-                        str(integrator.get_current_potential_energy()/4.184),
-                        str(state.getPotentialEnergy()/(4.184*kilojoules_per_mole)),
-                        str(integrator.get_total_force_scaling_factor()), 
-                        str(integrator.get_dihedral_force_scaling_factor()),
-                        str(integrator.get_boost_potential()/4.184),
-                        str(integrator.get_dihedral_boost()/4.184) + "\n")))
+                        "Fail Step: " + str(chunk_size), str(chunk*chunk_size), 
+                        total_potential_energy, dihedral_energy,
+                        total_force_scaling_factor, 
+                        dihedral_force_scaling_factor,
+                        total_boost_potential, dihedral_boost_potential))+"\n")
                     sys.exit(2)
                 
+                assert integrator.ntave >= chunk_size, "The number of steps "\
+                    "per averaging must be greater than or equal to chunk_size."
                 if chunk % (integrator.ntave // chunk_size) == 0:
     
                     simulation.saveState(
@@ -194,21 +201,21 @@ class Runner:
 def main():
     argparser = argparse.ArgumentParser(description=__doc__)
     argparser.add_argument(
-        'input_file', metavar='INPUT_FILE', type=str, 
-        help="name of input file for GaMD calculation. A variety of input"\
-        "formats are allowed, but XML format is preferred")
-    argparser.add_argument(
         'input_file_type', metavar='INPUT_FILE_TYPE', type=str, 
         help="The type of file being provided. Available options are: 'xml', "\
         "... More to come later")
+    argparser.add_argument(
+        'input_file', metavar='INPUT_FILE', type=str, 
+        help="name of input file for GaMD calculation. A variety of input"\
+        "formats are allowed, but XML format is preferred")
     argparser.add_argument('-r', '--restart', dest='restart', default=False,
                            help="Restart simulation from backup checkpoint in "\
                            "input file", action="store_true")
     
     args = argparser.parse_args() # parse the args into a dictionary
     args = vars(args)
-    config_filename = args['input_file']
     config_file_type = args['input_file_type']
+    config_filename = args['input_file']
     restart = args['restart']
     
     parserFactory = parser.ParserFactory()
