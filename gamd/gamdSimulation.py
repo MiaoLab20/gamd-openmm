@@ -14,10 +14,10 @@ from simtk import unit
 
 from gamd import parser
 # change to generic integrator someday
-from gamd.langevin.total_boost_integrators import TotalLowerBoundIntegrator
-from gamd.langevin.total_boost_integrators import TotalUpperBoundIntegrator
-from gamd.langevin.dihedral_boost_integrators import  DihedralLowerBoundIntegrator
-from gamd.langevin.dihedral_boost_integrators import DihedralUpperBoundIntegrator
+from gamd.langevin.total_boost_integrators import LowerBoundIntegrator as TotalLowerBoundIntegrator
+from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalUpperBoundIntegrator
+from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as DihedralLowerBoundIntegrator
+from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator as DihedralUpperBoundIntegrator
 
 class GamdSimulation:
     def __init__(self):
