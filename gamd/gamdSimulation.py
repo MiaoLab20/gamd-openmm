@@ -19,6 +19,7 @@ from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalU
 from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as DihedralLowerBoundIntegrator
 from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator as DihedralUpperBoundIntegrator
 
+
 class GamdSimulation:
     def __init__(self):
         self.system = None
