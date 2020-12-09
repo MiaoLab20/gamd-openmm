@@ -326,7 +326,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     def _update_potential_state_values_with_window_potential_state_values(self):
         # Update window variables
         self.addComputeGlobal(self._append_group_name("Vavg"), self._append_group_name("wVavg"))
-        self.addComputeGlobal(self._append_group_name("sigmaV"), "sqrt(" + self._append_group_name("wVariance") + ")");
+        self.addComputeGlobal(self._append_group_name("sigmaV"), "sqrt(" + self._append_group_name("wVariance") + ")")
 
         # Reset variables
         self.addComputeGlobal(self._append_group_name("M2"), "0")
@@ -479,13 +479,13 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                                                                              self._append_group_name("Vmin"),
                                                                              self._append_group_name("Vavg")))
         self.addComputeGlobal(self._append_group_name("k0"),
-                              "min(1.0, {0}); ".format(self._append_group_name("k0prime")))
+                              "min(1.0, {0}) ".format(self._append_group_name("k0prime")))
 
     def _upper_bound_calculate_threshold_energy_and_effective_harmonic_constant(self):
         self.addComputeGlobal(self._append_group_name("k0"), "1.0")
         # "1 - (sigma0/sigmaV) * (Vmax - Vmin)/(Vavg - Vmin)"
         self.addComputeGlobal(self._append_group_name("k0doubleprime"),
-                              "1 - ({0}/{1}) * ({2} - {3})/({4} - {3})".format(self._append_group_name("sigma0"),
+                              "(1 - {0}/{1}) * ({2} - {3})/({4} - {3})".format(self._append_group_name("sigma0"),
                                                                                self._append_group_name("sigmaV"),
                                                                                self._append_group_name("Vmax"),
                                                                                self._append_group_name("Vmin"),
@@ -505,7 +505,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # self.beginIfBlock("{0} > 1.0".format(self._append_group_name("k0doubleprime")))
         # "k0doubleprime_window = (-k0doubleprime) * (1 - k0doubleprime)"
         self.addComputeGlobal(self._append_group_name("k0doubleprime_window"),
-                              "-{0} * (1 - {0})".format(self._append_group_name("k0doubleprime")))
+                              "(-{0}) * (1 - {0})".format(self._append_group_name("k0doubleprime")))
 
         self.beginIfBlock(self._append_group_name("k0doubleprime_window") + " >= 0.0")
         self.__calculate_simple_threshold_energy_and_effective_harmonic_constant()
