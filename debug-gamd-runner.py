@@ -8,8 +8,8 @@ import sys
 import time
 import traceback
 # from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
-# from gamd.langevin.total_boost_integrators import UpperBoundIntegrator
-from gamd.langevin.dihedral_boost_integrators import DihedralLowerBoundIntegrator
+from gamd.langevin.total_boost_integrators import UpperBoundIntegrator
+# from gamd.langevin.dihedral_boost_integrators import DihedralLowerBoundIntegrator
 # from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator
 from gamd.stage_integrator import BoostType
 from gamd import utils as utils
@@ -26,8 +26,6 @@ def get_global_variable_names(integrator):
         print(integrator.getGlobalVariableName(index))
 
 
-
-
 def print_global_variables(integrator):
     for index in range(0, integrator.getNumGlobalVariables()):
         name = integrator.getGlobalVariableName(index)
@@ -35,6 +33,25 @@ def print_global_variables(integrator):
         print(name + ":  " + str(value))
 
 
+def print_global_variables_headers(integrator, output):
+    number_of_globals = integrator.getNumGlobalVariables()
+    for index in range(0, number_of_globals):
+        name = integrator.getGlobalVariableName(index)
+        output.write(str(name))
+        if index < number_of_globals:
+            output.write(",")
+    output.write("\n")
+
+
+def print_global_variables_values(integrator, output):
+    number_of_globals = integrator.getNumGlobalVariables()
+    for index in range(0, number_of_globals):
+        name = integrator.getGlobalVariableName(index)
+        value = integrator.getGlobalVariableByName(name)
+        output.write(str(value))
+        if index < number_of_globals:
+            output.write(",")
+    output.write("\n")
 
 
 def write_to_gamd_log(gamd_log, step, group, simulation, integrator):
@@ -57,7 +74,6 @@ def write_to_gamd_log(gamd_log, step, group, simulation, integrator):
                    dihedral_force_scaling_factor + "\t" +
                    total_boost_potential + "\t" +
                    dihedral_boost_potential + "\n")
-
 
 
 def main():
@@ -113,12 +129,12 @@ def main():
     # Total Boost
     # integrator = LowerBoundIntegrator(dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
     #                                  nteb=10000, nstlim=30000, ntave=500)
-    #integrator = UpperBoundIntegrator(dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
-    #                                  nteb=10000, nstlim=30000, ntave=500)
+    integrator = UpperBoundIntegrator(dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
+                                      nteb=10000, nstlim=30000, ntave=500)
 
     # Dihedral Boost
-    integrator = DihedralLowerBoundIntegrator(group, dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
-                                      nteb=10000, nstlim=30000, ntave=500)
+    #integrator = DihedralLowerBoundIntegrator(group, dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
+    #                                  nteb=10000, nstlim=30000, ntave=500)
     # integrator = UpperBoundIntegrator(group, dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
     #                                   nteb=10000, nstlim=30000, ntave=500)
 
@@ -144,57 +160,57 @@ def main():
         write_mode = "w"
         start_step = 1
     with open(output_directory + "/gamd.log", write_mode) as gamdLog:
-        if not restarting:
-            gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
-            gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
-            gamdLog.write("# ntwx,total_nstep,Unboosted-Potential-Energy,Unboosted-Dihedral-Energy,Total-Force-Weight,Dihedral-Force-Weight,Boost-Energy-Potential,Boost-Energy-Dihedral\n")
-        
-        for step in range(start_step, (integrator.get_total_simulation_steps() // 1) + 1):
-            if step % restart_checkpoint_frequency // 100 == 0:
-                simulation.saveCheckpoint(restart_checkpoint_filename)
-            
-            # TEST
-#            if step == 250 and not restarting:
-#                print("sudden, unexpected interruption!")
-#                exit()
-            # END TEST
-            
-            try:
-                # print(integrator.get_current_state())
-                simulation.step(1)
-                print("-----------------------------")
-                print_global_variables(integrator)
-                print("-----------------------------")
-                write_to_gamd_log(gamdLog, step, group, simulation, integrator)
+        with open(output_directory + "/debug.log", write_mode) as debugLog:
+            print_global_variables_headers(integrator, debugLog)
 
-                # print(integrator.get_current_state())
-            except Exception as e:
-                print("Failure on step " + str(step*1))
-                print(e)
-                print("BLOWING UP!!!")
-                print("-----------------------------------")
-                print_global_variables(integrator)
-                print("-----------------------------")
-                # print(integrator.get_current_state())
-                write_to_gamd_log(gamdLog, step, group, simulation, integrator)
-                sys.exit(2)
-            
-            
-            #simulation.loadCheckpoint('/tmp/testcheckpoint')
-            
-            # debug_information = integrator.get_debugging_information()
-            # getGlobalVariableNames(integrator)
-        
-            if step % integrator.ntave == 0:
-                # if step % 1 == 0:
+            if not restarting:
+                gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
+                gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
+                gamdLog.write("# ntwx,total_nstep,Unboosted-Potential-Energy,Unboosted-Dihedral-Energy,Total-Force-Weight,Dihedral-Force-Weight,Boost-Energy-Potential,Boost-Energy-Dihedral\n")
 
-                simulation.saveState(output_directory + "/states/" + str(step*100) + ".xml")
-                simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step*100) + ".bin")
-                positions_filename = output_directory + '/positions/coordinates-' + str(step*100) + '.csv'
-                integrator.create_positions_file(positions_filename)
-                # pp = pprint.PrettyPrinter(indent=2)
-                # pp.pprint(debug_information)
-                
+            for step in range(start_step, (integrator.get_total_simulation_steps() // 1) + 1):
+                if step % restart_checkpoint_frequency // 100 == 0:
+                    simulation.saveCheckpoint(restart_checkpoint_filename)
+
+                # TEST
+    #            if step == 250 and not restarting:
+    #                print("sudden, unexpected interruption!")
+    #                exit()
+                # END TEST
+
+                try:
+                    # print(integrator.get_current_state())
+                    simulation.step(1)
+                    print_global_variables_values(integrator, debugLog)
+                    write_to_gamd_log(gamdLog, step, group, simulation, integrator)
+
+                    # print(integrator.get_current_state())
+                except Exception as e:
+                    print("Failure on step " + str(step*1))
+                    print(e)
+                    print("BLOWING UP!!!")
+                    print_global_variables(integrator)
+                    print_global_variables_values(integrator, debugLog)
+                    # print(integrator.get_current_state())
+                    write_to_gamd_log(gamdLog, step, group, simulation, integrator)
+                    sys.exit(2)
+
+
+                #simulation.loadCheckpoint('/tmp/testcheckpoint')
+
+                # debug_information = integrator.get_debugging_information()
+                # getGlobalVariableNames(integrator)
+
+                if step % integrator.ntave == 0:
+                    # if step % 1 == 0:
+
+                    simulation.saveState(output_directory + "/states/" + str(step*100) + ".xml")
+                    simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step*100) + ".bin")
+                    positions_filename = output_directory + '/positions/coordinates-' + str(step*100) + '.csv'
+                    integrator.create_positions_file(positions_filename)
+                    # pp = pprint.PrettyPrinter(indent=2)
+                    # pp.pprint(debug_information)
+
             
                
 if __name__ == "__main__":
