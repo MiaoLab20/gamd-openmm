@@ -26,26 +26,25 @@ def get_global_variable_names(integrator):
         print(integrator.getGlobalVariableName(index))
 
 
-def write_to_gamd_log(gamd_log, step, group, simulation, integrator):
-    state = simulation.context.getState(getEnergy=True)
-    dihedral_state = simulation.context.getState(getEnergy=True, groups={group})
+def write_to_gamd_log(gamd_log, step, total_potential_energy, dihedral_potential_energy, group, simulation, integrator):
     force_scaling_factors = integrator.get_force_scaling_factors()
     boost_potentials = integrator.get_boost_potentials()
 
-    total_potential_energy = str(state.getPotentialEnergy() / (kilojoules_per_mole * 4.184))
-    dihedral_energy = str(dihedral_state.getPotentialEnergy() / (kilojoules_per_mole * 4.184))
+    total_potential_energy = str(total_potential_energy / (kilojoules_per_mole * 4.184))
+    dihedral_energy = str(dihedral_potential_energy / (kilojoules_per_mole * 4.184))
     total_force_scaling_factor = str(force_scaling_factors[BoostType.TOTAL.value + "ForceScalingFactor"])
     dihedral_force_scaling_factor = str(force_scaling_factors[BoostType.DIHEDRAL.value + "ForceScalingFactor"])
     total_boost_potential = str(boost_potentials[BoostType.TOTAL.value + "BoostPotential"] / 4.184)
     dihedral_boost_potential = str(boost_potentials[BoostType.DIHEDRAL.value + "BoostPotential"] / 4.184)
 
-    gamd_log.write("\t" + str(100) + "\t" + str(step * 100) + "\t" +
+    gamd_log.write("\t" + str(1) + "\t" + str(step * 1) + "\t" +
                    total_potential_energy + "\t" +
                    dihedral_energy + "\t" +
                    total_force_scaling_factor + "\t" +
                    dihedral_force_scaling_factor + "\t" +
                    total_boost_potential + "\t" +
                    dihedral_boost_potential + "\n")
+
 
 
 
@@ -146,15 +145,29 @@ def main():
             
             try:
                 # print(integrator.get_current_state())
+
+                #
+                #  NOTE:  We need to save off the starting total and dihedral potential energies, since we
+                #         end up modifying them by updating the state of the particles.  This allows us to write
+                #         out the values as they were at the beginning of the step for what all of the calculations
+                #         for boosting were based on.
+                #
+                state = simulation.context.getState(getEnergy=True)
+                dihedral_state = simulation.context.getState(getEnergy=True, groups={group})
+                starting_total_potential_energy = state.getPotentialEnergy()
+                starting_dihedral_potential_energy = dihedral_state.getPotentialEnergy()
+
                 simulation.step(100)
-                write_to_gamd_log(gamdLog, step, group, simulation, integrator)
+                write_to_gamd_log(gamdLog, step, starting_total_potential_energy, starting_dihedral_potential_energy,
+                                  group, simulation, integrator)
 
                 # print(integrator.get_current_state())
             except Exception as e:
                 print("Failure on step " + str(step*100))
                 print(e)
                 # print(integrator.get_current_state())
-                write_to_gamd_log(gamdLog, step, group, simulation, integrator)
+                write_to_gamd_log(gamdLog, step, starting_total_potential_energy, starting_dihedral_potential_energy,
+                                  group, simulation, integrator)
                 sys.exit(2)
             
             
