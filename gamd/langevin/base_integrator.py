@@ -227,7 +227,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # These variables are always kept for reporting, regardless of boost type
         #
 
-        self.boost_global_variables = {"currentPotentialEnergy": 0}
+        self.boost_global_variables = {"beginningPotentialEnergy": 0}
         self.boost_per_dof_variables = {"newx": 0, "coordinates": 0}
         self.debug_per_dof_variables = []
 
@@ -264,9 +264,9 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
 
 
-        # This is to make sure that we get the value for the currentPotentialEnergy at the end of each simulation step.
-        # self.addGlobalVariable("currentPotentialEnergy", 0)
-        self.addComputeGlobal("currentPotentialEnergy", "energy")
+        # This is to make sure that we get the value for the beginningPotentialEnergy at the end of each simulation step.
+        # self.addGlobalVariable("beginningPotentialEnergy", 0)
+        self.addComputeGlobal("beginningPotentialEnergy", "energy")
         self.addComputePerDof("coordinates", "x")
 
     #
@@ -380,11 +380,19 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                                      self._append_group("energy"), self._append_group_name("Vmax"),
                                      self._append_group_name("Vmin")))
 
+
         #
         # "BoostPotential*step(threshold_energy-boosted_energy)")
-        self.addComputeGlobal(self._append_group_name("BoostPotential"), "{0}*step({1} - {2})".format(
+        self.addComputeGlobal(self._append_group_name("BoostPotential"), "{0}*step({1} - ({2} + {3}))".format(
             self._append_group_name("BoostPotential"), self._append_group_name("threshold_energy"),
-            self._append_group_name("boosted_energy")))
+            self._append_group_name("BoostPotential"), self._append_group("energy")))
+
+        #
+        # If the boostPotential is zero, we want to set the Force Scaling Factor to one, which is what we will use
+        # the check_boost value to do in a later portion of the code.
+        #
+        self.addComputeGlobal(self._append_group_name("check_boost"), "1 - delta({0})".format(self._append_group_name("BoostPotential")))
+
 
         # "boosted_energy" = "energy + BoostPotential"
         self.addComputeGlobal(self._append_group_name("boosted_energy"), "{0} + {1}".format(
@@ -402,8 +410,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         # self.beginIfBlock("boosted_energy >= threshold_energy")
         #
-        self.addComputeGlobal(self._append_group_name("check_boost"), "step({0} - {1})".format(
-            self._append_group_name("threshold_energy"), self._append_group_name("boosted_energy")))
 
         #
         #  When the boosted energy is greater than or equal to the threshold energy, the value of check_boost will be 0.
@@ -418,6 +424,10 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - 1.0 * {0} + {0} * {1}"
                               .format(self._append_group_name("check_boost"),
                                       self._append_group_name("ForceScalingFactor")))
+
+        #
+        #
+        #
 
     def _add_gamd_update_step(self):
         self.addComputePerDof("newx", "x")
@@ -439,8 +449,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addConstrainPositions()
         self.addComputePerDof("v", "(x-newx)/dt")
 
-    def get_current_potential_energy(self):
-        return self.getGlobalVariableByName("currentPotentialEnergy")
+    def get_beginning_potential_energy(self):
+        return self.getGlobalVariableByName("beginningPotentialEnergy")
 
     def get_force_scaling_factors(self):
         force_scaling_factors = {
