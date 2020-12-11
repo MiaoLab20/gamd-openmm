@@ -420,7 +420,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #          if statements causing the JIT compiler to take an exponentially larger amount of time to start.
         #
         #   1.0 - 1.0 * check_boost + check_boost * ForceScalingFactor"
-        self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - 1.0 * {0} + {0} * {1}"
+        self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - {0} + {0} * {1}"
                               .format(self._append_group_name("check_boost"),
                                       self._append_group_name("ForceScalingFactor")))
 
