@@ -103,7 +103,9 @@ def main():
     # [group, integrator] = create_lower_dihedral_boost_integrator(system)
     # [group, integraotor] = create_upper_dihedral_boost_integrator(system)
 
-    print("Group:  " + str(group))
+    # print("Group:  " + str(group))
+
+    # DebugLogger.print_integration_algorithm_to_screen(integrator)
 
     simulation = Simulation(prmtop.topology, system, integrator)
     if restarting:

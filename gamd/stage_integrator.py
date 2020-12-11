@@ -26,11 +26,12 @@ from abc import abstractmethod
 class BoostType(Enum):
     TOTAL = "Total"
     DIHEDRAL = "DiHedral"
-
+    DUAL_TOTAL_DIHEDRAL = "DualTotalDiHedralBoost"
 
 # ============================================================================================
 # base class
 # ============================================================================================
+
 
 class GamdStageIntegrator(CustomIntegrator):
     __metaclass__ = ABCMeta
@@ -135,14 +136,13 @@ class GamdStageIntegrator(CustomIntegrator):
         self.addGlobalVariable("stageFiveIfValueIsZeroOrNegative", 0)
 
         self._add_common_variables()
+        self._setup_energy_values()
 
-        self.addGlobalVariable("starting_energy", 0.0)
         # self._add_debug()
         # self._add_debug_at_step(1)
         # self._add_debug_at_step(2)
         self.addUpdateContextState()
-        self.addComputeGlobal("starting_energy", "energy")
-        
+
         self.addComputeGlobal("stageOneIfValueIsZeroOrNegative", "(%s-stepCount)*(%s-stepCount)" % (self.stage_1_start, self.stage_1_end))
         self.addComputeGlobal("stageTwoIfValueIsZeroOrNegative", "(%s-stepCount)*(%s-stepCount)" % (self.stage_2_start, self.stage_2_end))
         self.addComputeGlobal("stageThreeIfValueIsZeroOrNegative", "(%s-stepCount)*(%s-stepCount)" % (self.stage_3_start, self.stage_3_end))
@@ -162,6 +162,18 @@ class GamdStageIntegrator(CustomIntegrator):
         # self._add_debug()
         # self._add_debug_at_step(1)
         # self._add_debug_at_step(2)
+
+    def _setup_energy_values(self):
+        self.addGlobalVariable(self.get_variable_name_by_type(BoostType.TOTAL, "StartingPotentialEnergy"), 0.0)
+        self.addComputeGlobal(self.get_variable_name_by_type(BoostType.TOTAL, "StartingPotentialEnergy"), "energy")
+
+        #
+        # We are going to track the dihedral group on the Total Boosts externally to the integrator.
+        #
+        if self.get_boost_type() == BoostType.DIHEDRAL or self.get_boost_type() == BoostType.DUAL_TOTAL_DIHEDRAL:
+            self.addGlobalVariable(self.get_variable_name_by_type(BoostType.DIHEDRAL, "StartingPotentialEnergy"), 0.0)
+            self.addComputeGlobal(self.get_variable_name_by_type(BoostType.DIHEDRAL, "StartingPotentialEnergy"),
+                                  self._append_group("energy"))
 
     def _add_debug_at_step(self, the_step):
         self.beginIfBlock("stepCount = " + str(the_step))
@@ -475,12 +487,12 @@ class GamdStageIntegrator(CustomIntegrator):
     # This method will append a unique group name to the end of the variable.
     #
     def _append_group_name(self, name):
-        return str(self._get_group_name() + name)
+        return str(self._get_group_name() + "_" + name)
 
     # This method will append a unique group name to the end of the variable based on the type specified.
     #
     def _append_group_name_by_type(self, name, boost_type):
-        return str(self._get_group_name_by_type(boost_type) + name)
+        return str(self._get_group_name_by_type(boost_type) + "_" + name)
 
     # This method will append the group variable to the string. It is primarily used for referencing system names. We
     # use _append_group_name for referencing values we are creating.
@@ -497,3 +509,4 @@ class GamdStageIntegrator(CustomIntegrator):
 
     def get_boost_type(self):
         return self.__group_name
+

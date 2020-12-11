@@ -226,7 +226,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # These variables are always kept for reporting, regardless of boost type
         #
 
-        self.boost_global_variables = {"beginningPotentialEnergy": 0}
+        self.boost_global_variables = {}
         self.boost_per_dof_variables = {"newx": 0, "coordinates": 0}
         self.debug_per_dof_variables = []
 
@@ -261,7 +261,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         # This is to make sure that we get the value for the beginningPotentialEnergy at the end of each simulation step.
         # self.addGlobalVariable("beginningPotentialEnergy", 0)
-        self.addComputeGlobal("beginningPotentialEnergy", "energy")
+
         self.addComputePerDof("coordinates", "x")
 
     #
@@ -294,14 +294,14 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         # Reset variables
         self.addComputeGlobal(self._append_group_name("M2"), "0")
-        self.addComputeGlobal(self._append_group_name("wVavg"), self._append_group("energy"))
-        self.addComputeGlobal(self._append_group_name("oldVavg"), self._append_group("energy"))
+        self.addComputeGlobal(self._append_group_name("wVavg"), self._append_group_name("StartingPotentialEnergy"))
+        self.addComputeGlobal(self._append_group_name("oldVavg"), self._append_group_name("StartingPotentialEnergy"))
         self.addComputeGlobal(self._append_group_name("wVariance"), "0")
 
     def _add_instructions_to_calculate_primary_boost_statistics(self):
-        self.addComputeGlobal(self._append_group_name("Vmax"), "max({0}, {1})".format(self._append_group("energy"),
+        self.addComputeGlobal(self._append_group_name("Vmax"), "max({0}, {1})".format(self._append_group_name("StartingPotentialEnergy"),
                                                                                        self._append_group_name("Vmax")))
-        self.addComputeGlobal(self._append_group_name("Vmin"), "min({0}, {1})".format(self._append_group("energy"),
+        self.addComputeGlobal(self._append_group_name("Vmin"), "min({0}, {1})".format(self._append_group_name("StartingPotentialEnergy"),
                                                                                        self._append_group_name("Vmin")))
 
     def _add_instructions_to_calculate_secondary_boost_statistics(self):
@@ -311,10 +311,10 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         self.addComputeGlobal(self._append_group_name("oldVavg"), self._append_group_name("wVavg"))
         self.addComputeGlobal(self._append_group_name("wVavg"), "{0} + ({1}-{0})/windowCount".format(
-            self._append_group_name("wVavg"), self._append_group("energy")))
+            self._append_group_name("wVavg"), self._append_group_name("StartingPotentialEnergy")))
 
         self.addComputeGlobal(self._append_group_name("M2"), "{0} + ({1}-{2})*({1}-{3})".format(
-            self._append_group_name("M2"), self._append_group("energy"), self._append_group_name("oldVavg"),
+            self._append_group_name("M2"), self._append_group_name("StartingPotentialEnergy"), self._append_group_name("oldVavg"),
             self._append_group_name("wVavg")))
 
         self.addComputeGlobal(self._append_group_name("wVariance"), "select(windowCount - 1,{0}/(windowCount - 1),0)"
@@ -341,7 +341,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         self.addComputeGlobal(self._append_group_name("BoostPotential"), "0.5 * {0} * ({1} - {2})^2 / ({3} - {4})".
                               format(self._append_group_name("k0"), self._append_group_name("threshold_energy"),
-                                     self._append_group("energy"), self._append_group_name("Vmax"),
+                                     self._append_group_name("StartingPotentialEnergy"), self._append_group_name("Vmax"),
                                      self._append_group_name("Vmin")))
 
 
@@ -349,7 +349,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # "BoostPotential*step(threshold_energy-boosted_energy)")
         self.addComputeGlobal(self._append_group_name("BoostPotential"), "{0}*step({1} - ({2} + {3}))".format(
             self._append_group_name("BoostPotential"), self._append_group_name("threshold_energy"),
-            self._append_group_name("BoostPotential"), self._append_group("energy")))
+            self._append_group_name("BoostPotential"), self._append_group_name("StartingPotentialEnergy")))
 
         #
         # If the boostPotential is zero, we want to set the Force Scaling Factor to one, which is what we will use
@@ -360,14 +360,14 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         # "boosted_energy" = "energy + BoostPotential"
         self.addComputeGlobal(self._append_group_name("boosted_energy"), "{0} + {1}".format(
-            self._append_group("energy"),
+            self._append_group_name("StartingPotentialEnergy"),
             self._append_group_name("BoostPotential")))
 
     def _add_gamd_boost_calculations_step(self):
 
         self.addComputeGlobal(self._append_group_name("ForceScalingFactor"), "1.0 - (({0} * ({1} - {2}))/({3} - {4}))"
                               .format(self._append_group_name("k0"), self._append_group_name("threshold_energy"),
-                                      self._append_group("energy"), self._append_group_name("Vmax"),
+                                      self._append_group_name("StartingPotentialEnergy"), self._append_group_name("Vmax"),
                                       self._append_group_name("Vmin")))
 
         # This is the psuedo code of what we are about to do, in case it helps you read it.
