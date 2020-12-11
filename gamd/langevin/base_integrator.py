@@ -15,14 +15,13 @@ __version__ = "1.0"
 from simtk import unit as unit
 from abc import ABCMeta, ABC
 from abc import abstractmethod
-import numpy
 from ..stage_integrator import GamdStageIntegrator
 from ..stage_integrator import BoostType
 
 
 class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
 
-    def __init__(self,
+    def __init__(self, system_group, group_name,
                  dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
                  ntebprep=200000, nteb=1000000, nstlim=3000000, ntave=50000,
                  collision_rate=1.0 / unit.picoseconds,
@@ -71,7 +70,8 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         # We need to run our super classes constructor last, since it's going to execute our other methods, which
         # have dependencies on our variables above being setup.
         #
-        super(GamdLangevinIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave)
+        super(GamdLangevinIntegrator, self).__init__(system_group, group_name, dt, ntcmdprep, ntcmd, ntebprep, nteb,
+                                                     nstlim, ntave)
 
     def _add_common_variables(self):
         garbage = {self.addGlobalVariable(key, value) for key, value in self.global_variables.items()}
@@ -235,10 +235,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.sigma0 = sigma0
         self.debuggingIsEnabled = True
 
-        self.__system_group = system_group
-        self.__group_name = group_name
-
-        super(GroupBoostIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, collision_rate,
+        super(GroupBoostIntegrator, self).__init__(system_group, group_name, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, collision_rate,
                                                    temperature, restart_filename)
 
 
@@ -252,8 +249,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addGlobalVariable(self._append_group_name_by_type("ForceScalingFactor", BoostType.TOTAL), 1.0)
         self.addGlobalVariable(self._append_group_name_by_type("BoostPotential", BoostType.TOTAL), 0.0)
 
-
-        if self.__group_name == BoostType.TOTAL or self.__group_name == BoostType.DIHEDRAL:
+        if self.get_boost_type() == BoostType.TOTAL or self.get_boost_type() == BoostType.DIHEDRAL:
             self.addGlobalVariable(self._append_group_name_by_type("ForceScalingFactor", BoostType.DIHEDRAL), 1.0)
             self.addGlobalVariable(self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL), 0.0)
         else:
@@ -267,37 +263,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # self.addGlobalVariable("beginningPotentialEnergy", 0)
         self.addComputeGlobal("beginningPotentialEnergy", "energy")
         self.addComputePerDof("coordinates", "x")
-
-    #
-    # The following methods are our utility methods for managing which kind of boost we are trying to perform.
-    #
-    #
-    #
-    def _get_group_energy_name(self):
-        return self._append_group("energy")
-
-    def _get_group_name(self):
-        return str(self.__group_name.value)
-
-    @staticmethod
-    def _get_group_name_by_type(boost_type):
-        return str(boost_type.value)
-
-    # This method will append a unique group name to the end of the variable.
-    #
-    def _append_group_name(self, name):
-        return str(self._get_group_name() + name)
-
-    # This method will append a unique group name to the end of the variable based on the type specified.
-    #
-    def _append_group_name_by_type(self, name, boost_type):
-        return str(self._get_group_name_by_type(boost_type) + name)
-
-    # This method will append the group variable to the string. It is primarily used for referencing system names. We
-    # use __apend_group_name for referencing values we are creating.
-    #
-    def _append_group(self, name):
-        return name + str(self.__system_group)
 
     #
     #
@@ -431,10 +396,10 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     def _add_gamd_update_step(self):
         self.addComputePerDof("newx", "x")
         #
-        if self.__group_name == BoostType.TOTAL:
+        if self.get_boost_type() == BoostType.TOTAL:
             self.addComputePerDof("v", "vscale*v + fscale*{0}*{1}/m + noisescale*gaussian/sqrt(m)"
                                   .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
-        elif self.__group_name == BoostType.DIHEDRAL:
+        elif self.get_boost_type() == BoostType.DIHEDRAL:
             # We take care of all of the forces that aren't the dihedral.
             self.addComputePerDof("v", "vscale*v + fscale*f0/m + noisescale*gaussian/sqrt(m)")
             # We boost the dihedral force.
@@ -455,7 +420,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         force_scaling_factors = {
             self._append_group_name_by_type("ForceScalingFactor", BoostType.TOTAL): self.getGlobalVariableByName(
                 self._append_group_name_by_type("ForceScalingFactor", BoostType.TOTAL))}
-        if self.__group_name == BoostType.TOTAL or self.__group_name == BoostType.DIHEDRAL:
+        if self.get_boost_type() == BoostType.TOTAL or self.get_boost_type() == BoostType.DIHEDRAL:
             force_scaling_factors[self._append_group_name_by_type("ForceScalingFactor", BoostType.DIHEDRAL)] = \
                 self.getGlobalVariableByName(self._append_group_name_by_type("ForceScalingFactor", BoostType.DIHEDRAL))
         else:
@@ -469,7 +434,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             self._append_group_name_by_type("BoostPotential", BoostType.TOTAL): self.getGlobalVariableByName(
                 self._append_group_name_by_type("BoostPotential", BoostType.TOTAL))}
 
-        if self.__group_name == BoostType.TOTAL or self.__group_name == BoostType.DIHEDRAL:
+        if self.get_boost_type() == BoostType.TOTAL or self.get_boost_type() == BoostType.DIHEDRAL:
             boost_potentials[self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL)] = \
                 self.getGlobalVariableByName(self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL))
         else:

@@ -45,10 +45,13 @@ class GamdStageIntegrator(CustomIntegrator):
     """
 
     # def __init__(self,dt,alpha,E):
-    def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
+    def __init__(self, system_group, group_name, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
                  ntebprep=200000, nteb=1000000, nstlim=3000000, ntave=50000):
 
         super(GamdStageIntegrator, self).__init__(dt)
+
+        self.__system_group = system_group
+        self.__group_name = group_name
 
         """
         Parameters
@@ -459,3 +462,40 @@ class GamdStageIntegrator(CustomIntegrator):
                 line = str(i) + ", " + str(positions[i][0]) + ", " + str(positions[i][1]) + ", " + str(positions[i][2])
                 file.write(line + "\n")
 
+    #
+    # The following methods are our utility methods for managing which kind of boost we are trying to perform.
+    #
+    #
+    #
+    def _get_group_energy_name(self):
+        return self._append_group("energy")
+
+    def _get_group_name(self):
+        return str(self.__group_name.value)
+
+
+    # This method will append a unique group name to the end of the variable.
+    #
+    def _append_group_name(self, name):
+        return str(self._get_group_name() + name)
+
+    # This method will append a unique group name to the end of the variable based on the type specified.
+    #
+    def _append_group_name_by_type(self, name, boost_type):
+        return str(self._get_group_name_by_type(boost_type) + name)
+
+    # This method will append the group variable to the string. It is primarily used for referencing system names. We
+    # use _append_group_name for referencing values we are creating.
+    #
+    def _append_group(self, name):
+        return name + str(self.__system_group)
+
+    @staticmethod
+    def _get_group_name_by_type(boost_type):
+        return str(boost_type.value)
+
+    def get_variable_name_by_type(self, boost_type, name):
+        return self._append_group_name_by_type(name, boost_type)
+
+    def get_boost_type(self):
+        return self.__group_name
