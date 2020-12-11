@@ -16,7 +16,6 @@ from simtk import unit as unit
 from abc import ABCMeta, ABC
 from abc import abstractmethod
 import numpy
-import math
 from ..stage_integrator import GamdStageIntegrator
 from ..stage_integrator import BoostType
 
@@ -53,11 +52,6 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         #self.current_velocity_component = numpy.exp(-self.collision_rate * dt)  # a
         #self.random_velocity_component = numpy.sqrt(1 - numpy.exp(- 2 * self.collision_rate * dt))  # b
 
-        self.vscale = math.exp((-1 * dt) * self.collision_rate)
-        self.fscale = (1 - self.vscale) / self.collision_rate
-        self.noisescale = math.sqrt(self.thermal_energy * (1-self.vscale*self.vscale))
-
-
         #
         # Generally, I'm trying to put variables here that I know will be used across all implementations WITHOUT the
         # name being overloaded to have another meaning for an object that inherits from this base class.  No guarantee
@@ -67,9 +61,8 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
                                  #"current_velocity_component": self.current_velocity_component,
                                  #"random_velocity_component": self.random_velocity_component,
                                  "collision_rate": self.collision_rate,
-                                 "vscale": self.vscale,
-                                 "fscale": self.fscale,
-                                 "noisescale": self.noisescale
+                                 "vscale": 0.0, "fscale": 0.0,
+                                 "noisescale": 0.0
                                  }
 
         self.per_dof_variables = {"sigma": 0}
@@ -363,7 +356,9 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                               .format(self._append_group_name("M2")))
 
     def _add_conventional_md_pre_calc_step(self):
-        pass
+        self.addComputeGlobal("vscale", "exp(-dt*collision_rate)")
+        self.addComputeGlobal("fscale", "(1-vscale)/collision_rate")
+        self.addComputeGlobal("noisescale", "sqrt(thermal_energy*(1-vscale*vscale))")
 
     def _add_conventional_md_update_step(self):
         self.addComputePerDof("newx", "x")
@@ -373,6 +368,9 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addComputePerDof("v", "(x-newx)/dt")
 
     def _add_gamd_pre_calc_step(self):
+        self.addComputeGlobal("vscale", "exp(-dt*collision_rate)")
+        self.addComputeGlobal("fscale", "(1-vscale)/collision_rate")
+        self.addComputeGlobal("noisescale", "sqrt(thermal_energy*(1-vscale*vscale))")
         #
         # We do not apply the boost potential to the energy value since energy is read only.
         #
