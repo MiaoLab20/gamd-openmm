@@ -141,7 +141,6 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         self._add_conventional_md_update_step()
 
     def _add_gamd_instructions(self):
-        self.addUpdateContextState()
         self._add_gamd_pre_calc_step()
         self._add_gamd_boost_calculations_step()
         
