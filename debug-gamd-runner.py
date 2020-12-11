@@ -130,7 +130,7 @@ def main():
         write_mode = "w"
         start_step = 1
 
-    debug_logger = DebugLogger(output_directory + "/debug.log", write_mode)
+    debug_logger = DebugLogger(output_directory + "/debug.csv", write_mode)
     debug_logger.write_global_variables_headers(integrator)
     gamd_logger = GamdLogger(output_directory + "/gamd.log", write_mode, integrator, simulation)
 
