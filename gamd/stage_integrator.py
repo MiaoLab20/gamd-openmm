@@ -290,9 +290,6 @@ class GamdStageIntegrator(CustomIntegrator):
         #
         #self.addComputeGlobal("windowCount", "windowCount + 1")
 
-        #
-        # TODO:  Discussion how this change works with Lane.  What does the delta function do?
-        #
         self.addComputeGlobal("windowCount", "(1-delta(%d-stepCount))*windowCount + 1" % self.stage_2_last_ntave_window_start)
         #
         # These calculations help us to keep track of the running ntave window Vavg and variance.
