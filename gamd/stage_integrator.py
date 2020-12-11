@@ -77,7 +77,6 @@ class GamdStageIntegrator(CustomIntegrator):
         """
         CustomIntegrator.__init__(self, dt)
 
-
         if ntcmd < ntave or ntcmd % ntave != 0:
             raise ValueError("ntcmd must be greater than and a multiple of ntave.")
 
@@ -472,7 +471,6 @@ class GamdStageIntegrator(CustomIntegrator):
 
     def _get_group_name(self):
         return str(self.__group_name.value)
-
 
     # This method will append a unique group name to the end of the variable.
     #
