@@ -29,8 +29,7 @@ class GamdLogger:
     def write_header(self):
         self.gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
         self.gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
-        self.gamdLog.write(
-            "# ntwx,total_nstep,Unboosted-Potential-Energy,Unboosted-Dihedral-Energy,Total-Force-Weight,Dihedral-Force-Weight,Boost-Energy-Potential,Boost-Energy-Dihedral\n")
+        self.gamdLog.write("# ntwx,total_nstep,Unboosted-Potential-Energy,Unboosted-Dihedral-Energy,Total-Force-Weight,Dihedral-Force-Weight,Boost-Energy-Potential,Boost-Energy-Dihedral\n")
 
     def mark_energies(self, group=None):
         state = self.simulation.context.getState(getEnergy=True)
