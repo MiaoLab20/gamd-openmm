@@ -35,21 +35,23 @@ def print_global_variables(integrator):
 
 def print_global_variables_headers(integrator, output):
     number_of_globals = integrator.getNumGlobalVariables()
+    second_to_last = number_of_globals - 1
     for index in range(0, number_of_globals):
         name = integrator.getGlobalVariableName(index)
         output.write(str(name))
-        if index < number_of_globals:
+        if index < second_to_last:
             output.write(",")
     output.write("\n")
 
 
 def print_global_variables_values(integrator, output):
     number_of_globals = integrator.getNumGlobalVariables()
+    second_to_last = number_of_globals - 1
     for index in range(0, number_of_globals):
         name = integrator.getGlobalVariableName(index)
         value = integrator.getGlobalVariableByName(name)
         output.write(str(value))
-        if index < number_of_globals:
+        if index < second_to_last:
             output.write(",")
     output.write("\n")
 
