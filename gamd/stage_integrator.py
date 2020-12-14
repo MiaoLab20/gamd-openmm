@@ -101,7 +101,7 @@ class GamdStageIntegrator(CustomIntegrator):
         self.stage_1_end = ntcmdprep
         self.stage_2_start = ntcmdprep + 1
         self.stage_2_end = ntcmd
-        self.stage_2_last_ntave_window_start = ntcmd - ntave
+        self.stage_2_last_ntave_window_start = (ntcmd - ntave) + 1
         self.stage_3_start = ntcmd + 1
         self.stage_3_end = ntcmd + ntebprep
         self.stage_4_start = ntcmd + ntebprep + 1
