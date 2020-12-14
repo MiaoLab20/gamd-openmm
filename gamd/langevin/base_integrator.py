@@ -218,7 +218,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # These variables are generated per type of boost being performed
         #
         self.global_variables_by_boost_type = {"Vmax": -1E99, "Vmin": 1E99,  "Vavg": 0,
-                                               "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0, "wVariance": 0, "k0": 0,
+                                               "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0, "k0": 0,
                                                "k0prime": 0, "k0doubleprime": 0, "k0doubleprime_window": 0,
                                                "boosted_energy": 0, "check_boost": 0, "sigma0": sigma0,
                                                "threshold_energy": -1E99}
@@ -290,13 +290,13 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     def _update_potential_state_values_with_window_potential_state_values(self):
         # Update window variables
         self.addComputeGlobal(self._append_group_name("Vavg"), self._append_group_name("wVavg"))
-        self.addComputeGlobal(self._append_group_name("sigmaV"), "sqrt(" + self._append_group_name("wVariance") + ")")
+        self.addComputeGlobal(self._append_group_name("sigmaV"), "sqrt({0}/windowCount)".format(
+            self._append_group_name("M2")))
 
         # Reset variables
         self.addComputeGlobal(self._append_group_name("M2"), "0")
-        self.addComputeGlobal(self._append_group_name("wVavg"), self._append_group_name("StartingPotentialEnergy"))
-        self.addComputeGlobal(self._append_group_name("oldVavg"), self._append_group_name("StartingPotentialEnergy"))
-        self.addComputeGlobal(self._append_group_name("wVariance"), "0")
+        self.addComputeGlobal(self._append_group_name("wVavg"), "0.0")
+        self.addComputeGlobal(self._append_group_name("oldVavg"), "0.0")
 
     def _add_instructions_to_calculate_primary_boost_statistics(self):
         self.addComputeGlobal(self._append_group_name("Vmax"), "max({0}, {1})".format(self._append_group_name("StartingPotentialEnergy"),
@@ -306,19 +306,24 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
     def _add_instructions_to_calculate_secondary_boost_statistics(self):
         #
-        # The following calculations are used to keep a running average,
+        # The following calculations are used to calculate the average and variance/standard deviation,
         # rather than calculating the average at the ntave % 0 step
         #
+        # Algorithm Description:
+        #
+        # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
+        #
+        #
+
         self.addComputeGlobal(self._append_group_name("oldVavg"), self._append_group_name("wVavg"))
         self.addComputeGlobal(self._append_group_name("wVavg"), "{0} + ({1}-{0})/windowCount".format(
             self._append_group_name("wVavg"), self._append_group_name("StartingPotentialEnergy")))
 
         self.addComputeGlobal(self._append_group_name("M2"), "{0} + ({1}-{2})*({1}-{3})".format(
-            self._append_group_name("M2"), self._append_group_name("StartingPotentialEnergy"), self._append_group_name("oldVavg"),
+            self._append_group_name("M2"),
+            self._append_group_name("StartingPotentialEnergy"),
+            self._append_group_name("oldVavg"),
             self._append_group_name("wVavg")))
-
-        self.addComputeGlobal(self._append_group_name("wVariance"), "select(windowCount - 1,{0}/(windowCount - 1),0)"
-                              .format(self._append_group_name("M2")))
 
     def _add_conventional_md_pre_calc_step(self):
         self.addComputeGlobal("vscale", "exp(-dt*collision_rate)")
