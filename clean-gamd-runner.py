@@ -12,40 +12,55 @@ from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
 # from gamd.langevin.dihedral_boost_integrators import import LowerBountIntegrator
 # from gamd.langevin.dihedral_boost_integrators import import UpperBoundIntegrator
 from gamd.stage_integrator import BoostType
+from gamd.GamdLogger import GamdLogger
 from gamd import utils as utils
 import pprint
+from gamd.langevin.total_boost_integrators import LowerBoundIntegrator as TotalBoostLowerBoundIntegrator
+from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalBoostUpperBoundIntegrator
+from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as DihedralBoostLowerBoundIntegrator
+from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator as DihedralBoostUpperBoundIntegrator
+
+
+#
+#   NOTE:  Don't do this.  It moves the forces into separate groups, so that they don't get handled properly.
+#
+#    for i, force in enumerate(system.getForces()):
+#        print(str(i) + "     " + force.__class__.__name__)
+#        force.setForceGroup(i)
+#        if force.__class__.__name__ == 'PeriodicTorsionForce':
+#            group = i
+
+
+def set_dihedral_group(system):
+    group = 1
+    for force in system.getForces():
+        if force.__class__.__name__ == 'PeriodicTorsionForce':
+            force.setForceGroup(group)
+            break
+    return group
+
+
+def create_lower_total_boost_integrator(system):
+    return [set_dihedral_group(system), TotalBoostLowerBoundIntegrator()]
+
+
+def create_upper_total_boost_integrator(system):
+    return [set_dihedral_group(system), TotalBoostUpperBoundIntegrator()]
+
+
+def create_lower_dihedral_boost_integrator(system):
+    group = set_dihedral_group(system)
+    return [group, DihedralBoostLowerBoundIntegrator(group)]
+
+
+def create_upper_dihedral_boost_integrator(system):
+    group = set_dihedral_group(system)
+    return [group, DihedralBoostUpperBoundIntegrator(group)]
 
 
 def create_output_directories(directories):
     for dir in directories:
         os.makedirs(dir, 0o755)
-
-
-def get_global_variable_names(integrator):
-    for index in range(0, integrator.getNumGlobalVariables()):
-        print(integrator.getGlobalVariableName(index))
-
-
-def write_to_gamd_log(gamd_log, step, total_potential_energy, dihedral_potential_energy, group, simulation, integrator):
-    force_scaling_factors = integrator.get_force_scaling_factors()
-    boost_potentials = integrator.get_boost_potentials()
-
-    total_potential_energy = str(total_potential_energy / (kilojoules_per_mole * 4.184))
-    dihedral_energy = str(dihedral_potential_energy / (kilojoules_per_mole * 4.184))
-    total_force_scaling_factor = str(force_scaling_factors[BoostType.TOTAL.value + "ForceScalingFactor"])
-    dihedral_force_scaling_factor = str(force_scaling_factors[BoostType.DIHEDRAL.value + "ForceScalingFactor"])
-    total_boost_potential = str(boost_potentials[BoostType.TOTAL.value + "BoostPotential"] / 4.184)
-    dihedral_boost_potential = str(boost_potentials[BoostType.DIHEDRAL.value + "BoostPotential"] / 4.184)
-
-    gamd_log.write("\t" + str(1) + "\t" + str(step * 1) + "\t" +
-                   total_potential_energy + "\t" +
-                   dihedral_energy + "\t" +
-                   total_force_scaling_factor + "\t" +
-                   dihedral_force_scaling_factor + "\t" +
-                   total_boost_potential + "\t" +
-                   dihedral_boost_potential + "\n")
-
-
 
 
 def main():
@@ -75,43 +90,19 @@ def main():
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
-    # for i, force in enumerate(system.getForces()):
-    #    force.setForceGroup(i)
-        
-    group = 1
-    for force in system.getForces():
-    #     print(force.__class__.__name__)
-        if force.__class__.__name__ == 'PeriodicTorsionForce':
-            force.setForceGroup(group)
-            break
-    #     group += 1
 
-#    integrator = LowerBoundIntegrator(2.0 * femtoseconds, 2000, 10000, 2000, 10000,
-#                                                                     30000, 500)
+    # [group, integrator] = create_lower_total_boost_integrator(system)
+    [group, integrator] = create_upper_total_boost_integrator(system)
+    # [group, integrator] = create_lower_dihedral_boost_integrator(system)
+    # [group, integraotor] = create_upper_dihedral_boost_integrator(system)
 
-    #
-    #   NOTE:  Don't do this.  It moves the forces into seperate groups, so that they don't get handled properly.
-    #
-    #    for i, force in enumerate(system.getForces()):
-    #        print(str(i) + "     " + force.__class__.__name__)
-    #        force.setForceGroup(i)
-    #        if force.__class__.__name__ == 'PeriodicTorsionForce':
-    #            group = i
-
-    # Total Boost
-    integrator = LowerBoundIntegrator()
-    #integrator = UpperBoundIntegrator()
-
-    # Dihedral Boost
-    # integrator = LowerBoundIntegrator(group)
-    # integrator = UpperBoundIntegrator(group)
-
+    number_of_steps_in_group = 1000
 
     simulation = Simulation(prmtop.topology, system, integrator)
     if restarting:
         simulation.loadCheckpoint(restart_checkpoint_filename)
         write_mode = "a"
-        start_step = int(integrator.getGlobalVariableByName("stepCount") // 100)
+        start_step = int(integrator.getGlobalVariableByName("stepCount") // number_of_steps_in_group)
         print("restarting from saved checkpoint:", restart_checkpoint_filename,
               "at step:", start_step)
     else:
@@ -121,72 +112,67 @@ def main():
         simulation.minimizeEnergy()
         simulation.context.setVelocitiesToTemperature(298.15*kelvin)
         simulation.saveState(output_directory + "/states/initial-state.xml")
-        simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', 100))
-        simulation.reporters.append(utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', 100, step=True, brokenOutForceEnergies=True, temperature=True,
-                                                      potentialEnergy=True, totalEnergy=True, volume=True))
+        simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', number_of_steps_in_group))
+        simulation.reporters.append(
+            utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', number_of_steps_in_group, step=True,
+                                            brokenOutForceEnergies=True, temperature=True,  potentialEnergy=True,
+                                            totalEnergy=True, volume=True))
         print("startup time:", time.time() - starttime)
         write_mode = "w"
         start_step = 1
-    with open(output_directory + "/gamd.log", write_mode) as gamdLog:
-        if not restarting:
-            gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
-            gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
-            gamdLog.write("# ntwx,total_nstep,Unboosted-Potential-Energy,Unboosted-Dihedral-Energy,Total-Force-Weight,Dihedral-Force-Weight,Boost-Energy-Potential,Boost-Energy-Dihedral\n")
-        
-        for step in range(start_step, (integrator.get_total_simulation_steps() // 100) + 1):
-            if step % restart_checkpoint_frequency // 100 == 0:
-                simulation.saveCheckpoint(restart_checkpoint_filename)
-            
-            # TEST
-#            if step == 250 and not restarting:
-#                print("sudden, unexpected interruption!")
-#                exit()
-            # END TEST
-            
-            try:
-                # print(integrator.get_current_state())
 
-                #
-                #  NOTE:  We need to save off the starting total and dihedral potential energies, since we
-                #         end up modifying them by updating the state of the particles.  This allows us to write
-                #         out the values as they were at the beginning of the step for what all of the calculations
-                #         for boosting were based on.
-                #
-                state = simulation.context.getState(getEnergy=True)
-                dihedral_state = simulation.context.getState(getEnergy=True, groups={group})
-                starting_total_potential_energy = state.getPotentialEnergy()
-                starting_dihedral_potential_energy = dihedral_state.getPotentialEnergy()
+    gamd_logger = GamdLogger(output_directory + "/gamd.log", write_mode, integrator, simulation)
 
-                simulation.step(100)
-                write_to_gamd_log(gamdLog, step, starting_total_potential_energy, starting_dihedral_potential_energy,
-                                  group, simulation, integrator)
+    if not restarting:
+        gamd_logger.write_header()
+    print("Running " + str(integrator.get_total_simulation_steps()) + " steps")
+    for step in range(start_step, (integrator.get_total_simulation_steps() // number_of_steps_in_group) + 1):
+        if step % restart_checkpoint_frequency // number_of_steps_in_group == 0:
+            simulation.saveCheckpoint(restart_checkpoint_filename)
 
-                # print(integrator.get_current_state())
-            except Exception as e:
-                print("Failure on step " + str(step*100))
-                print(e)
-                # print(integrator.get_current_state())
-                write_to_gamd_log(gamdLog, step, starting_total_potential_energy, starting_dihedral_potential_energy,
-                                  group, simulation, integrator)
-                sys.exit(2)
-            
-            
-            #simulation.loadCheckpoint('/tmp/testcheckpoint')
-            
-            # debug_information = integrator.get_debugging_information()
-            # getGlobalVariableNames(integrator)
-        
-            if step % integrator.ntave == 0:
-                # if step % 1 == 0:
+        # TEST
+        #            if step == 250 and not restarting:
+        #                print("sudden, unexpected interruption!")
+        #                exit()
+        # END TEST
 
-                simulation.saveState(output_directory + "/states/" + str(step*100) + ".xml")
-                simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step*100) + ".bin")
-                positions_filename = output_directory + '/positions/coordinates-' + str(step*100) + '.csv'
-                integrator.create_positions_file(positions_filename)
-                # pp = pprint.PrettyPrinter(indent=2)
-                # pp.pprint(debug_information)
-                
-            
-               
+        gamd_logger.mark_energies(group)
+        try:
+            # print(integrator.get_current_state())
+
+            #
+            #  NOTE:  We need to save off the starting total and dihedral potential energies, since we
+            #         end up modifying them by updating the state of the particles.  This allows us to write
+            #         out the values as they were at the beginning of the step for what all of the calculations
+            #         for boosting were based on.
+            #
+
+            simulation.step(number_of_steps_in_group)
+            gamd_logger.write_to_gamd_log(step*number_of_steps_in_group)
+
+            # print(integrator.get_current_state())
+        except Exception as e:
+            print("Failure on step " + str(step * number_of_steps_in_group))
+            print(e)
+            # print(integrator.get_current_state())
+            gamd_logger.write_to_gamd_log(step)
+            sys.exit(2)
+
+        # simulation.loadCheckpoint('/tmp/testcheckpoint')
+
+        # debug_information = integrator.get_debugging_information()
+        # getGlobalVariableNames(integrator)
+
+        if step % integrator.ntave == 0:
+            # if step % 1 == 0:
+
+            simulation.saveState(output_directory + "/states/" + str(step * number_of_steps_in_group) + ".xml")
+            simulation.saveCheckpoint(output_directory + "/checkpoints/" + str(step * number_of_steps_in_group) + ".bin")
+            positions_filename = output_directory + '/positions/coordinates-' + str(step * number_of_steps_in_group) + '.csv'
+            integrator.create_positions_file(positions_filename)
+            # pp = pprint.PrettyPrinter(indent=2)
+            # pp.pprint(debug_information)
+
+
 if __name__ == "__main__":
     main()
