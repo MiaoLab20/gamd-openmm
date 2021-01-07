@@ -290,7 +290,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     def _update_potential_state_values_with_window_potential_state_values(self):
         # Update window variables
         self.addComputeGlobal(self._append_group_name("Vavg"), self._append_group_name("wVavg"))
-        self.addComputeGlobal(self._append_group_name("sigmaV"), "sqrt({0}/windowCount)".format(
+        self.addComputeGlobal(self._append_group_name("sigmaV"), "sqrt({0}/(windowCount-1))".format(
             self._append_group_name("M2")))
 
         # Reset variables
