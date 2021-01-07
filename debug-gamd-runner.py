@@ -51,8 +51,8 @@ def create_lower_total_boost_integrator(system):
 
 
 def create_upper_total_boost_integrator(system):
-    return [set_dihedral_group(system), TotalBoostUpperBoundIntegrator(dt=2.0 * femtoseconds, ntcmdprep=2000, ntcmd=10000, ntebprep=2000,
-                                          nteb=10000, nstlim=30000, ntave=500)]
+    return [set_dihedral_group(system), TotalBoostUpperBoundIntegrator(dt=2.0 * femtoseconds, ntcmdprep=100000, ntcmd=200000, ntebprep=100000,
+                                                                       nteb=200000, nstlim=900000, ntave=10000)]
 
 
 def create_lower_dihedral_boost_integrator(system):
@@ -123,7 +123,7 @@ def main():
         simulation.saveState(output_directory + "/states/initial-state.xml")
         simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', 100))
         simulation.reporters.append(
-            utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', 1, step=True,
+            utils.ExpandedStateDataReporter(system, output_directory + '/state-data.csv', 1, step=True,
                                             brokenOutForceEnergies=True, temperature=True,
                                             potentialEnergy=True, totalEnergy=True, volume=True))
         print("startup time:", time.time() - starttime)
@@ -132,7 +132,7 @@ def main():
 
     debug_logger = DebugLogger(output_directory + "/debug.csv", write_mode)
     debug_logger.write_global_variables_headers(integrator)
-    gamd_logger = GamdLogger(output_directory + "/gamd.log", write_mode, integrator, simulation)
+    gamd_logger = GamdLogger(output_directory + "/gamd.csv", write_mode, integrator, simulation)
 
     if not restarting:
         gamd_logger.write_header()
