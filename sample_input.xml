@@ -11,12 +11,12 @@
    <overwrite_output>True</overwrite_output>
    <chunk_size>100</chunk_size>
    <nonbonded_method>PME</nonbonded_method>
-   <nonbonded_cutoff>0.9</nonbonded_cutoff> <!-- units.picoseconds -->
+   <nonbonded_cutoff>0.8</nonbonded_cutoff> <!-- units.picoseconds -->
    <constraints>HBonds</constraints>
    <integrator_type>langevin</integrator_type>
    <friction_coefficient>1.0</friction_coefficient> <!-- units.picoseconds**-1 -->
    <target_temperature>298.15</target_temperature> <!-- units.kelvin -->
-   <random_seed>-1</random_seed>
+   <random_seed>0</random_seed>
    <dt>0.002</dt> <!-- units.picoseconds -->
    <use_barostat>False</use_barostat>
    <barostat_target_pressure>1.0</barostat_target_pressure> <!-- units.bar -->
@@ -24,20 +24,20 @@
    <barostat_frequency>25</barostat_frequency>
    <run_minimization>True</run_minimization>
    <initial_temperature>298.15</initial_temperature> <!-- units.kelvin -->
-   <energy_reporter_frequency>5000</energy_reporter_frequency>
-   <coordinates_reporter_frequency>5000</coordinates_reporter_frequency>
+   <energy_reporter_frequency>500</energy_reporter_frequency>
+   <coordinates_reporter_frequency>500</coordinates_reporter_frequency>
    <coordinates_reporter_file_type>DCD</coordinates_reporter_file_type>
-   <total_simulation_length>30000</total_simulation_length>
-   <total_boost>False</total_boost>
+   <total_simulation_length>19000000</total_simulation_length>
+   <total_boost>True</total_boost>
    <total_boost_sigma0>6.0</total_boost_sigma0> <!-- units.kilocalories_per_mole -->
    <dihedral_boost>True</dihedral_boost>
    <dihedral_boost_sigma0>6.0</dihedral_boost_sigma0>
    <gamd_bound>lower</gamd_bound>
-   <num_steps_conventional_md>10000</num_steps_conventional_md>
-   <num_steps_conventional_md_prep>2000</num_steps_conventional_md_prep>
+   <num_steps_conventional_md>1000000</num_steps_conventional_md>
+   <num_steps_conventional_md_prep>200000</num_steps_conventional_md_prep>
    <num_steps_per_averaging>500</num_steps_per_averaging>
-   <num_steps_gamd_equilibration>10000</num_steps_gamd_equilibration>
-   <num_steps_gamd_equilibration_prep>2000</num_steps_gamd_equilibration_prep>
+   <num_steps_gamd_equilibration>3000000</num_steps_gamd_equilibration>
+   <num_steps_gamd_equilibration_prep>600000</num_steps_gamd_equilibration_prep>
    <restart_checkpoint_filename>gamd_restart.checkpoint</restart_checkpoint_filename>
-   <restart_checkpoint_frequency>1000</restart_checkpoint_frequency>
+   <restart_checkpoint_frequency>50000</restart_checkpoint_frequency>
 </gamd>

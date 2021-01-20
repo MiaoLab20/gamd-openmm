@@ -40,9 +40,11 @@ class TotalBoostIntegrator(GroupBoostIntegrator, ABC):
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
-        group_name = BoostType.TOTAL
-        group = ""
-        super(TotalBoostIntegrator, self).__init__(group, group_name, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
+        #group_name = BoostType.TOTAL
+        #group = ""
+        group_dict = {}
+        total_boost = True
+        super(TotalBoostIntegrator, self).__init__(group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
                                                    ntave, sigma0, collision_rate, temperature, restart_filename)
 
 

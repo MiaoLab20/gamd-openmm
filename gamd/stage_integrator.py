@@ -202,24 +202,9 @@ class GamdStageIntegrator(CustomIntegrator):
         # self._add_debug_at_step(2)
 
     def _setup_energy_values(self):
-        self.addGlobalVariable(self.get_variable_name_by_type(
-            BoostType.TOTAL, "StartingPotentialEnergy"), 0.0)
-        self.addComputeGlobal(self.get_variable_name_by_type(
-            BoostType.TOTAL, "StartingPotentialEnergy"), "energy")
-
-        #
-        # We are going to track the dihedral group on the Total Boosts 
-        # externally to the integrator.
-        #
-        if self.get_boost_type() == BoostType.DIHEDRAL \
-                or self.get_boost_type() == BoostType.DUAL_TOTAL_DIHEDRAL:
-            self.addGlobalVariable(
-                self.get_variable_name_by_type(BoostType.DIHEDRAL, 
-                                               "StartingPotentialEnergy"), 0.0)
-            self.addComputeGlobal(
-                self.get_variable_name_by_type(BoostType.DIHEDRAL,
-                                               "StartingPotentialEnergy"),
-                                               self._append_group("energy"))
+        self.addGlobalVariablesByName("StartingPotentialEnergy", 0.0)
+        self.addComputeGlobalByName("StartingPotentialEnergy", "{0}", 
+                                    ["energy"], value_by_number=True)
 
     def _add_debug_at_step(self, the_step):
         self.beginIfBlock("stepCount = " + str(the_step))
@@ -575,8 +560,9 @@ class GamdStageIntegrator(CustomIntegrator):
 
     # This method will append a unique group name to the end of the variable.
     #
-    def _append_group_name(self, name):
-        return str(self._get_group_name() + "_" + name)
+    def _append_group_name(self, name, group_name):
+        #return str(self._get_group_name() + "_" + name)
+        return name + "_" + str(group_name)
 
     # This method will append a unique group name to the end of the variable 
     # based on the type specified.
@@ -588,8 +574,8 @@ class GamdStageIntegrator(CustomIntegrator):
     # used for referencing system names. We use _append_group_name for 
     # referencing values we are creating.
     #
-    def _append_group(self, name):
-        return name + str(self.__system_group)
+    def _append_group(self, name, group_id):
+        return name + str(group_id)
 
     @staticmethod
     def _get_group_name_by_type(boost_type):
@@ -597,7 +583,48 @@ class GamdStageIntegrator(CustomIntegrator):
 
     def get_variable_name_by_type(self, boost_type, name):
         return self._append_group_name_by_type(name, boost_type)
-
-    def get_boost_type(self):
-        return self.__group_name
+    
+    def addGlobalVariablesByName(self, name, value):
+        if self.__total_boost:
+            var_name = self._append_group_name(name, BoostType.TOTAL.value)
+            self.addGlobalVariable(var_name, value)
+        for group_id in self.__group_dict:
+            group_name = self.__group_dict[group_id]
+            var_name = self._append_group_name(name, group_name)
+            self.addGlobalVariable(var_name, value)
+        return
+    
+    def addComputeGlobalByName(self, name, expression, format_list=[], 
+                               value_by_number=False):
+        if self.__total_boost:
+            var_name = self._append_group_name(name, BoostType.TOTAL.value)
+            if value_by_number:
+                formatted_expression = expression.format(*format_list)
+            else:
+                new_formats = [
+                    self._append_group_name(var, BoostType.TOTAL.value) \
+                    for var in format_list]
+                formatted_expression = expression.format(*new_formats)
+            self.addComputeGlobal(var_name, formatted_expression)
+        for group_id in self.__group_dict:
+            group_name = self.__group_dict[group_id]
+            var_name = self._append_group_name(name, group_name)
+            if value_by_number:
+                new_formats = [self._append_group(var, group_id) \
+                               for var in format_list]
+                formatted_expression = expression.format(*new_formats)
+            else:
+                new_formats = [self._append_group_name(var, group_name) \
+                               for var in format_list]
+                formatted_expression = expression.format(*new_formats)
+            self.addComputeGlobal(var_name, formatted_expression)
+        return
+    
+    def get_total_boost(self):
+        return self.__total_boost
+    
+    def get_group_dict(self):
+        return self.__group_dict
+    #def get_boost_type(self):
+    #    return self.__group_name
 
