@@ -6,3 +6,6 @@ Gaussian Accelerated Molecular Dynamics (GaMD) is a biomolecular enhanced sampli
 ## Installation
 This module has been tested with the most recent OpenMM installed using the instructions instructions in the [OpenMM User Guide - Section 2.2 Installing OpenMM](http://docs.openmm.org/latest/userguide/application.html#installing-openmm).
 
+## Status
+
+This code base is currently still in development, has bugs, and is not ready for production use.  You may get incorrect results, while we are still in the development process.  Use at your own risk!
