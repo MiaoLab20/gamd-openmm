@@ -8,4 +8,4 @@ This module has been tested with the most recent OpenMM installed using the inst
 
 ## Status
 
-This code base is currently still in development, has bugs, and is not ready for production use.  You may get incorrect results, while we are still in the development process.  Use at your own risk!
+**This code base is currently still in development, has bugs, and is not ready for production use.  You may get incorrect results, while we are still in the development process.  Use at your own risk!**
