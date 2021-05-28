@@ -1,0 +1,2 @@
+dihedral phi :1@C :2@N :2@CA :2@C out graphics/phi-cpptraj.dat
+go

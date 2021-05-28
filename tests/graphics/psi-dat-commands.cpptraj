@@ -1,0 +1,2 @@
+dihedral psi :2@N :2@CA :2@C :3@N out graphics/psi-cpptraj.dat
+go
