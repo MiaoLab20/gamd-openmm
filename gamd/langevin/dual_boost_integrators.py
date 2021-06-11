@@ -1,31 +1,17 @@
-"""
-gamd.py: Implements the GaMD integration method.
-
-Portions copyright (c) 2020 University of Kansas
-Authors: Matthew Copeland, Yinglong Miao
-Contributors: Lane Votapka
-
-"""
-
-from __future__ import absolute_import
-
-__author__ = "Matthew Copeland"
-__version__ = "1.0"
-
-from simtk import unit as unit
-from gamd.langevin.base_integrator import GroupBoostIntegrator
-
 from abc import ABC
+
+from gamd.langevin.base_integrator import GroupBoostIntegrator
 from simtk import unit as unit
 from ..stage_integrator import BoostType
 
 
-class TotalBoostIntegrator(GroupBoostIntegrator, ABC):
-    def __init__(self, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0, collision_rate,
+class DualBoostIntegrator(GroupBoostIntegrator, ABC):
+    def __init__(self, group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0, collision_rate,
                  temperature, restart_filename):
         """
         Parameters
         ----------
+        :param group:     The system group provided used by OpenMM for the Dihedral Energy and Forces.
         :param dt:        The Amount of time between each time step.
         :param ntcmdprep: The number of conventional MD steps for system equilibration.
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
@@ -40,21 +26,21 @@ class TotalBoostIntegrator(GroupBoostIntegrator, ABC):
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
-        #group_name = BoostType.TOTAL
-        #group = ""
-        group_dict = {}
+        group_dict = {group: "Dihedral"}
         total_boost = True
-        super(TotalBoostIntegrator, self).__init__(group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
-                                                   ntave, sigma0, collision_rate, temperature, restart_filename)
+
+        super(DualBoostIntegrator, self).__init__(group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
+                                                      ntave, sigma0, collision_rate, temperature, restart_filename)
 
 
-class LowerBoundIntegrator(TotalBoostIntegrator):
-    def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
+class LowerBoundIntegrator(DualBoostIntegrator):
+    def __init__(self, group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
                  nstlim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
         """
         Parameters
         ----------
+        :param group:     The system group provided used by OpenMM for the Dihedral Energy and Forces.
         :param dt:        The Amount of time between each time step.
         :param ntcmdprep: The number of conventional MD steps for system equilibration.
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
@@ -69,21 +55,22 @@ class LowerBoundIntegrator(TotalBoostIntegrator):
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
-
-        super(LowerBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
+        self.__group = group
+        super(LowerBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
                                                    collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         super()._lower_bound_calculate_threshold_energy_and_effective_harmonic_constant()
 
 
-class UpperBoundIntegrator(TotalBoostIntegrator):
-    def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
+class UpperBoundIntegrator(DualBoostIntegrator):
+    def __init__(self, group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,
                  nstlim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds, temperature=298.15 * unit.kelvin, restart_filename=None):
         """
         Parameters
         ----------
+        :param group:     The system group provided used by OpenMM for the Dihedral Energy and Forces.
         :param dt:        The Amount of time between each time step.
         :param ntcmdprep: The number of conventional MD steps for system equilibration.
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
@@ -98,9 +85,10 @@ class UpperBoundIntegrator(TotalBoostIntegrator):
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
-
-        super(UpperBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
+        self.__group = group
+        super(UpperBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
                                                       collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(self):
         super()._upper_bound_calculate_threshold_energy_and_effective_harmonic_constant()
+

@@ -150,10 +150,10 @@ class Runner:
                 boost_potentials = integrator.get_boost_potentials()
                 total_potential_energy = str(state.getPotentialEnergy() / (kilojoules_per_mole * 4.184))
                 dihedral_energy = str(dihedral_state.getPotentialEnergy() / (kilojoules_per_mole * 4.184))
-                total_force_scaling_factor = str(force_scaling_factors[BoostType.TOTAL.value + "ForceScalingFactor"])
-                dihedral_force_scaling_factor = str(force_scaling_factors[BoostType.DIHEDRAL.value + "ForceScalingFactor"])
-                total_boost_potential = str(boost_potentials[BoostType.TOTAL.value + "BoostPotential"] / 4.184)
-                dihedral_boost_potential = str(boost_potentials[BoostType.DIHEDRAL.value + "BoostPotential"] / 4.184)
+                total_force_scaling_factor = str(force_scaling_factors["ForceScalingFactor_" + BoostType.TOTAL.value])
+                dihedral_force_scaling_factor = str(force_scaling_factors["ForceScalingFactor_Dihedral"])
+                total_boost_potential = str(boost_potentials["BoostPotential_" + BoostType.TOTAL.value] / 4.184)
+                dihedral_boost_potential = str(boost_potentials["BoostPotential_Dihedral"] / 4.184)
                 
                 try:
                     simulation.step(chunk_size)

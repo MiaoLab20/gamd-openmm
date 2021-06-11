@@ -26,10 +26,12 @@ class DihedralBoostIntegrator(GroupBoostIntegrator, ABC):
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
-        self.__group = group
-        group_name = BoostType.DIHEDRAL
+        #self.__group = group
+        #group_name = BoostType.DIHEDRAL
+        group_dict = {group: "Dihedral"}
+        total_boost = False
 
-        super(DihedralBoostIntegrator, self).__init__(group, group_name, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
+        super(DihedralBoostIntegrator, self).__init__(group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
                                                       ntave, sigma0, collision_rate, temperature, restart_filename)
 
 

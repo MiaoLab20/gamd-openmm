@@ -18,6 +18,8 @@ from gamd.langevin.total_boost_integrators import LowerBoundIntegrator as TotalL
 from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalUpperBoundIntegrator
 from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as DihedralLowerBoundIntegrator
 from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator as DihedralUpperBoundIntegrator
+from gamd.langevin.dual_boost_integrators import LowerBoundIntegrator as DualLowerBoundIntegrator
+from gamd.langevin.dual_boost_integrators import UpperBoundIntegrator as DualUpperBoundIntegrator
 
 
 class GamdSimulation:
@@ -191,6 +193,40 @@ class GamdSimulationFactory:
                         
                 elif config.gamd_bound == 'upper':
                     gamdSimulation.integrator = DihedralUpperBoundIntegrator(
+                        group=config.dihedral_group,
+                        dt=config.dt, 
+                        ntcmdprep=config.num_steps_conventional_md_prep, 
+                        ntcmd=config.num_steps_conventional_md, 
+                        ntebprep=config.num_steps_gamd_equilibration_prep, 
+                        nteb=config.num_steps_gamd_equilibration, 
+                        nstlim=config.total_simulation_length, 
+                        ntave=config.num_steps_per_averaging,
+                        sigma0=config.dihedral_boost_sigma0,
+                        collision_rate=config.friction_coefficient,
+                        temperature=config.target_temperature,
+                        restart_filename=None)
+                else:
+                    raise Exception(
+                        "This type of langevin integrator not implemented:",
+                        config.gamd_bound)
+            elif config.total_boost and config.dihedral_boost:
+                if config.gamd_bound == 'lower':
+                    gamdSimulation.integrator = DualLowerBoundIntegrator(
+                        group=config.dihedral_group,
+                        dt=config.dt, 
+                        ntcmdprep=config.num_steps_conventional_md_prep, 
+                        ntcmd=config.num_steps_conventional_md, 
+                        ntebprep=config.num_steps_gamd_equilibration_prep, 
+                        nteb=config.num_steps_gamd_equilibration, 
+                        nstlim=config.total_simulation_length, 
+                        ntave=config.num_steps_per_averaging,
+                        sigma0=config.dihedral_boost_sigma0,
+                        collision_rate=config.friction_coefficient,
+                        temperature=config.target_temperature,
+                        restart_filename=None)
+                        
+                elif config.gamd_bound == 'upper':
+                    gamdSimulation.integrator = DualUpperBoundIntegrator(
                         group=config.dihedral_group,
                         dt=config.dt, 
                         ntcmdprep=config.num_steps_conventional_md_prep, 
