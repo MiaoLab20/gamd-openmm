@@ -7,7 +7,11 @@ Authors: Matthew Copeland
 
 """
 
-from simtk.openmm.app.statedatareporter import StateDataReporter
+try:
+    from openmm.app.statedatareporter import StateDataReporter
+except:
+    from simtk.openmm.app.statedatareporter import StateDataReporter
+    
 import simtk.unit as unit
 
 

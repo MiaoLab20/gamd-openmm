@@ -237,7 +237,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     """
 
     def __init__(self, group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep,
-                 nteb, nstlim, ntave, sigma0, collision_rate, temperature, 
+                 nteb, nstlim, ntave, sigma0p, sigma0D, collision_rate, temperature, 
                  restart_filename):
         """
         Parameters
@@ -259,8 +259,12 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         :param ntave:     The number of steps used to smooth the 
             average and sigma of potential energy (corresponds to a 
             running average window size).
-        :param sigma0:    The upper limit of the standard deviation of the 
-            potential boost that allows for accurate reweighting.
+        :param sigma0p:    The upper limit of the standard deviation of the 
+            potential boost that allows for accurate reweighting. Total boost
+            portion.
+        :param sigma0D:    The upper limit of the standard deviation of the 
+            potential boost that allows for accurate reweighting. Dihedral
+            boost portion.
         :param collision_rate:      Collision rate (gamma) compatible
             with 1/picoseconds, default: 1.0/unit.picoseconds
         :param temperature:         "Bath" temperature value compatible
@@ -275,7 +279,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             "Vmax": -1E99, "Vmin": 1E99,  "Vavg": 0,
             "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0, "k0": 0,
             "k0prime": 0, "k0doubleprime": 0, "k0doubleprime_window": 0,
-            "boosted_energy": 0, "check_boost": 0, "sigma0": sigma0,
+            "boosted_energy": 0, "check_boost": 0,
             "threshold_energy": -1E99}
         #
         # These variables are always kept for reporting, regardless of boost 
@@ -290,7 +294,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.debug_global_variables = [
             "dt", "energy", "energy0", "energy1", "energy2", "energy3", 
             "energy4"]
-        self.sigma0 = sigma0
+        self.sigma0p = sigma0p
+        self.sigma0D = sigma0D
         self.debuggingIsEnabled = True
 
         super(GroupBoostIntegrator, self).__init__(
@@ -341,6 +346,10 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                                 for key, value in
                                 self.global_variables_by_boost_type.items()}
 
+         #hacky?
+        self.addGlobalVariable("sigma0_Total", self.sigma0p)
+        self.addGlobalVariable("sigma0_Dihedral", self.sigma0D)
+
         super(GroupBoostIntegrator, self)._add_common_variables()
         return
 
@@ -349,6 +358,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addComputeGlobalByName("Vavg", "{0}", ["wVavg"])
         self.addComputeGlobalByName(
             "sigmaV", "sqrt({0}/(windowCount-1))", ["M2"])
+        
         
         # Reset variables
         self.addComputeGlobalByName("M2", "0")

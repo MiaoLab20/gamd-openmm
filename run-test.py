@@ -24,6 +24,8 @@ from gamd.langevin.total_boost_integrators import LowerBoundIntegrator as TotalB
 from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalBoostUpperBoundIntegrator
 from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as DihedralBoostLowerBoundIntegrator
 from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator as DihedralBoostUpperBoundIntegrator
+from gamd.langevin.dual_boost_integrators import LowerBoundIntegrator as DualBoostLowerBoundIntegrator
+from gamd.langevin.dual_boost_integrators import UpperBoundIntegrator as DualBoostUpperBoundIntegrator
 
 def main():
     [boost_type, output_directory] = handle_arguments()
@@ -100,6 +102,17 @@ def create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, n
     group = set_dihedral_group(system)
     return [group, DihedralBoostUpperBoundIntegrator(group,  dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                      nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
+    
+def create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
+    group = set_dihedral_group(system)
+    return [group, DualBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
+                                                     nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
+
+
+def create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
+    group = set_dihedral_group(system)
+    return [group, DualBoostUpperBoundIntegrator(group,  dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
+                                                     nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
 
 
 def create_output_directories(directories):
@@ -109,7 +122,7 @@ def create_output_directories(directories):
 
 def usage():
     print("run-test.py boost-type [output-directory]\n")
-    print("\tboost-type:\t\tgamd-cmd-base|lower-total|upper-total|lower-dihedral|upper-dihedral\n")
+    print("\tboost-type:\t\tgamd-cmd-base|lower-total|upper-total|lower-dihedral|upper-dihedral|lower-dual|upper-dual\n")
     print("\toutput-directory:\tDirectory to output files. [default: output]\n")
 
 
@@ -159,6 +172,13 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
     elif boost_type == "upper-dihedral":
         [group, integrator] = create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
                                                                   nteb, nstlim, ntave)
+    elif boost_type == "lower-dual":
+        [group, integrator] = create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                  nteb, nstlim, ntave)
+    elif boost_type == "upper-dual":
+        [group, integrator] = create_upper_duall_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                  nteb, nstlim, ntave)
+        
     else:
         usage()
         sys.exit(1)

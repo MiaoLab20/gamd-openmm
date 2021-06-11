@@ -25,7 +25,7 @@ from abc import abstractmethod
 
 class BoostType(Enum):
     TOTAL = "Total"
-    DIHEDRAL = "DiHedral"
+    DIHEDRAL = "Dihedral"
     DUAL_TOTAL_DIHEDRAL = "DualTotalDiHedralBoost"
 
 # ============================================================================================
@@ -568,7 +568,7 @@ class GamdStageIntegrator(CustomIntegrator):
     # based on the type specified.
     #
     def _append_group_name_by_type(self, name, boost_type):
-        return str(self._get_group_name_by_type(boost_type) + "_" + name)
+        return str(name + "_" + self._get_group_name_by_type(boost_type))
 
     # This method will append the group variable to the string. It is primarily
     # used for referencing system names. We use _append_group_name for 
