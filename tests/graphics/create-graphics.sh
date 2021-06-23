@@ -23,7 +23,7 @@ awk '{print $2, $3}' graphics/phi-psi-cpptraj.dat |tail -n +2 > phi-psi.dat
 
 
 
-python3 ../../PyReweighting/PyReweighting-1D.py -input psi.dat -T $TEMPERATURE -cutoff 10 -Xdim -180 180 -disc 6 -Emax 20 -job amdweight_CE -weight graphics/weights.dat | tee -a graphics/reweight-variable-cumulant-expansion-1D.log
+PyReweighting-1D.py -input psi.dat -T $TEMPERATURE -cutoff 10 -Xdim -180 180 -disc 6 -Emax 20 -job amdweight_CE -weight graphics/weights.dat | tee -a graphics/reweight-variable-cumulant-expansion-1D.log
 mv -v pmf-c1-psi.dat.xvg graphics-out/pmf-psi-reweight-CE1.xvg
 mv -v pmf-c2-psi.dat.xvg graphics-out/pmf-psi-reweight-CE2.xvg
 mv -v pmf-c3-psi.dat.xvg graphics-out/pmf-psi-reweight-CE3.xvg
@@ -31,14 +31,14 @@ mv -v psi.dat graphics/
 
 
 
-python3 ../../PyReweighting/PyReweighting-1D.py -input phi.dat -T $TEMPERATURE -cutoff 10 -Xdim -180 180 -disc 6 -Emax 20 -job amdweight_CE -weight graphics/weights.dat | tee -a graphics/reweight-variable-cumulant-expansion-1D.log
+PyReweighting-1D.py -input phi.dat -T $TEMPERATURE -cutoff 10 -Xdim -180 180 -disc 6 -Emax 20 -job amdweight_CE -weight graphics/weights.dat | tee -a graphics/reweight-variable-cumulant-expansion-1D.log
 mv -v pmf-c1-phi.dat.xvg graphics-out/pmf-phi-reweight-CE1.xvg
 mv -v pmf-c2-phi.dat.xvg graphics-out/pmf-phi-reweight-CE2.xvg
 mv -v pmf-c3-phi.dat.xvg graphics-out/pmf-phi-reweight-CE3.xvg
 mv -v phi.dat graphics/
 
 
-python3 ../../PyReweighting/PyReweighting-2D.py -T $TEMPERATURE  -cutoff 10 -input phi-psi.dat -Xdim -180 180 -discX 6 -Ydim -180 180 -discY 6 -Emax 20 -job amdweight_CE -weight graphics/weights.dat | tee -a graphics/reweight-variable-cumulant-expansion-2D.log
+PyReweighting-2D.py -T $TEMPERATURE  -cutoff 10 -input phi-psi.dat -Xdim -180 180 -discX 6 -Ydim -180 180 -discY 6 -Emax 20 -job amdweight_CE -weight graphics/weights.dat | tee -a graphics/reweight-variable-cumulant-expansion-2D.log
 mv -v pmf-c1-phi-psi.dat.xvg graphics-out/pmf-2D-phi-psi-reweight-CE1.xvg
 mv -v pmf-c2-phi-psi.dat.xvg graphics-out/pmf-2D-phi-psi-reweight-CE2.xvg
 mv -v pmf-c3-phi-psi.dat.xvg graphics-out/pmf-2D-phi-psi-reweight-CE3.xvg

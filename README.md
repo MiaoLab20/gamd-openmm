@@ -13,7 +13,7 @@ Gaussian Accelerated Molecular Dynamics (GaMD) is a biomolecular enhanced sampli
 4.  Finally, you'll need the PyReweighting scripts, which can be cloned from 
 the [PyReweighting Git Repository](https://github.com/MiaoLab20/PyReweighting).  (NOTE:  If you are 
 doing development on the GaMD module itself and want to use the test scripts, the PyReweighting project
-should be cloned in the same directory as the OpenMM-GaMD directory is cloned, so that they are adjacent.)
+ directory should be added to your path, so that the scripts can find it.)
 
 
 ## Status
