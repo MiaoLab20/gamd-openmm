@@ -157,7 +157,7 @@ def handle_arguments():
 
 
 def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
-                   output_directory, platform, device):
+                   output_directory, platform_name, device):
     coordinates_file = './data/md-4ns.rst7'
     prmtop_file = './data/dip.top'
     starttime = time.time()
@@ -197,13 +197,15 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
                                    output_directory + "/pdb/", output_directory + "/checkpoints"])
 
 
-    platform = Platform.getPlatformByName(platform)
+
     properties = {}
-    if platform == "CUDA":
+    if platform_name == "CUDA":
+        platform = Platform.getPlatformByName(platform_name)
         properties['CudaPrecision'] = 'mixed'
         properties['DeviceIndex'] = device
         simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
-    elif platform == "OpenCL":
+    elif platform_name == "OpenCL":
+        platform = Platform.getPlatformByName(platform_name)
         properties['DeviceIndex'] = device
         simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
     else:
