@@ -25,8 +25,18 @@ from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalB
 from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as DihedralBoostLowerBoundIntegrator
 from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator as DihedralBoostUpperBoundIntegrator
 
+
+def is_argument_integer(n):
+    try:
+        float(n)
+    except ValueError:
+        return False
+    else:
+        return float(n).is_integer()
+
+
 def main():
-    [boost_type, output_directory] = handle_arguments()
+    [boost_type, output_directory, device, platform] = handle_arguments()
     temperature = 298.15
     dt = 2.0 * femtoseconds
     ntcmdprep = 200000
@@ -36,11 +46,9 @@ def main():
     nstlim = 30000000
     ntave = 50000
 
-    run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory)
+    run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory,
+                   platform, device)
     run_post_simulation(temperature, output_directory)
-
-
-
 
 #
 #   NOTE:  Don't do this.  It moves the forces into separate groups, so that they don't get handled properly.
@@ -108,9 +116,11 @@ def create_output_directories(directories):
 
 
 def usage():
-    print("run-test.py boost-type [output-directory]\n")
+    print("run-test.py boost-type [output-directory] [platform | device] [device]\n")
     print("\tboost-type:\t\tgamd-cmd-base|lower-total|upper-total|lower-dihedral|upper-dihedral\n")
     print("\toutput-directory:\tDirectory to output files. [default: output]\n")
+    print("\tplatform:\t\tCUDA|OpenCL|CPU [defaults to OpenMM best guess for fastest]\n")
+    print("\tdevice:\t\t\tUsed to specify the device index, when multiple GPUs exist on \n\t\t\t\tthe system. [defaults to CUDA, if platform not specified.]\n")
 
 
 def handle_arguments():
@@ -118,17 +128,36 @@ def handle_arguments():
     if len(sys.argv) == 2:
         output_directory = "output"
         boost_type = sys.argv[1]
+        device = ""
+        platform = ""
     elif len(sys.argv) == 3:
         boost_type = sys.argv[1]
         output_directory = sys.argv[2]
+        device = ""
+        platform = ""
+    elif len(sys.argv) == 4:
+        boost_type = sys.argv[1]
+        output_directory = sys.argv[2]
+        device = sys.argv[3]
+        if is_argument_integer(device):
+            platform = "CUDA"
+        else:
+            platform = device
+            device = 0
+    elif len(sys.argv) == 5:
+        boost_type = sys.argv[1]
+        output_directory = sys.argv[2]
+        platform = sys.argv[3]
+        device = sys.argv[4]
     else:
         usage()
         sys.exit(1)
 
-    return [boost_type, output_directory]
+    return [boost_type, output_directory, device, platform]
 
 
-def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory):
+def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
+                   output_directory, platform, device):
     coordinates_file = './data/md-4ns.rst7'
     prmtop_file = './data/dip.top'
     starttime = time.time()
@@ -168,7 +197,20 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
                                    output_directory + "/pdb/", output_directory + "/checkpoints"])
 
 
-    simulation = Simulation(prmtop.topology, system, integrator)
+    platform = Platform.getPlatformByName(platform)
+    properties = {}
+    if platform == "CUDA":
+        properties['CudaPrecision'] = 'mixed'
+        properties['DeviceIndex'] = device
+        simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
+    elif platform == "OpenCL":
+        properties['DeviceIndex'] = device
+        simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
+    else:
+        simulation = Simulation(prmtop.topology, system, integrator)
+
+
+
     if restarting:
         simulation.loadCheckpoint(restart_checkpoint_filename)
         write_mode = "a"
