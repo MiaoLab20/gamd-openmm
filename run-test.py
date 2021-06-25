@@ -43,7 +43,7 @@ def main():
     ntcmd = 1000000
     ntebprep = 200000
     nteb = 1000000
-    nstlim = 30000000
+    nstlim = 15000000
     ntave = 50000
 
     run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory,
@@ -306,6 +306,7 @@ def run_post_simulation(unitless_temperature, output_directory):
     shutil.copy("tests/graphics/phi-dat-commands.cpptraj", output_directory + "/")
     shutil.copy("tests/graphics/psi-dat-commands.cpptraj", output_directory + "/")
     shutil.copy("tests/graphics/phi-psi-commands.cpptraj", output_directory + "/")
+    shutil.copytree("data", output_directory + "/")
     create_graphics(output_directory, "create-graphics.sh", str(unitless_temperature), "graphics.log")
 
 
