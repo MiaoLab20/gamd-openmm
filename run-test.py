@@ -304,7 +304,8 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
 
 
 def create_graphics(execution_directory, command, temperature, output_filename):
-    result = subprocess.run([command, temperature], cwd=execution_directory, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    result = subprocess.run(["/bin/bash create-graphics.sh 298.15"], capture_output=True, cwd=execution_directory, shell=True)
 
     with open(output_filename, "w") as output:
         output.write(result.stdout.decode('utf-8'))
@@ -316,7 +317,7 @@ def run_post_simulation(unitless_temperature, output_directory):
     shutil.copy("tests/graphics/psi-dat-commands.cpptraj", output_directory + "/")
     shutil.copy("tests/graphics/phi-psi-commands.cpptraj", output_directory + "/")
     shutil.copytree("data", output_directory + "/data")
-    create_graphics(output_directory, "create-graphics.sh", str(unitless_temperature), "graphics.log")
+    create_graphics(output_directory + "/", "create-graphics.sh", str(unitless_temperature),output_directory + "/"+ "graphics.log")
 
 
 if __name__ == "__main__":
