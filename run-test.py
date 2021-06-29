@@ -48,15 +48,14 @@ def main():
     ntave = 50000
 
     date_time = datetime.datetime.now()
-    print("Start Time:  ", date_time.strftime("%b-%d-%Y    %H:%M"))
+    print("Start Time: \t", date_time.strftime("%b-%d-%Y    %H:%M"))
 
     run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory,
                    platform, device)
 
     date_time = datetime.datetime.now()
-    print("End Time:  ", date_time.strftime("%b-%d-%Y    %H:%M"))
+    print("End Time: \t", date_time.strftime("%b-%d-%Y    %H:%M"))
 
-    print("Starting Post Simulations steps:")
     run_post_simulation(temperature, output_directory)
 
 #
@@ -244,7 +243,7 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
                                             step=True,
                                             brokenOutForceEnergies=True, temperature=True, potentialEnergy=True,
                                             totalEnergy=True, volume=True))
-        print("startup time:", time.time() - starttime)
+        print("startup time: \t", time.time() - starttime)
         write_mode = "w"
         start_step = 1
 
@@ -252,7 +251,7 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
 
     if not restarting:
         gamd_logger.write_header()
-    print("Running " + str(integrator.get_total_simulation_steps()) + " steps")
+    print("Running: \t " + str(integrator.get_total_simulation_steps()) + " steps")
     for step in range(start_step, (integrator.get_total_simulation_steps() // number_of_steps_in_group) + 1):
         if step % restart_checkpoint_frequency // number_of_steps_in_group == 0:
             simulation.saveCheckpoint(restart_checkpoint_filename)
@@ -312,6 +311,8 @@ def create_graphics(execution_directory, command, temperature, output_filename):
 
 
 def run_post_simulation(unitless_temperature, output_directory):
+    with open(output_directory + "/"+ "temperature.dat", "w") as temperature_file:
+        temperature_file.write(str(unitless_temperature))
     shutil.copy("tests/graphics/create-graphics.sh", output_directory + "/")
     shutil.copy("tests/graphics/phi-dat-commands.cpptraj", output_directory + "/")
     shutil.copy("tests/graphics/psi-dat-commands.cpptraj", output_directory + "/")
