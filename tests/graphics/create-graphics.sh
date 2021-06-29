@@ -1,6 +1,5 @@
 #!/bin/bash
 
-echo "I AM RUNNING!!"
 
 TEMPERATURE=$1
 
