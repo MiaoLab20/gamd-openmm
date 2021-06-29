@@ -19,6 +19,7 @@ from gamd import utils as utils
 import pprint
 import shutil
 import subprocess
+import datetime
 
 from gamd.langevin.total_boost_integrators import LowerBoundIntegrator as TotalBoostLowerBoundIntegrator
 from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalBoostUpperBoundIntegrator
@@ -46,8 +47,16 @@ def main():
     nstlim = 15000000
     ntave = 50000
 
+    date_time = datetime.datetime.now()
+    print("Start Time:  ", date_time.strftime("%b-%d-%Y    %H:%M"))
+
     run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory,
                    platform, device)
+
+    date_time = datetime.datetime.now()
+    print("End Time:  ", date_time.strftime("%b-%d-%Y    %H:%M"))
+
+    print("Starting Post Simulations steps:")
     run_post_simulation(temperature, output_directory)
 
 #
@@ -306,7 +315,7 @@ def run_post_simulation(unitless_temperature, output_directory):
     shutil.copy("tests/graphics/phi-dat-commands.cpptraj", output_directory + "/")
     shutil.copy("tests/graphics/psi-dat-commands.cpptraj", output_directory + "/")
     shutil.copy("tests/graphics/phi-psi-commands.cpptraj", output_directory + "/")
-    shutil.copytree("data", output_directory + "/")
+    shutil.copytree("data", output_directory + "/data")
     create_graphics(output_directory, "create-graphics.sh", str(unitless_temperature), "graphics.log")
 
 
