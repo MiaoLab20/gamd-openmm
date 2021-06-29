@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "I AM RUNNING!!"
+
 TEMPERATURE=$1
 
 if [ $# -eq 0 ]
