@@ -170,9 +170,9 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
     prmtop_file = './data/dip.top'
     starttime = time.time()
     restarting = False
-    restart_checkpoint_frequency = 1000
+    restart_checkpoint_frequency = 100
     restart_checkpoint_filename = "gamd.backup"
-    number_of_steps_in_group = 1000
+    number_of_steps_in_group = 100
     temperature = unitless_temperature * kelvin
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
@@ -235,7 +235,7 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         #
         # Should we be setting this to the temperature?
         #
-        simulation.context.setVelocitiesToTemperature(298.15 * kelvin)
+        simulation.context.setVelocitiesToTemperature(unitless_temperature * kelvin)
         simulation.saveState(output_directory + "/states/initial-state.xml")
         simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', number_of_steps_in_group))
         simulation.reporters.append(
