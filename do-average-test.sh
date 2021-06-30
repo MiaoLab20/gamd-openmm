@@ -11,12 +11,17 @@ if [ "$#" -ne 3 ]; then
     exit 2
 fi
 
-GAMD_Directory=$1
+
+GAMD_Directory=`realpath $1`
 RUN_TYPE=$2
 OUTPUT_BASE=$3
 
-./run-test.py $RUN_TYPE $OUTPUT_BASE-1
-./run-test.py $RUN_TYPE $OUTPUT_BASE-2
-./run-test.py $RUN_TYPE $OUTPUT_BASE-3
+mkdir $OUTPUT_BASE
 
-./tools/create-test-comparison-graphics.py $GAMD_Directory $OUTPUT_BASE-1 $OUTPUT_BASE-2 $OUTPUT_BASE-3
+./run-test.py $RUN_TYPE $OUTPUT_BASE/1/
+./run-test.py $RUN_TYPE $OUTPUT_BASE/2/
+./run-test.py $RUN_TYPE $OUTPUT_BASE/3/
+
+COMPARISON_APP=`realpath ./tools/create-test-comparison-graphics.py`
+
+cd  $OUTPUT_BASE/; $COMPARISON_APP $GAMD_Directory 1/ 2/ 3/
