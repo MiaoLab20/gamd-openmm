@@ -43,20 +43,22 @@ def main():
     ntcmdprep = 200000
     ntcmd = 1000000
     ntebprep = 200000
-    nteb = 1000000
-    nstlim = 15000000
-    ntave = 50000
+    nteb = 2000000
+    nstlim = 18000000
+    ntave = 25000
+    number_of_steps_in_group = 100
 
     date_time = datetime.datetime.now()
     print("Start Time: \t", date_time.strftime("%b-%d-%Y    %H:%M"))
 
     run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory,
-                   platform, device)
+                   platform, device, number_of_steps_in_group)
 
     date_time = datetime.datetime.now()
     print("End Time: \t", date_time.strftime("%b-%d-%Y    %H:%M"))
 
-    run_post_simulation(temperature, output_directory)
+    run_post_simulation(temperature, output_directory, (ntcmd + nteb) / number_of_steps_in_group)
+
 
 #
 #   NOTE:  Don't do this.  It moves the forces into separate groups, so that they don't get handled properly.
@@ -165,14 +167,13 @@ def handle_arguments():
 
 
 def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
-                   output_directory, platform_name, device):
+                   output_directory, platform_name, device, number_of_steps_in_group=100):
     coordinates_file = './data/md-4ns.rst7'
     prmtop_file = './data/dip.top'
     starttime = time.time()
     restarting = False
-    restart_checkpoint_frequency = 100
+    restart_checkpoint_frequency = number_of_steps_in_group
     restart_checkpoint_filename = "gamd.backup"
-    number_of_steps_in_group = 100
     temperature = unitless_temperature * kelvin
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
@@ -204,8 +205,6 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         create_output_directories([output_directory, output_directory + "/states/", output_directory + "/positions/",
                                    output_directory + "/pdb/", output_directory + "/checkpoints"])
 
-
-
     properties = {}
     if platform_name == "CUDA":
         platform = Platform.getPlatformByName(platform_name)
@@ -218,8 +217,6 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
     else:
         simulation = Simulation(prmtop.topology, system, integrator)
-
-
 
     if restarting:
         simulation.loadCheckpoint(restart_checkpoint_filename)
@@ -248,9 +245,16 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         start_step = 1
 
     gamd_logger = GamdLogger(output_directory + "/gamd.log", write_mode, integrator, simulation)
+    gamd_reweighting_logger = GamdLogger(output_directory + "/gamd-reweighting.log", write_mode, integrator, simulation)
+    stage_5_start = ntcmd + nteb
+
+    with open(output_directory + "/" + "production-start-step.txt", "w") as prodstartstep_file:
+        prodstartstep_file.write(str(stage_5_start))
 
     if not restarting:
         gamd_logger.write_header()
+        gamd_reweighting_logger.write_header()
+
     print("Running: \t " + str(integrator.get_total_simulation_steps()) + " steps")
     for step in range(start_step, (integrator.get_total_simulation_steps() // number_of_steps_in_group) + 1):
         if step % restart_checkpoint_frequency // number_of_steps_in_group == 0:
@@ -263,6 +267,9 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         # END TEST
 
         gamd_logger.mark_energies(group)
+        if (step * number_of_steps_in_group) >= stage_5_start:
+            gamd_reweighting_logger.mark_energies(group)
+
         try:
             # print(integrator.get_current_state())
 
@@ -275,6 +282,8 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
 
             simulation.step(number_of_steps_in_group)
             gamd_logger.write_to_gamd_log(step * number_of_steps_in_group)
+            if (step * number_of_steps_in_group) >= stage_5_start:
+                gamd_reweighting_logger.write_to_gamd_log(step * number_of_steps_in_group)
 
             # print(integrator.get_current_state())
         except Exception as e:
@@ -282,6 +291,9 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
             print(e)
             # print(integrator.get_current_state())
             gamd_logger.write_to_gamd_log(step)
+            if (step * number_of_steps_in_group) >= stage_5_start:
+                gamd_reweighting_logger.write_to_gamd_log(step * number_of_steps_in_group)
+
             sys.exit(2)
 
         # simulation.loadCheckpoint('/tmp/testcheckpoint')
@@ -304,21 +316,48 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
 
 def create_graphics(execution_directory, command, temperature, output_filename):
 
-    result = subprocess.run(["/bin/bash create-graphics.sh 298.15"], capture_output=True, cwd=execution_directory, shell=True)
+    result = subprocess.run(["/bin/bash " + command + " " + " " + str(temperature)], capture_output=True, cwd=execution_directory, shell=True)
 
     with open(output_filename, "w") as output:
         output.write(result.stdout.decode('utf-8'))
 
 
-def run_post_simulation(unitless_temperature, output_directory):
+def run_post_simulation(unitless_temperature, output_directory, stage_5_starting_frame):
     with open(output_directory + "/"+ "temperature.dat", "w") as temperature_file:
         temperature_file.write(str(unitless_temperature))
     shutil.copy("tests/graphics/create-graphics.sh", output_directory + "/")
-    shutil.copy("tests/graphics/phi-dat-commands.cpptraj", output_directory + "/")
-    shutil.copy("tests/graphics/psi-dat-commands.cpptraj", output_directory + "/")
-    shutil.copy("tests/graphics/phi-psi-commands.cpptraj", output_directory + "/")
+    write_out_cpptraj_command_files(output_directory, stage_5_starting_frame)
     shutil.copytree("data", output_directory + "/data")
-    create_graphics(output_directory + "/", "create-graphics.sh", str(unitless_temperature),output_directory + "/"+ "graphics.log")
+    create_graphics(output_directory + "/", "create-graphics.sh", str(unitless_temperature), 
+                    output_directory + "/" + "graphics.log")
+
+
+def write_out_cpptraj_command_files(output_directory, stage_5_starting_frame):
+    write_out_phi_cpptraj_command(output_directory, stage_5_starting_frame)
+    write_out_psi_cpptraj_command(output_directory, stage_5_starting_frame)
+    write_out_phi_psi_cpptraj_command(output_directory, stage_5_starting_frame)
+
+
+def write_out_phi_cpptraj_command(output_directory, stage_5_starting_frame):
+    with open(output_directory + "/" + "phi-dat-commands.cpptraj", "w") as dat_command_file:
+        dat_command_file.write("trajin output.dcd " + str(int(stage_5_starting_frame)) + "\n")
+        dat_command_file.write("dihedral phi :1@C :2@N :2@CA :2@C out graphics/phi-cpptraj.dat" + "\n")
+        dat_command_file.write("go" + "\n")
+
+
+def write_out_psi_cpptraj_command(output_directory, stage_5_starting_frame):
+    with open(output_directory + "/" + "psi-dat-commands.cpptraj", "w") as dat_command_file:
+        dat_command_file.write("trajin output.dcd " + str(int(stage_5_starting_frame)) + "\n")
+        dat_command_file.write("dihedral psi :2@N :2@CA :2@C :3@N out graphics/psi-cpptraj.dat" + "\n")
+        dat_command_file.write("go" + "\n")
+
+
+def write_out_phi_psi_cpptraj_command(output_directory, stage_5_starting_frame):
+    with open(output_directory + "/" + "phi-psi-commands.cpptraj", "w") as dat_command_file:
+        dat_command_file.write("trajin output.dcd " + str(int(stage_5_starting_frame)) + "\n")
+        dat_command_file.write("dihedral phi :1@C :2@N :2@CA :2@C out graphics/phi-psi-cpptraj.dat" + "\n")
+        dat_command_file.write("dihedral psi :2@N :2@CA :2@C :3@N out graphics/phi-psi-cpptraj.dat" + "\n")
+        dat_command_file.write("go" + "\n")
 
 
 if __name__ == "__main__":
