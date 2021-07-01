@@ -12,7 +12,7 @@ fi
 mkdir -p graphics/ graphics-out
 
 tail -n +4 gamd-reweighting.log > graphics/headerless-gamd.log
-awk 'NR%1==0' graphics/headerless-gamd.log |awk -v TEMP=$TEMPERATURE '{print ($8+$7)/(0.001987*TEMP)" " $2 " " ($8+$7)}' > graphics/weights.dat
+awk 'NR%1==0' graphics/headerless-gamd.log |awk -v TEMP=$TEMPERATURE -v IDEAL_GAS_CONSTANT=0.001987 '{print ($8+$7)/(IDEAL_GAS_CONSTANT*TEMP)" " $2 " " ($8+$7)}' > graphics/weights.dat
 
 cpptraj -p data/dip.prmtop -i psi-dat-commands.cpptraj
 awk '{print $2}' graphics/psi-cpptraj.dat |tail -n +2 >psi.dat
