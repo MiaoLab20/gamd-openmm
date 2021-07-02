@@ -41,7 +41,6 @@ class ExpandedStateDataReporter(StateDataReporter):
                          speed, elapsedTime, separator, systemMass, totalSteps)
 
 
-        
     def _constructReportValues(self, simulation, state):
         values = super()._constructReportValues(simulation,state)
         if self._brokenOutForceEnergies:
@@ -51,6 +50,7 @@ class ExpandedStateDataReporter(StateDataReporter):
                     groups={i}).getPotentialEnergy().value_in_unit(
                         unit.kilojoules_per_mole))
         return values
+
 
     def _constructHeaders(self):
         headers = super()._constructHeaders()
