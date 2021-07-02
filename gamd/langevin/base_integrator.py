@@ -256,12 +256,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             self.addGlobalVariable(self._append_group_name("ForceScalingFactor"), 1.0)
             self.addGlobalVariable(self._append_group_name("BoostPotential"), 0.0)
 
-
-
-
-        # This is to make sure that we get the value for the beginningPotentialEnergy at the end of each simulation step.
-        # self.addGlobalVariable("beginningPotentialEnergy", 0)
-
         self.addComputePerDof("coordinates", "x")
 
     #
@@ -346,8 +340,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         self.addComputeGlobal(self._append_group_name("BoostPotential"), "0.5 * {0} * ({1} - {2})^2 / ({3} - {4})".
                               format(self._append_group_name("k0"), self._append_group_name("threshold_energy"),
-                                     self._append_group_name("StartingPotentialEnergy"), self._append_group_name("Vmax"),
-                                     self._append_group_name("Vmin")))
+                                     self._append_group_name("StartingPotentialEnergy"),
+                                     self._append_group_name("Vmax"), self._append_group_name("Vmin")))
 
 
         #
@@ -402,24 +396,29 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addComputePerDof("newx", "x")
         #
         if self.get_boost_type() == BoostType.TOTAL:
-            self.addComputePerDof("v", "vscale*v + fscale*{0}*{1}/m + noisescale*gaussian/sqrt(m)"
-                                  .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
-        elif self.get_boost_type() == BoostType.DIHEDRAL:
-            # We take care of all of the forces that aren't the dihedral.
-            self.addComputePerDof("v", "vscale*v + fscale*f0/m + noisescale*gaussian/sqrt(m)")
-            # We boost the dihedral force.
+            # We take care of stochastic kick and drag here.
+            self.addComputePerDof("v", "vscale*v + noisescale*gaussian/sqrt(m)")
 
+            # We take care of all of the forces and the scaling here.
+            self.addComputePerDof("v", "v + fscale*{0}*{1}/m"
+                                  .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
+
+        elif self.get_boost_type() == BoostType.DIHEDRAL:
+            # We take care of stochastic kick and drag here.
+            self.addComputePerDof("v", "vscale*v + noisescale*gaussian/sqrt(m)")
+
+            # We take care of all of the forces that aren't the dihedral.
+            self.addComputePerDof("v", "v + fscale*f0/m")
+
+            # We boost the dihedral force.
             self.addComputePerDof("v", "v + fscale*{0}*{1}/m"
                                   .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
         else:
-            print("Failure in detecting boost type to determine proper boost methodolgy.")
+            print("Failure in detecting boost type to determine proper boost methodology.")
 
         self.addComputePerDof("x", "x+dt*v")
         self.addConstrainPositions()
         self.addComputePerDof("v", "(x-newx)/dt")
-
-    def get_beginning_potential_energy(self):
-        return self.getGlobalVariableByName("beginningPotentialEnergy")
 
     def get_force_scaling_factors(self):
         force_scaling_factors = {
