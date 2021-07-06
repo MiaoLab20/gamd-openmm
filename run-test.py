@@ -48,16 +48,22 @@ def main():
     ntave = 25000
     number_of_steps_in_group = 100
 
+    # This variable indicates the number of frames at the beginning of stage 5 (production) to ignore.
+    #
+    # starting_offset = 300
+    starting_offset = 0
+
     date_time = datetime.datetime.now()
     print("Start Time: \t", date_time.strftime("%b-%d-%Y    %H:%M"))
 
     run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory,
-                   platform, device, number_of_steps_in_group)
+                   platform, device, number_of_steps_in_group, starting_offset)
 
     date_time = datetime.datetime.now()
     print("End Time: \t", date_time.strftime("%b-%d-%Y    %H:%M"))
 
-    run_post_simulation(temperature, output_directory, (ntcmd + nteb) / number_of_steps_in_group)
+    production_starting_frame = ((ntcmd + nteb) / number_of_steps_in_group) + starting_offset
+    run_post_simulation(temperature, output_directory, production_starting_frame)
 
 
 #
@@ -96,14 +102,20 @@ def create_gamd_cmd_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebpr
                                                                           sigma0=0.0 * kilocalories_per_mole)]
 
 
-def create_lower_total_boost_integrator(system, temperature, dt,ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
-    return [set_dihedral_group(system), TotalBoostLowerBoundIntegrator(dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
+def create_lower_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
+    # The group is set, so that we can output the dihedral energy.  It doesn't impact calculations for total boost,
+    # since we are utilizing the OpenMM provided variables with them not split out for total boost calculations.
+    group = set_dihedral_group(system)
+    return [group, TotalBoostLowerBoundIntegrator(dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
                                                                        ntebprep=ntebprep, nteb=nteb, nstlim=nstlim,
                                                                        ntave=ntave, temperature=temperature)]
 
 
 def create_upper_total_boost_integrator(system, temperature, dt,ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
-    return [set_dihedral_group(system), TotalBoostUpperBoundIntegrator(dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
+    # The group is set, so that we can output the dihedral energy.  It doesn't impact calculations for total boost,
+    # since we are utilizing the OpenMM provided variables with them not split out for total boost calculations.
+    group = set_dihedral_group(system)
+    return [group, TotalBoostUpperBoundIntegrator(dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
                                                                        ntebprep=ntebprep, nteb=nteb, nstlim=nstlim,
                                                                        ntave=ntave, temperature=temperature)]
 
@@ -167,7 +179,7 @@ def handle_arguments():
 
 
 def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
-                   output_directory, platform_name, device, number_of_steps_in_group=100):
+                   output_directory, platform_name, device, number_of_steps_in_group=100, reweighting_offset=0):
     coordinates_file = './data/md-4ns.rst7'
     prmtop_file = './data/dip.top'
     starttime = time.time()
@@ -246,10 +258,12 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
 
     gamd_logger = GamdLogger(output_directory + "/gamd.log", write_mode, integrator, simulation)
     gamd_reweighting_logger = GamdLogger(output_directory + "/gamd-reweighting.log", write_mode, integrator, simulation)
-    stage_5_start = ntcmd + nteb
+    start_production_logging_step = ntcmd + nteb + (number_of_steps_in_group * reweighting_offset)
+    start_production_logging_frame = int(start_production_logging_step / number_of_steps_in_group)
+
 
     with open(output_directory + "/" + "production-start-step.txt", "w") as prodstartstep_file:
-        prodstartstep_file.write(str(stage_5_start))
+        prodstartstep_file.write(str(start_production_logging_step))
 
     if not restarting:
         gamd_logger.write_header()
@@ -267,7 +281,7 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         # END TEST
 
         gamd_logger.mark_energies(group)
-        if (step * number_of_steps_in_group) >= stage_5_start:
+        if step >= start_production_logging_frame:
             gamd_reweighting_logger.mark_energies(group)
 
         try:
@@ -282,7 +296,7 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
 
             simulation.step(number_of_steps_in_group)
             gamd_logger.write_to_gamd_log(step * number_of_steps_in_group)
-            if (step * number_of_steps_in_group) >= stage_5_start:
+            if step >= start_production_logging_frame:
                 gamd_reweighting_logger.write_to_gamd_log(step * number_of_steps_in_group)
 
             # print(integrator.get_current_state())
@@ -291,7 +305,7 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
             print(e)
             # print(integrator.get_current_state())
             gamd_logger.write_to_gamd_log(step)
-            if (step * number_of_steps_in_group) >= stage_5_start:
+            if step >= start_production_logging_frame:
                 gamd_reweighting_logger.write_to_gamd_log(step * number_of_steps_in_group)
 
             sys.exit(2)
@@ -305,7 +319,7 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
             # if step % 1 == 0:
 
             simulation.saveState(output_directory + "/states/" + str(step * number_of_steps_in_group) + ".xml")
-            simulation.saveCheckpoint(output_directory + "/checkpoints/" + \
+            simulation.saveCheckpoint(output_directory + "/checkpoints/" +
                                       str(step * number_of_steps_in_group) + ".bin")
             positions_filename = output_directory + '/positions/coordinates-' + \
                                  str(step * number_of_steps_in_group) + '.csv'
@@ -322,39 +336,39 @@ def create_graphics(execution_directory, command, temperature, output_filename):
         output.write(result.stdout.decode('utf-8'))
 
 
-def run_post_simulation(unitless_temperature, output_directory, stage_5_starting_frame):
+def run_post_simulation(unitless_temperature, output_directory, starting_frame):
     with open(output_directory + "/"+ "temperature.dat", "w") as temperature_file:
         temperature_file.write(str(unitless_temperature))
     shutil.copy("tests/graphics/create-graphics.sh", output_directory + "/")
-    write_out_cpptraj_command_files(output_directory, stage_5_starting_frame)
+    write_out_cpptraj_command_files(output_directory, starting_frame)
     shutil.copytree("data", output_directory + "/data")
     create_graphics(output_directory + "/", "create-graphics.sh", str(unitless_temperature), 
                     output_directory + "/" + "graphics.log")
 
 
-def write_out_cpptraj_command_files(output_directory, stage_5_starting_frame):
-    write_out_phi_cpptraj_command(output_directory, stage_5_starting_frame)
-    write_out_psi_cpptraj_command(output_directory, stage_5_starting_frame)
-    write_out_phi_psi_cpptraj_command(output_directory, stage_5_starting_frame)
+def write_out_cpptraj_command_files(output_directory, starting_frame):
+    write_out_phi_cpptraj_command(output_directory, starting_frame)
+    write_out_psi_cpptraj_command(output_directory, starting_frame)
+    write_out_phi_psi_cpptraj_command(output_directory, starting_frame)
 
 
-def write_out_phi_cpptraj_command(output_directory, stage_5_starting_frame):
+def write_out_phi_cpptraj_command(output_directory, starting_frame):
     with open(output_directory + "/" + "phi-dat-commands.cpptraj", "w") as dat_command_file:
-        dat_command_file.write("trajin output.dcd " + str(int(stage_5_starting_frame)) + "\n")
+        dat_command_file.write("trajin output.dcd " + str(int(starting_frame)) + "\n")
         dat_command_file.write("dihedral phi :1@C :2@N :2@CA :2@C out graphics/phi-cpptraj.dat" + "\n")
         dat_command_file.write("go" + "\n")
 
 
-def write_out_psi_cpptraj_command(output_directory, stage_5_starting_frame):
+def write_out_psi_cpptraj_command(output_directory, starting_frame):
     with open(output_directory + "/" + "psi-dat-commands.cpptraj", "w") as dat_command_file:
-        dat_command_file.write("trajin output.dcd " + str(int(stage_5_starting_frame)) + "\n")
+        dat_command_file.write("trajin output.dcd " + str(int(starting_frame)) + "\n")
         dat_command_file.write("dihedral psi :2@N :2@CA :2@C :3@N out graphics/psi-cpptraj.dat" + "\n")
         dat_command_file.write("go" + "\n")
 
 
-def write_out_phi_psi_cpptraj_command(output_directory, stage_5_starting_frame):
+def write_out_phi_psi_cpptraj_command(output_directory, starting_frame):
     with open(output_directory + "/" + "phi-psi-commands.cpptraj", "w") as dat_command_file:
-        dat_command_file.write("trajin output.dcd " + str(int(stage_5_starting_frame)) + "\n")
+        dat_command_file.write("trajin output.dcd " + str(int(starting_frame)) + "\n")
         dat_command_file.write("dihedral phi :1@C :2@N :2@CA :2@C out graphics/phi-psi-cpptraj.dat" + "\n")
         dat_command_file.write("dihedral psi :2@N :2@CA :2@C :3@N out graphics/phi-psi-cpptraj.dat" + "\n")
         dat_command_file.write("go" + "\n")
