@@ -53,15 +53,20 @@ def main():
     # starting_offset = 300
     starting_offset = 0
 
-    date_time = datetime.datetime.now()
-    print("Start Time: \t", date_time.strftime("%b-%d-%Y    %H:%M"))
+    start_date_time = datetime.datetime.now()
+    print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
 
     run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory,
                    platform, device, number_of_steps_in_group, starting_offset)
 
-    date_time = datetime.datetime.now()
-    print("End Time: \t", date_time.strftime("%b-%d-%Y    %H:%M"))
+    end_date_time = datetime.datetime.now()
+    print("End Time: \t", end_date_time.strftime("%b-%d-%Y    %H:%M"))
 
+    time_difference = end_date_time - start_date_time
+    steps_per_second = nstlim / time_difference.seconds
+    print("Execution rate for this run:  ", str(steps_per_second), " steps per second.")
+    daily_execution_rate = steps_per_second * 3600 * 24 * dt
+    print("Daily execution rate:         ", str(daily_execution_rate.value_in_unit(nanoseconds)), " ns per day.")
     production_starting_frame = ((ntcmd + nteb) / number_of_steps_in_group) + starting_offset
     run_post_simulation(temperature, output_directory, production_starting_frame)
 
@@ -74,6 +79,13 @@ def main():
 #        force.setForceGroup(i)
 #        if force.__class__.__name__ == 'PeriodicTorsionForce':
 #            group = i
+
+
+def set_all_forces_to_group(system):
+    group = 1
+    for force in system.getForces():
+        force.setForceGroup(group)
+    return group
 
 
 def set_dihedral_group(system):
@@ -121,7 +133,7 @@ def create_upper_total_boost_integrator(system, temperature, dt,ntcmdprep, ntcmd
 
 
 def create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
-    group = set_dihedral_group(system)
+    group = set_all_forces_to_group(system)
     return [group, DihedralBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                      nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
 
