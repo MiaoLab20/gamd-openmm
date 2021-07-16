@@ -4,6 +4,7 @@ from simtk.openmm import *
 from simtk.unit import *
 import sys
 
+
 class DebugLogger:
 
     def __init__(self, filename, mode):
