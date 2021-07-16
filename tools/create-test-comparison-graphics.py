@@ -13,8 +13,8 @@ def main():
     gamd_1_directory = sys.argv[2]
     gamd_2_directory = sys.argv[3]
     gamd_3_directory = sys.argv[4]
-    phi_filepath = "/graphics-out/pmf-phi-reweight-CE3.xvg"
-    psi_filepath = "/graphics-out/pmf-psi-reweight-CE3.xvg"
+    phi_filepath = "/graphics-out/pmf-phi-reweight-CE2.xvg"
+    psi_filepath = "/graphics-out/pmf-psi-reweight-CE2.xvg"
 
     create_graphic(cmd_directory, gamd_1_directory, gamd_2_directory, gamd_3_directory, phi_filepath, "Phi")
     create_graphic(cmd_directory, gamd_1_directory, gamd_2_directory, gamd_3_directory, psi_filepath, "Psi")
