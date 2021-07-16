@@ -129,7 +129,7 @@ def create_upper_total_boost_integrator(system, temperature, dt,ntcmdprep, ntcmd
     group = set_dihedral_group(system)
     return [group, TotalBoostUpperBoundIntegrator(dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
                                                                        ntebprep=ntebprep, nteb=nteb, nstlim=nstlim,
-                                                                       ntave=ntave, temperature=temperature)]
+                                                                       ntave=ntave, sigma0=2.5 * unit.kilocalories_per_mole, temperature=temperature)]
 
 
 def create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
