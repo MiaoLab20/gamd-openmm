@@ -18,4 +18,4 @@ doing development on the GaMD module itself and want to use the test scripts, th
 
 ## Status
 
-**This code base is currently still in development, has bugs, and is not ready for production use.  You may get incorrect results, while we are still in the development process.  Use at your own risk!**
+     The dihedral and total boost algorithms are working and have been validated.
