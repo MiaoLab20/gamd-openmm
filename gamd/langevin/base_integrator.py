@@ -641,8 +641,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             self.beginIfBlock(
                 self._append_group_name("k0doubleprime_window", 
                                         BoostType.TOTAL.value) + " >= 0.0")
-            self.__calculate_simple_threshold_energy_and_effective_harmonic_constant(
-                BoostType.TOTAL.value)
+            self.__calculate_simple_threshold_energy_and_effective_harmonic_constant()
             self.endBlock()
             
         for group_id in self.get_group_dict():
@@ -650,8 +649,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             self.beginIfBlock(
                 self._append_group_name("k0doubleprime_window", group_name) \
                 + " >= 0.0")
-            self.__calculate_simple_threshold_energy_and_effective_harmonic_constant(
-                group_name)
+            self.__calculate_simple_threshold_energy_and_effective_harmonic_constant()
             self.endBlock()
         return
 
