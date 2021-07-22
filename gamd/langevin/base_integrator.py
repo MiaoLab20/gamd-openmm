@@ -60,10 +60,6 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         self.restart_filename = restart_filename
         self.kB = unit.BOLTZMANN_CONSTANT_kB * unit.AVOGADRO_CONSTANT_NA
         self.thermal_energy = self.kB * self.temperature  # kT
-        #self.current_velocity_component = numpy.exp( # TODO: remove?
-        #   -self.collision_rate * dt)  # a
-        #self.random_velocity_component = numpy.sqrt(
-        #    1 - numpy.exp(- 2 * self.collision_rate * dt))  # b
 
         #
         # Generally, I'm trying to put variables here that I know will be used
@@ -73,8 +69,6 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         #
         self.global_variables = {
             "thermal_energy": self.thermal_energy,
-            #"current_velocity_component": self.current_velocity_component,
-            #"random_velocity_component": self.random_velocity_component,
             "collision_rate": self.collision_rate,
             "vscale": 0.0, "fscale": 0.0,
             "noisescale": 0.0
@@ -101,43 +95,12 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
     def _add_conventional_md_pre_calc_step(self):  # O Step
         raise NotImplementedError(
             "must implement _add_conventional_md_pre_calc_step")
-    ''' # TODO: remove?
-    @abstractmethod
-    def _add_conventional_md_position_update_step(self):  # R Step
-        raise NotImplementedError(
-            "must implement _add_conventional_md_position_update_step")
 
-    @abstractmethod
-    def _add_conventional_md_velocity_update_step(self):  # V Step
-        raise NotImplementedError(
-            "must implement _add_conventional_md_velocity_update_step")
-    
-    @abstractmethod
-    def _add_conventional_md_stochastic_velocity_update_step(self):  # O Step
-        raise NotImplementedError(
-            "must implement "\
-            "_add_conventional_md_stochastic_velocity_update_step")
-    '''
     @abstractmethod
     def _add_conventional_md_update_step(self):
         raise NotImplementedError(
             "must implement _add_conventional_md_update_step")
-    '''
-    @abstractmethod
-    def _add_gamd_position_update_step(self):  # R Step
-        raise NotImplementedError(
-            "must implement _add_gamd_position_update_step")
 
-    @abstractmethod
-    def _add_gamd_velocity_update_step(self):  # V Step
-        raise NotImplementedError(
-            "must implement _add_gamd_velocity_update_step")
-    
-    @abstractmethod
-    def _add_gamd_stochastic_velocity_update_step(self):  # O Step
-        raise NotImplementedError(
-            "must implement _add_gamd_stochastic_velocity_update_step")
-    '''
     @abstractmethod
     def _add_gamd_update_step(self):
         raise NotImplementedError("must implement _add_gamd_update_step")
@@ -165,35 +128,11 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
 
     def _add_conventional_md_instructions(self):
         self._add_conventional_md_pre_calc_step()
-        '''
-        self._add_conventional_md_velocity_update_step()
-        self._add_conventional_md_position_update_step()
-        self._add_conventional_md_stochastic_velocity_update_step()
-        self._add_conventional_md_position_update_step()
-        self._add_conventional_md_velocity_update_step()
-        '''
         self._add_conventional_md_update_step()
 
     def _add_gamd_instructions(self):
         self._add_gamd_pre_calc_step()
         self._add_gamd_boost_calculations_step()
-        
-        '''
-        self._add_gamd_velocity_update_step()
-        self._add_gamd_position_update_step()
-        self._add_gamd_stochastic_velocity_update_step()
-        self._add_gamd_position_update_step()
-
-        #
-        # We should only need to calculating the scaling factor once per step, 
-        # since Vmax, Vmin, the threshold energy, and the effective harmonic 
-        # constant don't change after being set.  It's only a question if the 
-        # energy changes somehow during the step.
-        #
-        #self._add_gamd_boost_calculations_step()
-
-        self._add_gamd_velocity_update_step()
-        '''
         self._add_gamd_update_step()
     #
     # Debugging Methods
@@ -313,12 +252,10 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         self.addGlobalVariablesByName("ForceScalingFactor", 1.0)
         self.addGlobalVariablesByName("BoostPotential", 0.0)
-        
-        
-        # This is to make sure that we get the value for the 
+
+        # This is to make sure that we get the value for the
         # beginningPotentialEnergy at the end of each simulation step.
         # self.addGlobalVariable("beginningPotentialEnergy", 0)
-
 
         self.addComputePerDof("coordinates", "x")
         return
@@ -423,7 +360,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # energy is read only.
         #
 
-        
         self.addComputeGlobalByName(
             "BoostPotential", "0.5 * {0} * ({1} - {2})^2 / ({3} - {4})", 
             ["k0", "threshold_energy", "StartingPotentialEnergy", "Vmax", 
