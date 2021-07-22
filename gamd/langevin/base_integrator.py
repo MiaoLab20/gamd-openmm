@@ -310,7 +310,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         # NOTE:  THIS VALUE WILL NEED TO BE FIXED SOMEHOW FOR DUAL BOOST.
         #
-        
+
         self.addGlobalVariablesByName("ForceScalingFactor", 1.0)
         self.addGlobalVariablesByName("BoostPotential", 0.0)
         
@@ -318,6 +318,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # This is to make sure that we get the value for the 
         # beginningPotentialEnergy at the end of each simulation step.
         # self.addGlobalVariable("beginningPotentialEnergy", 0)
+
 
         self.addComputePerDof("coordinates", "x")
         return
@@ -421,6 +422,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # We do not apply the boost potential to the energy value since 
         # energy is read only.
         #
+
         
         self.addComputeGlobalByName(
             "BoostPotential", "0.5 * {0} * ({1} - {2})^2 / ({3} - {4})", 
@@ -494,10 +496,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                     "+ noisescale*gaussian/sqrt(m)".format(
                         self._append_group_name(
                             "ForceScalingFactor", BoostType.TOTAL.value)))
-                #self.addComputePerDof("v", "vscale*v + fscale*f*{1}/m "\
-                #    "+ noisescale*gaussian/sqrt(m)"
-                #    .format(self._append_group("f"), 
-                #    self._append_group_name("ForceScalingFactor")))
             else:
                 self.addComputePerDof(
                     "v", "vscale*v + fscale*f0*{0}/m "\
@@ -524,28 +522,10 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                             self._append_group_name("ForceScalingFactor", 
                                                     group_name)))
         
-        """
-        if self.get_boost_type() == BoostType.TOTAL:
-            self.addComputePerDof("v", "vscale*v + fscale*{0}*{1}/m + noisescale*gaussian/sqrt(m)"
-                                  .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
-        elif self.get_boost_type() == BoostType.DIHEDRAL:
-            # We take care of all of the forces that aren't the dihedral.
-            self.addComputePerDof("v", "vscale*v + fscale*f0/m + noisescale*gaussian/sqrt(m)")
-            # We boost the dihedral force.
-
-            self.addComputePerDof("v", "v + fscale*{0}*{1}/m"
-                                  .format(self._append_group("f"), self._append_group_name("ForceScalingFactor")))
-        else:
-            print("Failure in detecting boost type to determine proper boost methodolgy.")
-        """
-
         self.addComputePerDof("x", "x+dt*v")
         self.addConstrainPositions()
         self.addComputePerDof("v", "(x-newx)/dt")
         return
-
-    def get_beginning_potential_energy(self):
-        return self.getGlobalVariableByName("beginningPotentialEnergy")
 
     def get_force_scaling_factors(self):
         force_scaling_factors = {
@@ -567,17 +547,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             var_value = self.getGlobalVariableByName(var_name)
             force_scaling_factors[var_name] = var_value
                 
-        """# TODO: remove
-        force_scaling_factors = {
-            self._append_group_name_by_type("ForceScalingFactor", BoostType.TOTAL): self.getGlobalVariableByName(
-                self._append_group_name_by_type("ForceScalingFactor", BoostType.TOTAL))}
-        if self.get_boost_type() == BoostType.TOTAL or self.get_boost_type() == BoostType.DIHEDRAL:
-            force_scaling_factors[self._append_group_name_by_type("ForceScalingFactor", BoostType.DIHEDRAL)] = \
-                self.getGlobalVariableByName(self._append_group_name_by_type("ForceScalingFactor", BoostType.DIHEDRAL))
-        else:
-            force_scaling_factors[self._append_group_name("ForceScalingFactor")] = self.getGlobalVariableByName(
-                self._append_group_name("ForceScalingFactor"))
-        """
         return force_scaling_factors
 
     def get_boost_potentials(self):
@@ -600,20 +569,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             var_value = self.getGlobalVariableByName(var_name)
             boost_potentials[var_name] = var_value
                         
-        """# TODO: remove
-        boost_potentials = {
-            self._append_group_name_by_type("BoostPotential", BoostType.TOTAL): self.getGlobalVariableByName(
-                self._append_group_name_by_type("BoostPotential", BoostType.TOTAL))}
-
-        if self.get_boost_type() == BoostType.TOTAL or self.get_boost_type() == BoostType.DIHEDRAL:
-            boost_potentials[self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL)] = \
-                self.getGlobalVariableByName(self._append_group_name_by_type("BoostPotential", BoostType.DIHEDRAL))
-        else:
-            boost_potentials[self._append_group_name("BoostPotential")] = self.getGlobalVariableByName(
-                self._append_group_name("BoostPotential"))
-
-        return boost_potentials
-        """
         return boost_potentials
 
     def __calculate_simple_threshold_energy_and_effective_harmonic_constant(
