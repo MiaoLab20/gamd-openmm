@@ -15,7 +15,7 @@ __version__ = "1.0"
 
 from simtk.openmm import CustomIntegrator
 from simtk import unit as unit
-from abc import ABCMeta, ABC
+from abc import ABC
 from abc import abstractmethod
 
 # ================
@@ -33,8 +33,7 @@ class BoostType(Enum):
 # ============================================================================================
 
 
-class GamdStageIntegrator(CustomIntegrator):
-    __metaclass__ = ABCMeta
+class GamdStageIntegrator(CustomIntegrator, ABC):
 
     """
         GamdIntegrator implements the GaMD integration algorithm, all modes

@@ -13,7 +13,7 @@ __author__ = "Matthew Copeland"
 __version__ = "1.0"
 
 from simtk import unit as unit
-from abc import ABCMeta, ABC
+from abc import ABC
 from abc import abstractmethod
 from ..stage_integrator import GamdStageIntegrator
 from ..stage_integrator import BoostType
