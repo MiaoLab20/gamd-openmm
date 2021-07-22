@@ -176,7 +176,7 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         [group, integrator] = create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
                                                                   nteb, nstlim, ntave)
     elif boost_type == "upper-dual":
-        [group, integrator] = create_upper_duall_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+        [group, integrator] = create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
                                                                   nteb, nstlim, ntave)
         
     else:
