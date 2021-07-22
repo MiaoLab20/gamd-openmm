@@ -45,7 +45,7 @@ class TotalBoostIntegrator(GroupBoostIntegrator, ABC):
         group_dict = {}
         total_boost = True
         super(TotalBoostIntegrator, self).__init__(group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
-                                                   ntave, sigma0, collision_rate, temperature, restart_filename)
+                                                   ntave, sigma0, 0, collision_rate, temperature, restart_filename)
 
 
 class LowerBoundIntegrator(TotalBoostIntegrator):
