@@ -26,7 +26,7 @@ from abc import abstractmethod
 class BoostType(Enum):
     TOTAL = "Total"
     DIHEDRAL = "Dihedral"
-    DUAL_TOTAL_DIHEDRAL = "DualTotalDiHedralBoost"
+    DUAL_TOTAL_DIHEDRAL = "DualTotalDihedralBoost"
 
 # ============================================================================================
 # base class
@@ -306,8 +306,6 @@ class GamdStageIntegrator(CustomIntegrator):
         self.endBlock()
 
     def _add_stage_two_instructions(self):
-        #self.beginIfBlock("stepCount >= " + str(self.stage_2_start))
-        #self.beginIfBlock("stepCount <= " + str(self.stage_2_end))
         self.beginIfBlock("stageTwoIfValueIsZeroOrNegative <= 0")
 
         # -------------------------------
@@ -327,17 +325,6 @@ class GamdStageIntegrator(CustomIntegrator):
         #
         self._add_instructions_to_calculate_primary_boost_statistics()
 
-
-        
-        #
-        # Just to make sure that our windowCount is set to correct the value 
-        # for this point in our simulation.
-        #
-        #self.beginIfBlock("stepCount = " \ # TODO: remove?
-        # + str(self.stage_2_last_ntave_window_start))
-        #self.addComputeGlobal("windowCount", "0")
-        #self.endBlock()
-
         #
         # We only need to calculate the Vavg and sigmaV for the last ntave 
         # window in stage 2, since otherwise,
@@ -352,7 +339,6 @@ class GamdStageIntegrator(CustomIntegrator):
         # utilize this variable to keep a running count of the average and 
         # the variance for the window.
         #
-        #self.addComputeGlobal("windowCount", "windowCount + 1")
 
         self.addComputeGlobal(
             "windowCount", 
@@ -386,11 +372,8 @@ class GamdStageIntegrator(CustomIntegrator):
 
         # -------------------------------
         self.endBlock()
-        #self.endBlock()
 
     def _add_stage_three_instructions(self):
-        #self.beginIfBlock("stepCount >= " + str(self.stage_3_start))
-        #self.beginIfBlock("stepCount <= " + str(self.stage_3_end))
         self.beginIfBlock("stageThreeIfValueIsZeroOrNegative <= 0")
         
         # -------------------------------
@@ -405,7 +388,6 @@ class GamdStageIntegrator(CustomIntegrator):
         self._add_gamd_instructions()
         # -------------------------------
         self.endBlock()
-        #self.endBlock()
 
     def _add_stage_five_instructions(self):
         #self.beginIfBlock("stepCount >= " + str(self.stage_5_start))
@@ -420,17 +402,7 @@ class GamdStageIntegrator(CustomIntegrator):
         #self.endBlock()
 
     def _add_stage_four_instructions(self):
-        #
-        # Set our window count to zero, since this is what it should be at the 
-        # start of stage 4.
-        #
-        #self.beginIfBlock("stepCount = " + str(self.stage_4_start))
-        #self.addComputeGlobal("windowCount", "0")
-        #self.endBlock()
-        
 
-        #self.beginIfBlock("stepCount >= " + str(self.stage_4_start))
-        #self.beginIfBlock("stepCount <= " + str(self.stage_4_end))
         self.beginIfBlock("stageFourIfValueIsZeroOrNegative <= 0")
         # -------------------------------
         self.addComputeGlobal("stage", "4")
@@ -475,7 +447,7 @@ class GamdStageIntegrator(CustomIntegrator):
 
         # -------------------------------
         self.endBlock()
-        #self.endBlock()
+
 
     @abstractmethod
     def _add_common_variables(self):
@@ -552,16 +524,10 @@ class GamdStageIntegrator(CustomIntegrator):
     #
     #
     #
-    def _get_group_energy_name(self):
-        return self._append_group("energy")
-
-    def _get_group_name(self):
-        return str(self.__group_name.value)
 
     # This method will append a unique group name to the end of the variable.
     #
     def _append_group_name(self, name, group_name):
-        #return str(self._get_group_name() + "_" + name)
         return name + "_" + str(group_name)
 
     # This method will append a unique group name to the end of the variable 
@@ -625,6 +591,5 @@ class GamdStageIntegrator(CustomIntegrator):
     
     def get_group_dict(self):
         return self.__group_dict
-    #def get_boost_type(self):
-    #    return self.__group_name
+
 
