@@ -18,10 +18,14 @@ OUTPUT_BASE=$3
 
 mkdir $OUTPUT_BASE
 
-./run-test.py $RUN_TYPE $OUTPUT_BASE/1/
-./run-test.py $RUN_TYPE $OUTPUT_BASE/2/
-./run-test.py $RUN_TYPE $OUTPUT_BASE/3/
+./quick-test.py $RUN_TYPE $OUTPUT_BASE/1/
+echo ""
+./quick-test.py $RUN_TYPE $OUTPUT_BASE/2/
+echo ""
+./quick-test.py $RUN_TYPE $OUTPUT_BASE/3/
 
 COMPARISON_APP=`realpath ./tools/create-test-comparison-graphics.py`
 
-cd  $OUTPUT_BASE/; $COMPARISON_APP $GAMD_Directory 1/ 2/ 3/
+cd  $OUTPUT_BASE/; $COMPARISON_APP $GAMD_Directory 1/ 2/ 3/; mv 1D-Phi.png $RUN_TYPE-1D-Phi.png; mv 1D-Psi.png $RUN_TYPE-1D-Psi.png
+
+
