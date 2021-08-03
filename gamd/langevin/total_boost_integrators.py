@@ -73,8 +73,10 @@ class LowerBoundIntegrator(TotalBoostIntegrator):
         super(LowerBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
                                                    collision_rate, temperature, restart_filename)
 
-    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
-        super()._lower_bound_calculate_threshold_energy_and_effective_harmonic_constant()
+    def _calculate_threshold_energy_and_effective_harmonic_constant(
+            self, group_only=False, total_only=False):
+        super()._lower_bound_calculate_threshold_energy_and_effective_harmonic_constant(
+            group_only=group_only, total_only=total_only)
 
 
 class UpperBoundIntegrator(TotalBoostIntegrator):
@@ -102,5 +104,7 @@ class UpperBoundIntegrator(TotalBoostIntegrator):
         super(UpperBoundIntegrator, self).__init__(dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
                                                       collision_rate, temperature, restart_filename)
 
-    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
-        super()._upper_bound_calculate_threshold_energy_and_effective_harmonic_constant()
+    def _calculate_threshold_energy_and_effective_harmonic_constant(
+            self, group_only=False, total_only=False):
+        super()._upper_bound_calculate_threshold_energy_and_effective_harmonic_constant(
+            group_only=group_only, total_only=total_only)

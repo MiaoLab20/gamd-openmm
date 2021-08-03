@@ -383,8 +383,13 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         # though, since Vmax, Vmin, Vavg, sigma0, and sigmaV aren't changing.
         #
         self._calculate_threshold_energy_and_effective_harmonic_constant()
-
-        self._add_gamd_instructions()
+        
+        self._add_gamd_pre_calc_step(group_only=True)
+        self._add_gamd_boost_calculations_step(group_only=True)
+        self._add_dihedral_boost_to_total_energy()
+        self._add_gamd_pre_calc_step(total_only=True, skip_scales=True)
+        self._add_gamd_boost_calculations_step(total_only=True)
+        self._add_gamd_update_step()
         # -------------------------------
         self.endBlock()
 
@@ -394,8 +399,13 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         self.beginIfBlock("stageFiveIfValueIsZeroOrNegative <= 0")
         # -------------------------------
         self.addComputeGlobal("stage", "5")
-
-        self._add_gamd_instructions()
+        
+        self._add_gamd_pre_calc_step(group_only=True)
+        self._add_gamd_boost_calculations_step(group_only=True)
+        self._add_dihedral_boost_to_total_energy()
+        self._add_gamd_pre_calc_step(total_only=True, skip_scales=True)
+        self._add_gamd_boost_calculations_step(total_only=True)
+        self._add_gamd_update_step()
         # -------------------------------
         self.endBlock()
         #self.endBlock()
@@ -412,13 +422,13 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         # on from our values for Vmin and Vmax from stage 2, rather than 
         # resetting these values first.
         #
-        self._add_instructions_to_calculate_primary_boost_statistics()
+        self._add_instructions_to_calculate_primary_boost_statistics(group_only=True)
 
         #
         # These calculations help us to keep track of the running ntave window 
         # Vavg and variance.
         #
-        self._add_instructions_to_calculate_secondary_boost_statistics()
+        self._add_instructions_to_calculate_secondary_boost_statistics(group_only=True)
 
         #
         # If we are at the end of the ntave window, then we need to calculate 
@@ -426,8 +436,10 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         # values.
         #
         self.beginIfBlock("windowCount = " + str(self.ntave))
-        self._update_potential_state_values_with_window_potential_state_values()
-        self.addComputeGlobal("windowCount", "0")
+        self._update_potential_state_values_with_window_potential_state_values(
+            group_only=True)
+        # Don't reset window count because it will be reset with the next if statement
+        #self.addComputeGlobal("windowCount", "0")
         self.endBlock()
 
         #
@@ -435,14 +447,28 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         # constant based on the possible new Vmax and
         # Vmin at each step in stage 4.
         #
-        self._calculate_threshold_energy_and_effective_harmonic_constant()
+        self._calculate_threshold_energy_and_effective_harmonic_constant(group_only=True)
 
         #
         # WARNING:  We may have to move this step to be done first in the 
         # stage.  Recalculations of E can sometimes cause issues depending on 
         # where it occurs within the step.
         #
-        self._add_gamd_instructions()
+        self._add_gamd_pre_calc_step(group_only=True)
+        self._add_gamd_boost_calculations_step(group_only=True)
+        self._add_dihedral_boost_to_total_energy()
+        
+        self._add_instructions_to_calculate_primary_boost_statistics(total_only=True)
+        self._add_instructions_to_calculate_secondary_boost_statistics(total_only=True)
+        self.beginIfBlock("windowCount = " + str(self.ntave))
+        self._update_potential_state_values_with_window_potential_state_values(
+            total_only=True)
+        self.addComputeGlobal("windowCount", "0")
+        self.endBlock()
+        self._calculate_threshold_energy_and_effective_harmonic_constant(total_only=True)
+        self._add_gamd_pre_calc_step(total_only=True, skip_scales=True)
+        self._add_gamd_boost_calculations_step(total_only=True)
+        self._add_gamd_update_step()
 
         # -------------------------------
         self.endBlock()
@@ -550,18 +576,35 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         return self._append_group_name_by_type(name, boost_type)
     
     def addGlobalVariablesByName(self, name, value):
-        if self.__total_boost:
-            var_name = self._append_group_name(name, BoostType.TOTAL.value)
-            self.addGlobalVariable(var_name, value)
         for group_id in self.__group_dict:
             group_name = self.__group_dict[group_id]
             var_name = self._append_group_name(name, group_name)
             self.addGlobalVariable(var_name, value)
+            
+        if self.__total_boost:
+            var_name = self._append_group_name(name, BoostType.TOTAL.value)
+            self.addGlobalVariable(var_name, value)
+            
         return
     
     def addComputeGlobalByName(self, name, expression, format_list=[], 
-                               value_by_number=False):
-        if self.__total_boost:
+                               value_by_number=False, group_only=False,
+                               total_only=False):
+        if not total_only:
+            for group_id in self.__group_dict:
+                group_name = self.__group_dict[group_id]
+                var_name = self._append_group_name(name, group_name)
+                if value_by_number:
+                    new_formats = [self._append_group(var, group_id) \
+                                   for var in format_list]
+                    formatted_expression = expression.format(*new_formats)
+                else:
+                    new_formats = [self._append_group_name(var, group_name) \
+                                   for var in format_list]
+                    formatted_expression = expression.format(*new_formats)
+                self.addComputeGlobal(var_name, formatted_expression)
+            
+        if self.__total_boost and not group_only:
             var_name = self._append_group_name(name, BoostType.TOTAL.value)
             if value_by_number:
                 formatted_expression = expression.format(*format_list)
@@ -571,18 +614,7 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
                     for var in format_list]
                 formatted_expression = expression.format(*new_formats)
             self.addComputeGlobal(var_name, formatted_expression)
-        for group_id in self.__group_dict:
-            group_name = self.__group_dict[group_id]
-            var_name = self._append_group_name(name, group_name)
-            if value_by_number:
-                new_formats = [self._append_group(var, group_id) \
-                               for var in format_list]
-                formatted_expression = expression.format(*new_formats)
-            else:
-                new_formats = [self._append_group_name(var, group_name) \
-                               for var in format_list]
-                formatted_expression = expression.format(*new_formats)
-            self.addComputeGlobal(var_name, formatted_expression)
+            
         return
     
     def get_total_boost(self):
@@ -590,5 +622,15 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
     
     def get_group_dict(self):
         return self.__group_dict
+    
+    def _add_dihedral_boost_to_total_energy(self):
+        if self.get_total_boost():
+            total_energy_name = self._append_group_name("StartingPotentialEnergy", BoostType.TOTAL.value)
+            for group_id in self.__group_dict:
+                group_name = self.__group_dict[group_id]
+                group_boost_name = self._append_group_name("BoostPotential", group_name)
+                expression = "{0} + {1}".format(total_energy_name, group_boost_name)
+                self.addComputeGlobal(total_energy_name, expression)
+        return
 
 

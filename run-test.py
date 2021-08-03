@@ -260,7 +260,15 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
     else:
         simulation = Simulation(prmtop.topology, system, integrator)
-
+    
+    """ # uncomment to view integrator computations
+    for i in range(integrator.getNumComputations()):
+        print(integrator.getComputationStep(i))
+    
+    print("exiting...")
+    exit()
+    """
+    
     if restarting:
         simulation.loadCheckpoint(restart_checkpoint_filename)
         write_mode = "a"
