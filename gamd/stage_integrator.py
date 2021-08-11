@@ -377,13 +377,7 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         
         # -------------------------------
         self.addComputeGlobal("stage", "3")
-        #
-        # We recalculate the threshold energy and the effective harmonic 
-        # constant at each step in stage 3. These values shouldn't change 
-        # though, since Vmax, Vmin, Vavg, sigma0, and sigmaV aren't changing.
-        #
-        self._calculate_threshold_energy_and_effective_harmonic_constant()
-        
+
         self._add_gamd_pre_calc_step(group_only=True)
         self._add_gamd_boost_calculations_step(group_only=True)
         self._add_dihedral_boost_to_total_energy()
