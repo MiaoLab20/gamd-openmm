@@ -387,7 +387,7 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         self._add_gamd_pre_calc_step(group_only=True)
         self._add_gamd_boost_calculations_step(group_only=True)
         self._add_dihedral_boost_to_total_energy()
-        self._add_gamd_pre_calc_step(total_only=True, skip_scales=True)
+        self._add_gamd_pre_calc_step(total_only=True)
         self._add_gamd_boost_calculations_step(total_only=True)
         self._add_gamd_update_step()
         # -------------------------------
@@ -403,7 +403,7 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         self._add_gamd_pre_calc_step(group_only=True)
         self._add_gamd_boost_calculations_step(group_only=True)
         self._add_dihedral_boost_to_total_energy()
-        self._add_gamd_pre_calc_step(total_only=True, skip_scales=True)
+        self._add_gamd_pre_calc_step(total_only=True)
         self._add_gamd_boost_calculations_step(total_only=True)
         self._add_gamd_update_step()
         # -------------------------------
@@ -466,7 +466,7 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         self.addComputeGlobal("windowCount", "0")
         self.endBlock()
         self._calculate_threshold_energy_and_effective_harmonic_constant(total_only=True)
-        self._add_gamd_pre_calc_step(total_only=True, skip_scales=True)
+        self._add_gamd_pre_calc_step(total_only=True)
         self._add_gamd_boost_calculations_step(total_only=True)
         self._add_gamd_update_step()
 

@@ -85,6 +85,15 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
             group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep, nteb,
             nstlim, ntave)
 
+        #
+        # These values are constants, so we set them up once here.
+        #
+        #
+        self.addComputeGlobal("vscale", "exp(-dt*collision_rate)")
+        self.addComputeGlobal("fscale", "(1-vscale)/collision_rate")
+        self.addComputeGlobal("noisescale",
+                              "sqrt(thermal_energy*(1-vscale*vscale))")
+
     def _add_common_variables(self):
         garbage = {self.addGlobalVariable(key, value) \
                    for key, value in self.global_variables.items()}
@@ -258,6 +267,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # self.addGlobalVariable("beginningPotentialEnergy", 0)
 
         self.addComputePerDof("coordinates", "x")
+
         return
 
     #
@@ -355,10 +365,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         return
     
     def _add_conventional_md_pre_calc_step(self):
-        self.addComputeGlobal("vscale", "exp(-dt*collision_rate)")
-        self.addComputeGlobal("fscale", "(1-vscale)/collision_rate")
-        self.addComputeGlobal("noisescale", 
-                              "sqrt(thermal_energy*(1-vscale*vscale))")
         return
 
     def _add_conventional_md_update_step(self):
@@ -371,13 +377,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addComputePerDof("v", "(x-newx)/dt")
         return
 
-    def _add_gamd_pre_calc_step(self, group_only=False, total_only=False, 
-                                skip_scales=False):
-        if not skip_scales:
-            self.addComputeGlobal("vscale", "exp(-dt*collision_rate)")
-            self.addComputeGlobal("fscale", "(1-vscale)/collision_rate")
-            self.addComputeGlobal("noisescale", 
-                                  "sqrt(thermal_energy*(1-vscale*vscale))")
+    def _add_gamd_pre_calc_step(self, group_only=False, total_only=False):
+
         #
         # We do not apply the boost potential to the energy value since 
         # energy is read only.
