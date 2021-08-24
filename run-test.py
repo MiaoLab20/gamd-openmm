@@ -13,6 +13,7 @@ import traceback
 # from gamd.langevin.total_boost_integrators import UpperBoundIntegrator
 # from gamd.langevin.dihedral_boost_integrators import import LowerBountIntegrator
 # from gamd.langevin.dihedral_boost_integrators import import UpperBoundIntegrator
+from gamd.DebugLogger import DebugLogger
 from gamd.stage_integrator import BoostType
 from gamd.GamdLogger import GamdLogger
 from gamd import utils as utils
@@ -39,15 +40,25 @@ def is_argument_integer(n):
 
 
 def main():
-    [boost_type, output_directory, device, platform] = handle_arguments()
+    [boost_type, output_directory, device, platform, debug, quick] = handle_arguments()
     temperature = 298.15
     dt = 2.0 * femtoseconds
-    ntcmdprep = 200000
-    ntcmd = 1000000
-    ntebprep = 200000
-    nteb = 2000000
-    nstlim = 18000000
-    ntave = 25000
+    if quick:
+        ntcmdprep = 2000
+        ntcmd = 10000
+        ntebprep = 2000
+        nteb = 20000
+        nstlim = 60000
+        ntave = 250
+
+    else:
+        ntcmdprep = 200000
+        ntcmd = 1000000
+        ntebprep = 200000
+        nteb = 2000000
+        nstlim = 18000000
+        ntave = 25000
+
     number_of_steps_in_group = 100
 
     # This variable indicates the number of frames at the beginning of stage 5 (production) to ignore.
@@ -58,9 +69,11 @@ def main():
     start_date_time = datetime.datetime.now()
     print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
 
-    run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type, output_directory,
-                   platform, device, number_of_steps_in_group, starting_offset)
+    start_date_time = run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
+                                     output_directory, platform, device, number_of_steps_in_group, starting_offset,
+                                     debug)
 
+    print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
     end_date_time = datetime.datetime.now()
     print("End Time: \t", end_date_time.strftime("%b-%d-%Y    %H:%M"))
 
@@ -144,7 +157,8 @@ def create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, n
     group = set_dihedral_group(system)
     return [group, DihedralBoostUpperBoundIntegrator(group,  dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                      nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
-    
+
+
 def create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
     group = set_dihedral_group(system)
     return [group, DualBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
@@ -171,6 +185,17 @@ def usage():
 
 
 def handle_arguments():
+
+    quick = False
+    debug = False
+
+    if "quick" in sys.argv:
+        quick = True
+        sys.argv.remove("quick")
+
+    if "debug" in sys.argv:
+        debug = True
+        sys.argv.remove("debug")
 
     if len(sys.argv) == 2:
         output_directory = "output"
@@ -200,11 +225,12 @@ def handle_arguments():
         usage()
         sys.exit(1)
 
-    return [boost_type, output_directory, device, platform]
+    return [boost_type, output_directory, device, platform, debug, quick]
 
 
 def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
-                   output_directory, platform_name, device, number_of_steps_in_group=100, reweighting_offset=0):
+                   output_directory, platform_name, device, number_of_steps_in_group=100, reweighting_offset=0,
+                   debug=False):
     coordinates_file = './data/md-4ns.rst7'
     prmtop_file = './data/dip.top'
     starttime = time.time()
@@ -308,6 +334,14 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         gamd_reweighting_logger.write_header()
 
     print("Running: \t " + str(integrator.get_total_simulation_steps()) + " steps")
+
+    if debug:
+        debug_logger = DebugLogger(output_directory + "/debug.csv", write_mode)
+        print("Debugging enabled.")
+        debug_logger.write_integration_algorithm_to_file(output_directory + "/integration-algorithm.txt", integrator)
+        debug_logger.write_global_variables_headers(integrator)
+
+    start_date_time = datetime.datetime.now()
     for step in range(start_step, (integrator.get_total_simulation_steps() // number_of_steps_in_group) + 1):
         if step % restart_checkpoint_frequency // number_of_steps_in_group == 0:
             simulation.saveCheckpoint(restart_checkpoint_filename)
@@ -333,6 +367,9 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
             #
 
             simulation.step(number_of_steps_in_group)
+            if debug:
+                debug_logger.write_global_variables_values(integrator)
+
             gamd_logger.write_to_gamd_log(step * number_of_steps_in_group)
             if step >= start_production_logging_frame:
                 gamd_reweighting_logger.write_to_gamd_log(step * number_of_steps_in_group)
@@ -341,6 +378,9 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         except Exception as e:
             print("Failure on step " + str(step * number_of_steps_in_group))
             print(e)
+            if debug:
+                debug_logger.print_global_variables_to_screen(integrator)
+                debug_logger.write_global_variables_values(integrator)
             # print(integrator.get_current_state())
             gamd_logger.write_to_gamd_log(step)
             if step >= start_production_logging_frame:
@@ -364,6 +404,8 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
             integrator.create_positions_file(positions_filename)
             # pp = pprint.PrettyPrinter(indent=2)
             # pp.pprint(debug_information)
+
+    return start_date_time
 
 
 def create_graphics(execution_directory, command, temperature, output_filename):
