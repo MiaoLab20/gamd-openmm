@@ -17,11 +17,13 @@ from abc import ABC
 from abc import abstractmethod
 from ..stage_integrator import GamdStageIntegrator
 from ..stage_integrator import BoostType
+from ..stage_integrator import BoostMethod
+from ..stage_integrator import ComputeType
 
 
 class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
 
-    def __init__(self, group_dict, total_boost,
+    def __init__(self, group_dict, boost_type, boost_method,
                  dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000,
                  ntebprep=200000, nteb=1000000, nstlim=3000000, ntave=50000,
                  collision_rate=1.0 / unit.picoseconds,
@@ -82,8 +84,8 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         # variables above being setup.
         #
         super(GamdLangevinIntegrator, self).__init__(
-            group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep, nteb,
-            nstlim, ntave)
+            group_dict, boost_type, boost_method, dt,
+            ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave)
 
         #
         # These values are constants, so we set them up once here.
@@ -95,15 +97,10 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
                               "sqrt(thermal_energy*(1-vscale*vscale))")
 
     def _add_common_variables(self):
-        garbage = {self.addGlobalVariable(key, value) \
+        garbage = {self.addGlobalVariable(key, value)
                    for key, value in self.global_variables.items()}
-        garbage = {self.addPerDofVariable(key, value) \
+        garbage = {self.addPerDofVariable(key, value)
                    for key, value in self.per_dof_variables.items()}
-    
-    @abstractmethod
-    def _add_conventional_md_pre_calc_step(self):  # O Step
-        raise NotImplementedError(
-            "must implement _add_conventional_md_pre_calc_step")
 
     @abstractmethod
     def _add_conventional_md_update_step(self):
@@ -115,34 +112,27 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         raise NotImplementedError("must implement _add_gamd_update_step")
     
     @abstractmethod
-    def _add_gamd_pre_calc_step(self):
+    def _add_gamd_pre_calc_step(self, compute_type):
         raise NotImplementedError("must implement _add_gamd_pre_calc_step")
 
     @abstractmethod
-    def _add_gamd_boost_calculations_step(self):
+    def _add_gamd_boost_calculations_step(self, compute_type):
         raise NotImplementedError(
             "must implement _add_gamd_boost_calculations_step")
 
     @abstractmethod
-    def _add_instructions_to_calculate_primary_boost_statistics(self):
+    def _calculate_primary_boost_statistics(self, compute_type):
         raise NotImplementedError(
-            "must implement "\
-            "_add_instructions_to_calculate_primary_boost_statistics")
+            "must implement _calculate_primary_boost_statistics")
 
     @abstractmethod
-    def _add_instructions_to_calculate_secondary_boost_statistics(self):
+    def _calculate_secondary_boost_statistics(self, compute_type):
         raise NotImplementedError(
-            "must implement "\
-            "_add_instructions_to_calculate_secondary_boost_statistics")
+            "must implement _calculate_secondary_boost_statistics")
 
     def _add_conventional_md_instructions(self):
-        self._add_conventional_md_pre_calc_step()
         self._add_conventional_md_update_step()
 
-    def _add_gamd_instructions(self, group_only=False, total_only=False):
-        self._add_gamd_pre_calc_step(group_only=group_only, total_only=total_only)
-        self._add_gamd_boost_calculations_step(group_only=group_only, total_only=total_only)
-        self._add_gamd_update_step(group_only=group_only, total_only=total_only)
     #
     # Debugging Methods
     #
@@ -184,17 +174,15 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     for Gaussian accelerated molecular dynamics.
     """
 
-    def __init__(self, group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep,
-                 nteb, nstlim, ntave, sigma0p, sigma0D, collision_rate, temperature, 
-                 restart_filename):
+    def __init__(self, group_dict, boost_type, boost_method,
+                 dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0p,
+                 sigma0D, collision_rate, temperature, restart_filename):
         """
         Parameters
         ----------
         :param group_dict: A dictionary whose keys are group indices,
             but whose values are the names of the group. 
             Example: {1:"dihedral"}
-        :param total_boost: Whether to perform a total boost on this
-            system.
         :param dt:        The Amount of time between each time step.
         :param ntcmdprep: The number of conventional MD steps for 
             system equilibration.
@@ -247,8 +235,9 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.debuggingIsEnabled = True
 
         super(GroupBoostIntegrator, self).__init__(
-            group_dict, total_boost, dt, ntcmdprep, ntcmd, ntebprep, nteb, 
-            nstlim, ntave, collision_rate, temperature, restart_filename)
+            group_dict, boost_type, boost_method, dt, ntcmdprep,
+            ntcmd, ntebprep, nteb, nstlim, ntave, collision_rate, temperature,
+            restart_filename)
 
         #
         # We have to set this value separate from the others, so that when we 
@@ -259,8 +248,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # NOTE:  THIS VALUE WILL NEED TO BE FIXED SOMEHOW FOR DUAL BOOST.
         #
 
-        self.addGlobalVariablesByName("ForceScalingFactor", 1.0)
-        self.addGlobalVariablesByName("BoostPotential", 0.0)
+        self.add_global_variables_by_name("ForceScalingFactor", 1.0)
+        self.add_global_variables_by_name("BoostPotential", 0.0)
 
         # This is to make sure that we get the value for the
         # beginningPotentialEnergy at the end of each simulation step.
@@ -284,17 +273,17 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     # pass
 
     def _add_common_variables(self):
-        unused_return_values = {self.addGlobalVariable(key, value) \
+        unused_return_values = {self.addGlobalVariable(key, value)
                                 for key, value in
                                 self.boost_global_variables.items()}
-        unused_return_values = {self.addPerDofVariable(key, value) \
+        unused_return_values = {self.addPerDofVariable(key, value)
                                 for key, value in
                                 self.boost_per_dof_variables.items()}
-        unused_return_values = {self.addGlobalVariablesByName(key, value) \
+        unused_return_values = {self.add_global_variables_by_name(key, value)
                                 for key, value in
                                 self.global_variables_by_boost_type.items()}
 
-         #hacky?
+        #  hacky?
         self.addGlobalVariable("sigma0_Total", self.sigma0p)
         self.addGlobalVariable("sigma0_Dihedral", self.sigma0D)
 
@@ -302,43 +291,32 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         return
 
     def _update_potential_state_values_with_window_potential_state_values(
-            self, group_only=False, total_only=False):
+            self,
+            compute_type):
         # Update window variables
-        self.addComputeGlobalByName("Vavg", "{0}", ["wVavg"],
-                                    group_only=group_only, 
-                                    total_only=total_only)
-        self.addComputeGlobalByName(
-            "sigmaV", "sqrt({0}/(windowCount-1))", ["M2"],
-                                    group_only=group_only, 
-                                    total_only=total_only)
-        
+        self.add_compute_global_by_name("Vavg", "{0}", ["wVavg"], compute_type)
+        self.add_compute_global_by_name(
+            "sigmaV", "sqrt({0}/(windowCount-1))", ["M2"], compute_type)
         
         # Reset variables
-        self.addComputeGlobalByName("M2", "0",
-                                    group_only=group_only, 
-                                    total_only=total_only)
-        self.addComputeGlobalByName("wVavg", "0.0",
-                                    group_only=group_only, 
-                                    total_only=total_only)
-        self.addComputeGlobalByName("oldVavg", "0.0",
-                                    group_only=group_only, 
-                                    total_only=total_only)
+        self.set_global_by_name_to_value("M2", "0", compute_type)
+        self.set_global_by_name_to_value("wVavg", "0.0", compute_type)
+        self.set_global_by_name_to_value("oldVavg", "0.0", compute_type)
+
         return
 
-    def _add_instructions_to_calculate_primary_boost_statistics(
-            self, group_only=False, total_only=False):
-        self.addComputeGlobalByName("Vmax", "max({0}, {1})", 
-                                    ["StartingPotentialEnergy", "Vmax"],
-                                    group_only=group_only, 
-                                    total_only=total_only)
-        self.addComputeGlobalByName("Vmin", "min({0}, {1})", 
-                                    ["StartingPotentialEnergy", "Vmin"],
-                                    group_only=group_only, 
-                                    total_only=total_only)
+    def _calculate_primary_boost_statistics(
+            self, compute_type):
+        self.add_compute_global_by_name("Vmax", "max({0}, {1})",
+                                        ["StartingPotentialEnergy", "Vmax"],
+                                        compute_type)
+        self.add_compute_global_by_name("Vmin", "min({0}, {1})",
+                                        ["StartingPotentialEnergy", "Vmin"],
+                                        compute_type)
         return
         
-    def _add_instructions_to_calculate_secondary_boost_statistics(
-            self, group_only=False, total_only=False):
+    def _calculate_secondary_boost_statistics(
+            self, compute_type):
         #
         # The following calculations are used to calculate the average and 
         # variance/standard deviation, rather than calculating the average at 
@@ -347,81 +325,71 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # Algorithm Description:
         #
         # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance\
-        #Welford's_online_algorithm
+        # Welford's_online_algorithm
         #
         #
         
-        self.addComputeGlobalByName("oldVavg", "{0}", ["wVavg"],
-                                    group_only=group_only, 
-                                    total_only=total_only)
-        self.addComputeGlobalByName(
-            "wVavg", "{0} + ({1}-{0})/windowCount", 
-            ["wVavg", "StartingPotentialEnergy"],
-            group_only=group_only, total_only=total_only)
-        self.addComputeGlobalByName(
-            "M2", "{0} + ({1}-{2})*({1}-{3})", 
-            ["M2", "StartingPotentialEnergy", "oldVavg", "wVavg"],
-            group_only=group_only, total_only=total_only)
-        return
-    
-    def _add_conventional_md_pre_calc_step(self):
+        self.add_compute_global_by_name("oldVavg", "{0}", ["wVavg"],
+                                        compute_type)
+        self.add_compute_global_by_name("wVavg", "{0} + ({1}-{0})/windowCount",
+                                        ["wVavg", "StartingPotentialEnergy"],
+                                        compute_type)
+
+        self.add_compute_global_by_name(
+            "M2", "{0} + ({1}-{2})*({1}-{3})",
+            ["M2", "StartingPotentialEnergy", "oldVavg", "wVavg"], compute_type)
+
         return
 
     def _add_conventional_md_update_step(self):
+        v_expr = "vscale*v + fscale*f/m + noisescale*gaussian/sqrt(m)"
         self.addComputePerDof("newx", "x")
-        self.addComputePerDof("v", 
-                              "vscale*v + fscale*f/m "\
-                              "+ noisescale*gaussian/sqrt(m)")
+        self.addComputePerDof("v", v_expr)
         self.addComputePerDof("x", "x+dt*v")
         self.addConstrainPositions()
         self.addComputePerDof("v", "(x-newx)/dt")
         return
 
-    def _add_gamd_pre_calc_step(self, group_only=False, total_only=False):
+    def _add_gamd_pre_calc_step(self, compute_type):
 
         #
         # We do not apply the boost potential to the energy value since 
         # energy is read only.
         #
         
-        self.addComputeGlobalByName(
+        self.add_compute_global_by_name(
             "BoostPotential", "0.5 * {0} * ({1} - {2})^2 / ({3} - {4})", 
             ["k0", "threshold_energy", "StartingPotentialEnergy", "Vmax", 
-             "Vmin"], group_only=group_only, total_only=total_only)
-        
-        
-        
+             "Vmin"], compute_type)
+
         #
         # "BoostPotential*step(threshold_energy-boosted_energy)")
-        self.addComputeGlobalByName(
+        self.add_compute_global_by_name(
             "BoostPotential", "{0}*step({1} - ({2} + {3}))", 
             ["BoostPotential", "threshold_energy", "BoostPotential", 
-             "StartingPotentialEnergy"], group_only=group_only, 
-            total_only=total_only)
+             "StartingPotentialEnergy"], compute_type)
         
         #
         # If the boostPotential is zero, we want to set the Force Scaling 
         # Factor to one, which is what we will use the check_boost value to 
         # do in a later portion of the code.
         #
-        self.addComputeGlobalByName(
-            "check_boost", "1 - delta({0})", ["BoostPotential"], 
-            group_only=group_only, total_only=total_only)
+        self.add_compute_global_by_name(
+            "check_boost", "1 - delta({0})", ["BoostPotential"], compute_type)
 
         # "boosted_energy" = "energy + BoostPotential"
-        self.addComputeGlobalByName(
+        self.add_compute_global_by_name(
             "boosted_energy", "{0} + {1}", 
-            ["StartingPotentialEnergy", "BoostPotential"], 
-            group_only=group_only, total_only=total_only)
+            ["StartingPotentialEnergy", "BoostPotential"], compute_type)
         
         return
         
-    def _add_gamd_boost_calculations_step(self, group_only=False, total_only=False):
+    def _add_gamd_boost_calculations_step(self, compute_type):
         
-        self.addComputeGlobalByName(
+        self.add_compute_global_by_name(
             "ForceScalingFactor", "1.0 - (({0} * ({1} - {2}))/({3} - {4}))", 
             ["k0", "threshold_energy", "StartingPotentialEnergy", "Vmax", 
-             "Vmin"], group_only=group_only, total_only=total_only)
+             "Vmin"], compute_type)
         
         # This is the psuedo code of what we are about to do, in case it helps 
         # you read it.
@@ -442,53 +410,60 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         # take an exponentially larger amount of time to start.
         #
         #   1.0 - 1.0 * check_boost + check_boost * ForceScalingFactor"
-        self.addComputeGlobalByName(
+        self.add_compute_global_by_name(
             "ForceScalingFactor", "1.0 - {0} + {0} * {1}", 
-            ["check_boost", "ForceScalingFactor"], group_only=group_only, 
-            total_only=total_only)
+            ["check_boost", "ForceScalingFactor"], compute_type)
         
         #
         #
         #
         return
 
-    def _add_gamd_update_step(self, group_only=False, total_only=False):
+    def _get_update_ids(self, group_id):
+        group_name = self.get_group_dict()[group_id]
+        force_group = self._append_group("f", group_id)
+        force_scaling_factor = self._append_group_name("ForceScalingFactor",
+                                                       group_name)
+        return [force_group, force_scaling_factor]
+
+    def _add_gamd_update_step(self):
+
         self.addComputePerDof("newx", "x")
-        #
-        if self.get_total_boost() and not group_only:
-            if len(self.get_group_dict()) == 0: # only Total boost
-                self.addComputePerDof(
-                    "v", "vscale*v + fscale*f*{0}/m "\
-                    "+ noisescale*gaussian/sqrt(m)".format(
-                        self._append_group_name(
-                            "ForceScalingFactor", BoostType.TOTAL.value)))
-            else:
-                self.addComputePerDof(
-                    "v", "vscale*v + fscale*f0*{0}/m "\
-                    "+ noisescale*gaussian/sqrt(m)".format(
-                        self._append_group_name(
-                            "ForceScalingFactor", BoostType.TOTAL.value)))
-            
-            if not total_only:
-                for group_id in self.get_group_dict():
-                    group_name = self.get_group_dict()[group_id]
-                    self.addComputePerDof("v", "v + fscale*{0}*{1}*{2}/m"
-                        .format(self._append_group("f", group_id), 
-                                self._append_group_name("ForceScalingFactor", 
-                                                        BoostType.TOTAL.value),
-                                self._append_group_name("ForceScalingFactor", 
-                                                        group_name)))
-        
-        elif not total_only:
+        total_force_scaling_factor = self._append_group_name(
+            "ForceScalingFactor",
+            BoostType.TOTAL.value)
+
+        # We take care of stochastic kick and drag here.
+        self.addComputePerDof("v", "vscale*v + noisescale*gaussian/sqrt(m)")
+
+        if self._boost_method == BoostMethod.TOTAL:
             self.addComputePerDof(
-                "v", "vscale*v + fscale*f0/m + noisescale*gaussian/sqrt(m)")
+                "v", "v + fscale*f*{0}/m".format(total_force_scaling_factor))
+
+        if self._boost_method == BoostMethod.GROUPS:
+            # We should be able to include force group 0 in our id list
+            # for future non-dependent boosts.
             for group_id in self.get_group_dict():
-                group_name = self.get_group_dict()[group_id]
-                self.addComputePerDof("v", "v + fscale*{0}*{1}/m"
-                    .format(self._append_group("f", group_id), 
-                            self._append_group_name("ForceScalingFactor", 
-                                                    group_name)))
-        
+                force_group, group_force_scaling_factor = self._get_update_ids(
+                    group_id)
+
+                self.addComputePerDof("v", "v + fscale*{0}*{1}/m".format(
+                    force_group, group_force_scaling_factor))
+
+        if self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+            # Do the groups
+            for group_id in self.get_group_dict():
+                force_group, group_force_scaling_factor = self._get_update_ids(
+                    group_id)
+
+                self.addComputePerDof("v", "v + fscale*{0}*{1}*{2}/m"
+                                      .format(force_group,
+                                              total_force_scaling_factor,
+                                              group_force_scaling_factor))
+            # Do the Total Boost
+            self.addComputePerDof("v", "v + fscale*f0*{0}/m".format(
+                total_force_scaling_factor))
+
         self.addComputePerDof("x", "x+dt*v")
         self.addConstrainPositions()
         self.addComputePerDof("v", "(x-newx)/dt")
@@ -509,7 +484,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             var_value = self.getGlobalVariableByName(var_name)
             force_scaling_factors[var_name] = var_value
         
-        if self.get_total_boost():
+        if (self._boost_method == BoostMethod.TOTAL or
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL):
             var_name = self._append_group_name("ForceScalingFactor", 
                                                BoostType.TOTAL.value)
             var_value = self.getGlobalVariableByName(var_name)
@@ -531,75 +507,67 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             var_value = self.getGlobalVariableByName(var_name)
             boost_potentials[var_name] = var_value
             
-        if self.get_total_boost():
+        if (self._boost_method == BoostMethod.TOTAL or
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL):
             var_name = self._append_group_name("BoostPotential", 
                                                BoostType.TOTAL.value)
             var_value = self.getGlobalVariableByName(var_name)
             boost_potentials[var_name] = var_value
-            
-        
-                        
+
         return boost_potentials
 
-    def __calculate_simple_threshold_energy_and_effective_harmonic_constant_total(
-            self):
-        self.addComputeGlobalByName("threshold_energy", "{0}",["Vmax"], total_only=True)
-        self.addComputeGlobalByName(
+    def calculate_common_threshold_energy_and_effective_harmonic_constant(
+            self, compute_type):
+        self.add_compute_global_by_name("threshold_energy", "{0}", ["Vmax"],
+                                        compute_type)
+
+        self.add_compute_global_by_name(
             "k0prime", "({0}/{1}) * ({2} - {3}) / ({2} - {4})",
-            ["sigma0", "sigmaV", "Vmax", "Vmin", "Vavg"], total_only=True)
-        self.addComputeGlobalByName("k0", "min(1.0, {0})", ["k0prime"], total_only=True)
-        
+            ["sigma0", "sigmaV", "Vmax", "Vmin", "Vavg"],
+            compute_type)
+
+        self.add_compute_global_by_name("k0", "min(1.0, {0})", ["k0prime"],
+                                        compute_type)
         return
-    
-    def __calculate_simple_threshold_energy_and_effective_harmonic_constant_group(
-            self, group_id):
-        self.addComputeGlobalByName("threshold_energy", "{0}",["Vmax"], group_only=True)
-        self.addComputeGlobalByName(
-            "k0prime", "({0}/{1}) * ({2} - {3}) / ({2} - {4})",
-            ["sigma0", "sigmaV", "Vmax", "Vmin", "Vavg"], group_only=True)
-        self.addComputeGlobalByName("k0", "min(1.0, {0})", ["k0prime"], group_only=True)
-        return
-        
+
     def _upper_bound_calculate_threshold_energy_and_effective_harmonic_constant(
-            self, group_only=False, total_only=False):
-        self.addComputeGlobalByName("k0", "1.0", group_only=group_only, 
-            total_only=total_only)
-        self.addComputeGlobalByName(
+            self, compute_type):
+        self.set_global_by_name_to_value("k0", "1.0", compute_type)
+
+        self.add_compute_global_by_name(
             "k0doubleprime", "(1 - {0}/{1}) * ({2} - {3})/({4} - {3})",
-            ["sigma0", "sigmaV", "Vmax", "Vmin", "Vavg"], group_only=group_only, 
-            total_only=total_only)
-        self.addComputeGlobalByName("k0", "{0}", ["k0doubleprime"], group_only=group_only, 
-            total_only=total_only)
-        self.addComputeGlobalByName(
+            ["sigma0", "sigmaV", "Vmax", "Vmin", "Vavg"], compute_type)
+
+        self.add_compute_global_by_name("k0", "{0}", ["k0doubleprime"],
+                                        compute_type)
+
+        self.add_compute_global_by_name(
             "threshold_energy", "{0} + ({1} - {0})/{2}", ["Vmin", "Vmax", "k0"],
-            group_only=group_only, total_only=total_only)
-        self.addComputeGlobalByName(
+            compute_type)
+
+        self.add_compute_global_by_name(
             "k0doubleprime_window", "(-{0}) * (1 - {0})", ["k0doubleprime"], 
-            group_only=group_only, total_only=total_only)
-        
-        if self.get_total_boost() and not group_only:
+            compute_type)
+
+        if compute_type == ComputeType.TOTAL:
             self.beginIfBlock(
-                self._append_group_name("k0doubleprime_window", 
+                self._append_group_name("k0doubleprime_window",
                                         BoostType.TOTAL.value) + " >= 0.0")
-            self.__calculate_simple_threshold_energy_and_effective_harmonic_constant_total()
+            self.calculate_common_threshold_energy_and_effective_harmonic_constant(ComputeType.TOTAL)
             self.endBlock()
-        
-        if not total_only:
+
+        if compute_type == ComputeType.GROUP:
             for group_id in self.get_group_dict():
                 group_name = self.get_group_dict()[group_id]
                 self.beginIfBlock(
-                    self._append_group_name("k0doubleprime_window", group_name) \
+                    self._append_group_name("k0doubleprime_window", group_name)
                     + " >= 0.0")
-                self.__calculate_simple_threshold_energy_and_effective_harmonic_constant_group(group_id)
+                self.calculate_common_threshold_energy_and_effective_harmonic_constant(ComputeType.GROUP)
                 self.endBlock()
         return
 
     def _lower_bound_calculate_threshold_energy_and_effective_harmonic_constant(
-            self, group_only=False, total_only=False):
-        if not total_only:
-            for group_id in self.get_group_dict():
-                self.__calculate_simple_threshold_energy_and_effective_harmonic_constant_group(group_id)
-        
-        if not group_only:    
-            self.__calculate_simple_threshold_energy_and_effective_harmonic_constant_total()
+            self, compute_type):
+
+        self.calculate_common_threshold_energy_and_effective_harmonic_constant(compute_type)
         return

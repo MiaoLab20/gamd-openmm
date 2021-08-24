@@ -23,10 +23,25 @@ from abc import abstractmethod
 # ================
 
 
+class ComputeType(Enum):
+    TOTAL = "Total"
+    GROUP = "Group"
+
+
 class BoostType(Enum):
     TOTAL = "Total"
     DIHEDRAL = "Dihedral"
-    DUAL_TOTAL_DIHEDRAL = "DualTotalDihedralBoost"
+    DUAL_TOTAL_DIHEDRAL = "DualTotalDihedral"
+
+
+class BoostMethod(Enum):
+    # A single Total Boost
+    TOTAL = "Total"
+    # A boost on one or more groups, where the order doesn't matter.
+    GROUPS = "Groups"
+    #  A Boost on a group and then the Total afterwards
+    DUAL_DEPENDENT_GROUP_TOTAL = "DualDependentGroupTotal"
+
 
 # ============================================================================================
 # base class
@@ -47,14 +62,16 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
     """
 
     # def __init__(self,dt,alpha,E):
-    def __init__(self, group_dict, total_boost, dt=2.0 * unit.femtoseconds, 
+    def __init__(self, group_dict, boost_type, boost_method,
+                 dt=2.0 * unit.femtoseconds,
                  ntcmdprep=200000, ntcmd=1000000,
                  ntebprep=200000, nteb=1000000, nstlim=3000000, ntave=50000):
 
         super(GamdStageIntegrator, self).__init__(dt)
 
         self.__group_dict = group_dict
-        self.__total_boost = total_boost
+        self.__boost_type = boost_type
+        self._boost_method = boost_method
 
         """
         Parameters
@@ -201,9 +218,8 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         # self._add_debug_at_step(2)
 
     def _setup_energy_values(self):
-        self.addGlobalVariablesByName("StartingPotentialEnergy", 0.0)
-        self.addComputeGlobalByName("StartingPotentialEnergy", "{0}", 
-                                    ["energy"], value_by_number=True)
+        self.add_global_variables_by_name("StartingPotentialEnergy", 0.0)
+        self.__add_compute_globals_by_name("StartingPotentialEnergy", "{0}", ["energy"])
 
     def _add_debug_at_step(self, the_step):
         self.beginIfBlock("stepCount = " + str(the_step))
@@ -214,38 +230,38 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
     #
 
     def _add_global_debug(self, name, value):
-        '''
+        """
             This is just a helper method to prepend the debug_counter
             to the front of a variable and add that global variable.
 
         :param name: This should be the name of the variable.
         :param value: The value to set the variable to.
         :return: none
-        '''
+        """
         debug_name = str(self.debug_counter) + "_" + name
         self.addGlobalVariable(debug_name, 0.0)
         self.addComputeGlobal(debug_name, value)
 
     def _save_global_debug(self, name):
-        '''
+        """
             If we just need to save off the value of a variable at an 
             associated debug step, this method will do it with the same
             name with the debug counter prepended, so that we don't 
             have to specify the value.
         :param name: The name of the value to save off.
         :return: none
-        '''
+        """
         self._add_global_debug(name, name)
 
     def _add_per_dof_debug(self, name, value):
-        '''
+        """
             This is just a helper method to prepend the debug_counter
             to the front of a variable and add that PerDof variable.
 
         :param name: This should be the name of the variable.
         :param value: The value to set the variable to.
         :return: none
-        '''
+        """
         debug_name = str(self.debug_counter) + "_" + name
         self.addPerDofVariable(debug_name, 0.0)
         self.addComputePerDof(debug_name, value)
@@ -284,14 +300,14 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         return self.getPerDofVariableByName(str(counter) + "_" + name)
 
     def get_debug_step(self, counter):
-        results = {str(counter) + "_"\
-                    + "windowCount": self._get_global_debug_value(
+        results = {str(counter) + "_"
+                   + "windowCount": self._get_global_debug_value(
                         counter, "windowCount"),
-                   str(counter) \
-                    + "_" + "stage": self._get_global_debug_value(
+                   str(counter)
+                   + "_" + "stage": self._get_global_debug_value(
                         counter, "stage"),
-                   str(counter) + "_" \
-                    + "stepCount": self._get_global_debug_value(
+                   str(counter) + "_"
+                   + "stepCount": self._get_global_debug_value(
                         counter, "stepCount")}
 
         return results
@@ -322,7 +338,13 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         # This function calculates the values for Vmax and Vmin, which should 
         # be updated throughout stages 2 and 4 only.
         #
-        self._add_instructions_to_calculate_primary_boost_statistics()
+        if self._boost_method == BoostMethod.GROUPS \
+                or self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+            self._calculate_primary_boost_statistics(ComputeType.GROUP)
+
+        if self._boost_method == BoostMethod.TOTAL \
+                or self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+            self._calculate_primary_boost_statistics(ComputeType.TOTAL)
 
         #
         # We only need to calculate the Vavg and sigmaV for the last ntave 
@@ -341,13 +363,19 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
 
         self.addComputeGlobal(
             "windowCount", 
-            "(1-delta(%d-stepCount))*windowCount + 1" \
-                % self.stage_2_last_ntave_window_start)
+            "(1-delta(%d-stepCount))*windowCount + 1"
+            % self.stage_2_last_ntave_window_start)
         #
         # These calculations help us to keep track of the running ntave window 
         # Vavg and variance.
         #
-        self._add_instructions_to_calculate_secondary_boost_statistics()
+        if self._boost_method == BoostMethod.GROUPS \
+                or self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+            self._calculate_secondary_boost_statistics(ComputeType.GROUP)
+
+        if self._boost_method == BoostMethod.TOTAL \
+                or self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+            self._calculate_secondary_boost_statistics(ComputeType.TOTAL)
 
         self.endBlock()
 
@@ -359,8 +387,17 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         #
         # This method sets the values
         #
-        self._update_potential_state_values_with_window_potential_state_values()
-        self._calculate_threshold_energy_and_effective_harmonic_constant()
+        if self._boost_method == BoostMethod.GROUPS \
+                or self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+
+            self._update_potential_state_values_with_window_potential_state_values(ComputeType.GROUP)
+            self._calculate_threshold_energy_and_effective_harmonic_constant(ComputeType.GROUP)
+
+        if self._boost_method == BoostMethod.TOTAL \
+                or self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+
+            self._update_potential_state_values_with_window_potential_state_values(ComputeType.TOTAL)
+            self._calculate_threshold_energy_and_effective_harmonic_constant(ComputeType.TOTAL)
         #
         # We set the value of windowCount here, rather than in the update step,
         # so that we can lock down where modifications are occurring to the 
@@ -377,32 +414,38 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         
         # -------------------------------
         self.addComputeGlobal("stage", "3")
-
-        self._add_gamd_pre_calc_step(group_only=True)
-        self._add_gamd_boost_calculations_step(group_only=True)
-        self._add_dihedral_boost_to_total_energy()
-        self._add_gamd_pre_calc_step(total_only=True)
-        self._add_gamd_boost_calculations_step(total_only=True)
-        self._add_gamd_update_step()
+        self._do_boost_updates()
         # -------------------------------
         self.endBlock()
 
     def _add_stage_five_instructions(self):
-        #self.beginIfBlock("stepCount >= " + str(self.stage_5_start))
-        #self.beginIfBlock("stepCount <= " + str(self.stage_5_end))
+        # self.beginIfBlock("stepCount >= " + str(self.stage_5_start))
+        # self.beginIfBlock("stepCount <= " + str(self.stage_5_end))
         self.beginIfBlock("stageFiveIfValueIsZeroOrNegative <= 0")
         # -------------------------------
         self.addComputeGlobal("stage", "5")
-        
-        self._add_gamd_pre_calc_step(group_only=True)
-        self._add_gamd_boost_calculations_step(group_only=True)
-        self._add_dihedral_boost_to_total_energy()
-        self._add_gamd_pre_calc_step(total_only=True)
-        self._add_gamd_boost_calculations_step(total_only=True)
-        self._add_gamd_update_step()
+        self._do_boost_updates()
         # -------------------------------
         self.endBlock()
-        #self.endBlock()
+        # self.endBlock()
+
+    def _do_boost_updates(self):
+        if self._boost_method == BoostMethod.GROUPS or \
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+
+            self._add_gamd_pre_calc_step(ComputeType.GROUP)
+            self._add_gamd_boost_calculations_step(ComputeType.GROUP)
+
+        if self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+            self._add_dihedral_boost_to_total_energy()
+
+        if self._boost_method == BoostMethod.TOTAL or \
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+
+            self._add_gamd_pre_calc_step(ComputeType.TOTAL)
+            self._add_gamd_boost_calculations_step(ComputeType.TOTAL)
+
+        self._add_gamd_update_step()
 
     def _add_stage_four_instructions(self):
 
@@ -412,61 +455,69 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         self.addComputeGlobal("windowCount", "windowCount + 1")
 
         #
-        # Throughout Stage 4, update our Vmin and Vmax.  This will continue 
-        # on from our values for Vmin and Vmax from stage 2, rather than 
-        # resetting these values first.
+        # NOTE:  The order of these instructions is important.
         #
-        self._add_instructions_to_calculate_primary_boost_statistics(group_only=True)
+        self._do_boost_updates()
+        self._stage_4_boost_parameters_updates()
+        # -------------------------------
 
-        #
-        # These calculations help us to keep track of the running ntave window 
-        # Vavg and variance.
-        #
-        self._add_instructions_to_calculate_secondary_boost_statistics(group_only=True)
-
-        #
-        # If we are at the end of the ntave window, then we need to calculate 
-        # our Vavg, sigmaV, and reset our window
-        # values.
-        #
         self.beginIfBlock("windowCount = " + str(self.ntave))
-        self._update_potential_state_values_with_window_potential_state_values(
-            group_only=True)
-        # Don't reset window count because it will be reset with the next if statement
-        #self.addComputeGlobal("windowCount", "0")
-        self.endBlock()
-
-        #
-        # We recalculate the threshold energy and the effective harmonic 
-        # constant based on the possible new Vmax and
-        # Vmin at each step in stage 4.
-        #
-        self._calculate_threshold_energy_and_effective_harmonic_constant(group_only=True)
-
-        #
-        # WARNING:  We may have to move this step to be done first in the 
-        # stage.  Recalculations of E can sometimes cause issues depending on 
-        # where it occurs within the step.
-        #
-        self._add_gamd_pre_calc_step(group_only=True)
-        self._add_gamd_boost_calculations_step(group_only=True)
-        self._add_dihedral_boost_to_total_energy()
-        
-        self._add_instructions_to_calculate_primary_boost_statistics(total_only=True)
-        self._add_instructions_to_calculate_secondary_boost_statistics(total_only=True)
-        self.beginIfBlock("windowCount = " + str(self.ntave))
-        self._update_potential_state_values_with_window_potential_state_values(
-            total_only=True)
         self.addComputeGlobal("windowCount", "0")
         self.endBlock()
-        self._calculate_threshold_energy_and_effective_harmonic_constant(total_only=True)
-        self._add_gamd_pre_calc_step(total_only=True)
-        self._add_gamd_boost_calculations_step(total_only=True)
-        self._add_gamd_update_step()
 
-        # -------------------------------
         self.endBlock()
 
+    def _stage_4_boost_parameters_updates(self):
+
+        if self._boost_method == BoostMethod.GROUPS or \
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+
+            #
+            # Throughout Stage 4, update our Vmin and Vmax.  This will continue
+            # on from our values for Vmin and Vmax from stage 2, rather than
+            # resetting these values first.
+            #
+            self._calculate_primary_boost_statistics(ComputeType.GROUP)
+
+            #
+            # These calculations help us to keep track of the running ntave window
+            # Vavg and variance.
+            #
+            self._calculate_secondary_boost_statistics(ComputeType.GROUP)
+
+            #
+            # If we are at the end of the ntave window, then we need to calculate
+            # our Vavg, sigmaV, and reset our window
+            # values.
+            #
+            self.beginIfBlock("windowCount = " + str(self.ntave))
+            self._update_potential_state_values_with_window_potential_state_values(
+                ComputeType.GROUP)
+            self.endBlock()
+
+            #
+            # We recalculate the threshold energy and the effective harmonic
+            # constant based on the possible new Vmax and
+            # Vmin at each step in stage 4.
+            #
+            self._calculate_threshold_energy_and_effective_harmonic_constant(ComputeType.GROUP)
+
+            #
+            # WARNING:  We may have to move this step to be done first in the
+            # stage.  Recalculations of E can sometimes cause issues depending on
+            # where it occurs within the step.
+            #
+
+        if self._boost_method == BoostMethod.TOTAL or \
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+
+            self._calculate_primary_boost_statistics(ComputeType.TOTAL)
+            self._calculate_secondary_boost_statistics(ComputeType.TOTAL)
+            self.beginIfBlock("windowCount = " + str(self.ntave))
+            self._update_potential_state_values_with_window_potential_state_values(
+                ComputeType.TOTAL)
+            self.endBlock()
+            self._calculate_threshold_energy_and_effective_harmonic_constant(ComputeType.TOTAL)
 
     @abstractmethod
     def _add_common_variables(self):
@@ -478,31 +529,28 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
             "must implement _add_conventional_md_instructions")
 
     @abstractmethod
-    def _add_gamd_instructions(self):
-        raise NotImplementedError("must implement _add_gamd_instructions")
+    def _calculate_primary_boost_statistics(self, compute_type):
+        raise NotImplementedError(
+            "must implement _calculate_primary_boost_statistics")
 
     @abstractmethod
-    def _add_instructions_to_calculate_primary_boost_statistics(self):
+    def _calculate_secondary_boost_statistics(self,
+                                              compute_type):
         raise NotImplementedError(
-            "must implement "\
-            "_add_instructions_to_calculate_primary_boost_statistics")
+            "must implement _calculate_secondary_boost_statistics")
 
     @abstractmethod
-    def _add_instructions_to_calculate_secondary_boost_statistics(self):
+    def _update_potential_state_values_with_window_potential_state_values(self,
+                                                                          compute_type):
         raise NotImplementedError(
-            "must implement "\
-            "_add_instructions_to_calculate_secondary_boost_statistics")
-
-    @abstractmethod
-    def _update_potential_state_values_with_window_potential_state_values(self):
-        raise NotImplementedError(
-            "must implement "\
+            "must implement " +
             "_update_potential_state_values_with_window_potential_state_values")
 
     @abstractmethod
-    def _calculate_threshold_energy_and_effective_harmonic_constant(self):
+    def _calculate_threshold_energy_and_effective_harmonic_constant(self,
+                                                                    compute_type):
         raise NotImplementedError(
-            "must implement "\
+            "must implement " +
             "_calculate_threshold_energy_and_effective_harmonic_constant")
 
     @abstractmethod
@@ -546,7 +594,8 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
 
     # This method will append a unique group name to the end of the variable.
     #
-    def _append_group_name(self, name, group_name):
+    @staticmethod
+    def _append_group_name(name, group_name):
         return name + "_" + str(group_name)
 
     # This method will append a unique group name to the end of the variable 
@@ -559,7 +608,8 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
     # used for referencing system names. We use _append_group_name for 
     # referencing values we are creating.
     #
-    def _append_group(self, name, group_id):
+    @staticmethod
+    def _append_group(name, group_id):
         return name + str(group_id)
 
     @staticmethod
@@ -569,62 +619,130 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
     def get_variable_name_by_type(self, boost_type, name):
         return self._append_group_name_by_type(name, boost_type)
     
-    def addGlobalVariablesByName(self, name, value):
+    def add_global_variables_by_name(self, name, value):
         for group_id in self.__group_dict:
             group_name = self.__group_dict[group_id]
             var_name = self._append_group_name(name, group_name)
             self.addGlobalVariable(var_name, value)
-            
-        if self.__total_boost:
+#            print("Registered Variable ", var_name, ": ", value)
+
+        if self._boost_method == BoostMethod.TOTAL or \
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
             var_name = self._append_group_name(name, BoostType.TOTAL.value)
             self.addGlobalVariable(var_name, value)
+#            print("Registered Variable ", var_name, ": ", value)
             
         return
-    
-    def addComputeGlobalByName(self, name, expression, format_list=[], 
-                               value_by_number=False, group_only=False,
-                               total_only=False):
-        if not total_only:
-            for group_id in self.__group_dict:
-                group_name = self.__group_dict[group_id]
-                var_name = self._append_group_name(name, group_name)
-                if value_by_number:
-                    new_formats = [self._append_group(var, group_id) \
-                                   for var in format_list]
-                    formatted_expression = expression.format(*new_formats)
-                else:
-                    new_formats = [self._append_group_name(var, group_name) \
-                                   for var in format_list]
-                    formatted_expression = expression.format(*new_formats)
-                self.addComputeGlobal(var_name, formatted_expression)
-            
-        if self.__total_boost and not group_only:
-            var_name = self._append_group_name(name, BoostType.TOTAL.value)
+
+    #
+    # Add Compute Methods
+    #
+
+    def __add_compute_global_total(self, name, expression, format_list,
+                                   value_by_number=False):
+        var_name = self._append_group_name(name, BoostType.TOTAL.value)
+        if value_by_number:
+            formatted_expression = expression.format(*format_list)
+        else:
+            new_formats = [
+                self._append_group_name(var, BoostType.TOTAL.value)
+                for var in format_list]
+            formatted_expression = expression.format(*new_formats)
+        self.addComputeGlobal(var_name, formatted_expression)
+
+        return
+
+    def __add_compute_global_group(self, name, expression, format_list,
+                                   value_by_number=False):
+        for group_id in self.__group_dict:
+            group_name = self.__group_dict[group_id]
+            var_name = self._append_group_name(name, group_name)
             if value_by_number:
-                formatted_expression = expression.format(*format_list)
+                new_formats = [self._append_group(var, group_id)
+                               for var in format_list]
+                formatted_expression = expression.format(*new_formats)
             else:
-                new_formats = [
-                    self._append_group_name(var, BoostType.TOTAL.value) \
-                    for var in format_list]
+                new_formats = [self._append_group_name(var, group_name)
+                               for var in format_list]
                 formatted_expression = expression.format(*new_formats)
             self.addComputeGlobal(var_name, formatted_expression)
-            
+
         return
-    
-    def get_total_boost(self):
-        return self.__total_boost
-    
+
+    def set_global_by_name_to_value(self, name, value, compute_type):
+        expression = value
+        format_list = []
+        value_by_number = False
+        """
+            This method will allow you to specify the compute type for which
+            you want to run the calculations, using the group list provided
+            during instantiation.
+        """
+
+        if compute_type == ComputeType.GROUP:
+            self.__add_compute_global_group(name, expression, format_list,
+                                            value_by_number)
+        if compute_type == ComputeType.TOTAL:
+            self.__add_compute_global_total(name, expression, format_list,
+                                            value_by_number)
+        return
+
+    def add_compute_global_by_name(self, name, expression, format_list,
+                                   compute_type):
+        """
+            This method will allow you to specify the compute type for which
+            you want to run the calculations, using the group list provided
+            during instantiation.
+        """
+        # Since we never set this to true, except when we were setting a value,
+        # I've moved out of the parameter list, since a new function took
+        # it's place.
+        value_by_number = False
+
+        if compute_type == ComputeType.GROUP:
+            self.__add_compute_global_group(name, expression, format_list,
+                                            value_by_number)
+        if compute_type == ComputeType.TOTAL:
+            self.__add_compute_global_total(name, expression, format_list,
+                                            value_by_number)
+        return
+
+    def __add_compute_globals_by_name(self, name, expression, format_list,
+                                      value_by_number=True):
+        """
+            This method will compute all of the globals based on the
+            boost method assigned during instantiation.
+
+            As this tends to be used to set default variables to be equal
+            to OpenMM values, the value_by_number has been defaulted to True
+            here.
+
+        """
+        if self._boost_method == BoostMethod.TOTAL or \
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+
+            self.__add_compute_global_total(name, expression, format_list,
+                                            value_by_number)
+
+        if self._boost_method == BoostMethod.GROUPS or \
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
+
+            self.__add_compute_global_group(name, expression, format_list,
+                                            value_by_number)
+
     def get_group_dict(self):
         return self.__group_dict
-    
+
     def _add_dihedral_boost_to_total_energy(self):
-        if self.get_total_boost():
-            total_energy_name = self._append_group_name("StartingPotentialEnergy", BoostType.TOTAL.value)
-            for group_id in self.__group_dict:
-                group_name = self.__group_dict[group_id]
-                group_boost_name = self._append_group_name("BoostPotential", group_name)
-                expression = "{0} + {1}".format(total_energy_name, group_boost_name)
-                self.addComputeGlobal(total_energy_name, expression)
+        total_energy_name = self._append_group_name("StartingPotentialEnergy",
+                                                    BoostType.TOTAL.value)
+
+        for group_id in self.__group_dict:
+            group_name = self.__group_dict[group_id]
+            group_boost_name = self._append_group_name("BoostPotential",
+                                                       group_name)
+            expression = "{0} + {1}".format(total_energy_name, group_boost_name)
+
+            self.addComputeGlobal(total_energy_name, expression)
+
         return
-
-
