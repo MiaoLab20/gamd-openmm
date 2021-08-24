@@ -25,7 +25,7 @@ for boost_type in "${boost_types[@]}"
 do
     echo "Now running boost type: $boost_type"
     echo "-----------------------------------------------------------"
-    ./do-average-test.sh $cMD_Directory $boost_type $OUTPUT_BASE/test-$boost_type/
+    ./tests/do-average-test.sh $cMD_Directory $boost_type $OUTPUT_BASE/test-$boost_type/
     mv $OUTPUT_BASE/test-$boost_type/*.png $OUTPUT_BASE/
     echo "-----------------------------------------------------------"
     

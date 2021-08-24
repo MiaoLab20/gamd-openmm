@@ -15,14 +15,16 @@ fi
 GAMD_Directory=`realpath $1`
 RUN_TYPE=$2
 OUTPUT_BASE=$3
+QUICK=$4
+DEBUG=$5
 
 mkdir $OUTPUT_BASE
 
-./run-test.py $RUN_TYPE $OUTPUT_BASE/1/
+./run-test.py $RUN_TYPE $OUTPUT_BASE/1/ $QUICK $DEBUG
 echo ""
-./run-test.py $RUN_TYPE $OUTPUT_BASE/2/
+./run-test.py $RUN_TYPE $OUTPUT_BASE/2/ $QUICK $DEBUG
 echo ""
-./run-test.py $RUN_TYPE $OUTPUT_BASE/3/
+./run-test.py $RUN_TYPE $OUTPUT_BASE/3/ $QUICK $DEBUG
 
 COMPARISON_APP=`realpath ./tools/create-test-comparison-graphics.py`
 
