@@ -224,11 +224,13 @@ def create_output_directories(directories):
 
 
 def usage():
-    print("run-test.py boost-type [output-directory] [platform | device] [device]\n")
+    print("run-test.py boost-type [output-directory] [platform | device] [device] debug quick\n")
     print("\tboost-type:\t\tgamd-cmd-base|lower-total|upper-total|lower-dihedral|upper-dihedral|lower-dual|upper-dual\n")
     print("\toutput-directory:\tDirectory to output files. [default: output]\n")
     print("\tplatform:\t\tCUDA|OpenCL|CPU [defaults to OpenMM best guess for fastest]\n")
     print("\tdevice:\t\t\tUsed to specify the device index, when multiple GPUs exist on \n\t\t\t\tthe system. [defaults to CUDA, if platform not specified.]\n")
+    print("\tdebug:\t\t\tpassing this string turns on debugging, which will print out system\n\t\t\t\tvariables and the integration algorithm.\n")
+    print("\tquick:\t\t\tpassing this string will cause the program to run a short 60k step version\n")
 
 
 def handle_arguments():
