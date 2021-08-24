@@ -43,12 +43,13 @@ class DebugLogger:
 
     @staticmethod
     def write_integration_algorithm_to_file(filename, integrator):
-        with open(filename, "w") as integration_algo_file:
+        with open(filename, "a") as integration_algo_file:
             integration_algo_file.write(integrator.__class__.__module__ + "." + integrator.__class__.__name__)
             integration_algo_file.write("\n\n")
             for i in range(integrator.getNumComputations()):
                 integration_algo_file.write(str(integrator.getComputationStep(i)))
                 integration_algo_file.write("\n")
+            integration_algo_file.write("---------------------------------------------------------\n")
 
     @staticmethod
     def print_global_variables_to_screen(integrator):

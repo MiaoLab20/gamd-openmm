@@ -171,6 +171,53 @@ def create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd
                                                      nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
 
 
+def print_integration_algorithms(filename):
+    coordinates_file = './data/md-4ns.rst7'
+    prmtop_file = './data/dip.top'
+    prmtop = AmberPrmtopFile(prmtop_file)
+    inpcrd = AmberInpcrdFile(coordinates_file)
+    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints = HBonds)
+    temperature = 298.15
+    dt = 2.0 * femtoseconds
+    ntcmdprep = 200000
+    ntcmd = 1000000
+    ntebprep = 200000
+    nteb = 2000000
+    nstlim = 18000000
+    ntave = 25000
+
+    number_of_steps_in_group = 100
+    starting_offset = 0
+
+    [group, integrator] = create_lower_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                  nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
+    [group, integrator] = create_upper_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                  nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
+    [group, integrator] = create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                  nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
+    [group, integrator] = create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                  nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
+    [group, integrator] = create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                  nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
+    [group, integrator] = create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                  nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
+    sys.exit(22)
+
+
+
+
 def create_output_directories(directories):
     for dir in directories:
         os.makedirs(dir, 0o755)
@@ -196,6 +243,9 @@ def handle_arguments():
     if "debug" in sys.argv:
         debug = True
         sys.argv.remove("debug")
+
+    if "print-integration-algorithms" in sys.argv:
+        print_integration_algorithms("all-integration-algorithms.txt")
 
     if len(sys.argv) == 2:
         output_directory = "output"
