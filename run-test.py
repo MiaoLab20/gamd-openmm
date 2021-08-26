@@ -3,31 +3,119 @@
 from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
-from sys import stdout
-from sys import exit
 import os
 import sys
 import time
-import traceback
-# from gamd.langevin.total_boost_integrators import LowerBoundIntegrator
-# from gamd.langevin.total_boost_integrators import UpperBoundIntegrator
-# from gamd.langevin.dihedral_boost_integrators import import LowerBountIntegrator
-# from gamd.langevin.dihedral_boost_integrators import import UpperBoundIntegrator
 from gamd.DebugLogger import DebugLogger
-from gamd.stage_integrator import BoostType
 from gamd.GamdLogger import GamdLogger
 from gamd import utils as utils
-import pprint
 import shutil
 import subprocess
 import datetime
-
 from gamd.langevin.total_boost_integrators import LowerBoundIntegrator as TotalBoostLowerBoundIntegrator
 from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalBoostUpperBoundIntegrator
 from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as DihedralBoostLowerBoundIntegrator
 from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator as DihedralBoostUpperBoundIntegrator
 from gamd.langevin.dual_boost_integrators import LowerBoundIntegrator as DualBoostLowerBoundIntegrator
 from gamd.langevin.dual_boost_integrators import UpperBoundIntegrator as DualBoostUpperBoundIntegrator
+
+
+class RunningRates:
+
+    def __init__(self, number_of_simulation_steps: int, save_rate: int, reporting_rate: int,
+                 debugging_enabled: bool = False, debugging_step_function=None) -> None:
+        """Constructor
+
+            The save_rate determines that rate at which to write out
+            DCD/PDB file, checkpoint, coordinates, and write to the GaMD log files.
+            The value of save_rate should evenly divide the number of simulation steps.
+
+            The reporting_rate determines the rate at which to write out to
+            the state-data.log and the debugging files, if enabled.  The value of the
+            reporting rate should evenly divide the number of simulation steps.
+
+            The save_rate or reporting_rate should be a multiple of the other
+            value, if debugging is enabled.
+
+            The save_rate, reporting_rate, and debugging flag determine the
+            batch_run_rate, which is just the number of steps to have
+            OpenMM execute at one time in the simulation.
+
+        Parameters
+
+        :param number_of_simulation_steps: (int) Same as nstlim, the total number of steps in the simulation.
+
+        :param save_rate: (int) the number of steps before performing a save.
+
+        :param reporting_rate: (int) the number of steps before printing to reports.
+
+        :param debugging_enabled: (boolean) indicates whether debugging is enabled.  Defaults: False
+
+        """
+        if ((number_of_simulation_steps % save_rate) != 0 and
+                (number_of_simulation_steps % reporting_rate) != 0):
+            raise ValueError("RunningRates:  The save_rate and reporting_rate should evenly "
+                             "divide into the number of steps in the simulation.")
+
+        if debugging_enabled and not (((save_rate % reporting_rate) == 0) or
+                                      ((reporting_rate % save_rate) == 0)):
+            raise ValueError("RunningRates:  When debugging is enabled, save_rate/reporting_rate "
+                             "must be a multiple of the other value.")
+
+        self.debugging_step_function = debugging_step_function
+        if callable(debugging_step_function):
+            self.custom_debugging_function = True
+        else:
+            self.custom_debugging_function = False
+
+        self.save_rate = save_rate
+        self.reporting_rate = reporting_rate
+        self.number_of_simulation_steps = number_of_simulation_steps
+        self.debugging_enabled = debugging_enabled
+
+        if debugging_enabled:
+            if save_rate <= reporting_rate:
+                self.batch_run_rate = save_rate
+            else:
+                self.batch_run_rate = reporting_rate
+        else:
+            self.batch_run_rate = self.save_rate
+
+    def get_save_rate(self):
+        return self.save_rate
+
+    def get_reporting_rate(self):
+        return self.reporting_rate
+
+    def is_save_step(self, step):
+        return (step % self.save_rate) == 0
+
+    def is_reporting_step(self, step):
+        return (step % self.reporting_rate) == 0
+
+    def get_batch_run_rate(self):
+        return self.batch_run_rate
+
+    def is_debugging_step(self, step):
+        if self.custom_debugging_function:
+            result = self.debugging_step_function(step)
+        else:
+            result = (step % self.reporting_rate) == 0
+        return result
+
+    def get_batch_run_range(self):
+        return range(1, self.number_of_simulation_steps // self.get_batch_run_rate() + 1)
+
+    def get_restart_step(self, integrator):
+        start_step = int(integrator.getGlobalVariableByName("stepCount") // self.get_batch_run_rate())
+        return start_step
+
+    def get_restart_batch_run_range(self, integrator):
+        return range(self.get_restart_step(integrator),
+                     self.number_of_simulation_steps // self.get_batch_run_rate() + 1)
+
+    def get_step_from_frame(self, frame):
+        return frame * self.get_batch_run_rate()
 
 
 def is_argument_integer(n):
@@ -43,6 +131,7 @@ def main():
     [boost_type, output_directory, device, platform, debug, quick] = handle_arguments()
     temperature = 298.15
     dt = 2.0 * femtoseconds
+
     if quick:
         ntcmdprep = 2000
         ntcmd = 10000
@@ -50,11 +139,11 @@ def main():
         nteb = 20000
         nstlim = 60000
         ntave = 250
-        if quick and debug:
-            number_of_steps_in_group = 1
+        frame_size = 50
+        if debug:
+            running_rates = RunningRates(nstlim, frame_size, 1, True)
         else:
-            number_of_steps_in_group = 50
-
+            running_rates = RunningRates(nstlim, frame_size, frame_size, False)
     else:
         ntcmdprep = 200000
         ntcmd = 1000000
@@ -62,8 +151,11 @@ def main():
         nteb = 2000000
         nstlim = 18000000
         ntave = 25000
-        number_of_steps_in_group = 100
-
+        frame_size = 100
+        if debug:
+            running_rates = RunningRates(nstlim, frame_size, 1, True)
+        else:
+            running_rates = RunningRates(nstlim, frame_size, frame_size, False)
 
     # This variable indicates the number of frames at the beginning of stage 5 (production) to ignore.
     #
@@ -74,7 +166,7 @@ def main():
     print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
 
     start_date_time = run_simulation(temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
-                                     output_directory, platform, device, number_of_steps_in_group, starting_offset,
+                                     output_directory, platform, device, running_rates, starting_offset,
                                      debug)
 
     print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
@@ -86,7 +178,7 @@ def main():
     print("Execution rate for this run:  ", str(steps_per_second), " steps per second.")
     daily_execution_rate = steps_per_second * 3600 * 24 * dt
     print("Daily execution rate:         ", str(daily_execution_rate.value_in_unit(nanoseconds)), " ns per day.")
-    production_starting_frame = ((ntcmd + nteb) / number_of_steps_in_group) + starting_offset
+    production_starting_frame = ((ntcmd + nteb) / frame_size) + starting_offset
     run_post_simulation(temperature, output_directory, production_starting_frame)
 
 
@@ -285,18 +377,17 @@ def handle_arguments():
 
 
 def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
-                   output_directory, platform_name, device, number_of_steps_in_group=100, reweighting_offset=0,
+                   output_directory, platform_name, device, running_rates: RunningRates, reweighting_offset=0,
                    debug=False):
     coordinates_file = './data/md-4ns.rst7'
     prmtop_file = './data/dip.top'
     starttime = time.time()
     restarting = False
-    restart_checkpoint_frequency = number_of_steps_in_group
-    restart_checkpoint_filename = "gamd.backup"
+    restart_checkpoint_filename = os.path.join(output_directory, "gamd.backup")
     temperature = unitless_temperature * kelvin
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
-    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints = HBonds)
+    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
     # dihedral_boost = True
     # (simulation, integrator) = createGamdSimulationFromAmberFiles(prmtop_file, coordinates_file, dihedral_boost=dihedral_boost)
 
@@ -310,18 +401,20 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         [group, integrator] = create_upper_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
                                                                   nteb, nstlim, ntave)
     elif boost_type == "lower-dihedral":
-        [group, integrator] = create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
+        [group, integrator] = create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+                                                                     ntebprep,
+                                                                     nteb, nstlim, ntave)
     elif boost_type == "upper-dihedral":
-        [group, integrator] = create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
+        [group, integrator] = create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+                                                                     ntebprep,
+                                                                     nteb, nstlim, ntave)
     elif boost_type == "lower-dual":
         [group, integrator] = create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
+                                                                 nteb, nstlim, ntave)
     elif boost_type == "upper-dual":
         [group, integrator] = create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
-        
+                                                                 nteb, nstlim, ntave)
+
     else:
         usage()
         sys.exit(1)
@@ -342,22 +435,24 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
     else:
         simulation = Simulation(prmtop.topology, system, integrator)
-    
+
     """ # uncomment to view integrator computations
     for i in range(integrator.getNumComputations()):
         print(integrator.getComputationStep(i))
-    
+
     print("exiting...")
     exit()
     """
-    
+
     if restarting:
         simulation.loadCheckpoint(restart_checkpoint_filename)
         write_mode = "a"
-        start_step = int(integrator.getGlobalVariableByName("stepCount") // number_of_steps_in_group)
+        start_step = running_rates.get_restart_step(integrator)
         print("restarting from saved checkpoint:", restart_checkpoint_filename,
               "at step:", start_step)
+        running_range = running_rates.get_restart_batch_run_range(integrator)
     else:
+        running_range = running_rates.get_batch_run_range()
         simulation.context.setPositions(inpcrd.positions)
         if inpcrd.boxVectors is not None:
             simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
@@ -367,9 +462,11 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         #
         simulation.context.setVelocitiesToTemperature(unitless_temperature * kelvin)
         simulation.saveState(output_directory + "/states/initial-state.xml")
-        simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', number_of_steps_in_group))
+        simulation.reporters.append(DCDReporter(output_directory + '/output.dcd', running_rates.get_save_rate()))
         simulation.reporters.append(
-            utils.ExpandedStateDataReporter(system, output_directory + '/state-data.log', number_of_steps_in_group,
+            utils.ExpandedStateDataReporter(system,
+                                            output_directory + '/state-data.log',
+                                            running_rates.get_reporting_rate(),
                                             step=True,
                                             brokenOutForceEnergies=True, temperature=True, potentialEnergy=True,
                                             totalEnergy=True, volume=True))
@@ -379,8 +476,8 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
 
     gamd_logger = GamdLogger(output_directory + "/gamd.log", write_mode, integrator, simulation)
     gamd_reweighting_logger = GamdLogger(output_directory + "/gamd-reweighting.log", write_mode, integrator, simulation)
-    start_production_logging_step = ntcmd + nteb + (number_of_steps_in_group * reweighting_offset)
-    start_production_logging_frame = int(start_production_logging_step / number_of_steps_in_group)
+    start_production_logging_step = ntcmd + nteb + (running_rates.get_batch_run_rate() * reweighting_offset)
+    start_production_logging_frame = int(start_production_logging_step / running_rates.get_batch_run_rate())
 
     with open(output_directory + "/" + "production-start-step.txt", "w") as prodstartstep_file:
         prodstartstep_file.write(str(start_production_logging_step))
@@ -398,8 +495,11 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         debug_logger.write_global_variables_headers(integrator)
 
     start_date_time = datetime.datetime.now()
-    for step in range(start_step, (integrator.get_total_simulation_steps() // number_of_steps_in_group) + 1):
-        if step % restart_checkpoint_frequency // number_of_steps_in_group == 0:
+    batch_run_rate = running_rates.get_batch_run_rate()
+    for batch_frame in running_range:
+        step = running_rates.get_step_from_frame(batch_frame)
+
+        if running_rates.is_save_step(step):
             simulation.saveCheckpoint(restart_checkpoint_filename)
 
         # TEST
@@ -409,11 +509,10 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         # END TEST
 
         gamd_logger.mark_energies(group)
-        if step >= start_production_logging_frame:
+        if running_rates.is_save_step(step):
             gamd_reweighting_logger.mark_energies(group)
 
         try:
-            # print(integrator.get_current_state())
 
             #
             #  NOTE:  We need to save off the starting total and dihedral potential energies, since we
@@ -422,44 +521,33 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
             #         for boosting were based on.
             #
 
-            simulation.step(number_of_steps_in_group)
-            if debug:
+            simulation.step(batch_run_rate)
+            if debug and running_rates.is_debugging_step(batch_frame):
                 debug_logger.write_global_variables_values(integrator)
 
-            gamd_logger.write_to_gamd_log(step * number_of_steps_in_group)
-            if step >= start_production_logging_frame:
-                gamd_reweighting_logger.write_to_gamd_log(step * number_of_steps_in_group)
+            if running_rates.is_save_step(step):
+                gamd_logger.write_to_gamd_log(step)
+                if step >= start_production_logging_step:
+                    gamd_reweighting_logger.write_to_gamd_log(step)
 
-            # print(integrator.get_current_state())
         except Exception as e:
-            print("Failure on step " + str(step * number_of_steps_in_group))
+            print("Failure on step " + str(step))
             print(e)
             if debug:
                 debug_logger.print_global_variables_to_screen(integrator)
                 debug_logger.write_global_variables_values(integrator)
-            # print(integrator.get_current_state())
             gamd_logger.write_to_gamd_log(step)
-            if step >= start_production_logging_frame:
-                gamd_reweighting_logger.write_to_gamd_log(step * number_of_steps_in_group)
+            gamd_reweighting_logger.write_to_gamd_log(step)
 
             sys.exit(2)
 
-        # simulation.loadCheckpoint('/tmp/testcheckpoint')
-
-        # debug_information = integrator.get_debugging_information()
-        # getGlobalVariableNames(integrator)
-
-        if step % integrator.ntave == 0:
-            # if step % 1 == 0:
-
-            simulation.saveState(output_directory + "/states/" + str(step * number_of_steps_in_group) + ".xml")
-            simulation.saveCheckpoint(output_directory + "/checkpoints/" +
-                                      str(step * number_of_steps_in_group) + ".bin")
-            positions_filename = output_directory + '/positions/coordinates-' + \
-                                 str(step * number_of_steps_in_group) + '.csv'
+        if (step % ntave) == 0:
+            simulation.saveState(output_directory + "/states/" + str(step) + ".xml")
+            step_checkpoint_filename = os.path.join(output_directory, "checkpoints", str(step) + ".bin")
+            positions_filename = os.path.join(output_directory, "positions",
+                                                     "coordinates-" + str(step) + ".csv")
+            simulation.saveCheckpoint(step_checkpoint_filename)
             integrator.create_positions_file(positions_filename)
-            # pp = pprint.PrettyPrinter(indent=2)
-            # pp.pprint(debug_information)
 
     return start_date_time
 
@@ -508,6 +596,8 @@ def write_out_phi_psi_cpptraj_command(output_directory, starting_frame):
         dat_command_file.write("dihedral phi :1@C :2@N :2@CA :2@C out graphics/phi-psi-cpptraj.dat" + "\n")
         dat_command_file.write("dihedral psi :2@N :2@CA :2@C :3@N out graphics/phi-psi-cpptraj.dat" + "\n")
         dat_command_file.write("go" + "\n")
+
+
 
 
 if __name__ == "__main__":
