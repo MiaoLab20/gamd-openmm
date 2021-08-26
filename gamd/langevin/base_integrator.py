@@ -259,19 +259,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         return
 
-    #
-    #
-    #
-    #
-    # def get_starting_energy(self):
-    # return self.getGlobalVariableByName("starting_energy")
-
-    # def get_current_state(self):
-    # results = {"step": self.getGlobalVariableByName("stepCount")}
-
-    # return results
-    # pass
-
     def _add_common_variables(self):
         unused_return_values = {self.addGlobalVariable(key, value)
                                 for key, value in
