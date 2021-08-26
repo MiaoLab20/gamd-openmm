@@ -151,7 +151,7 @@ def main():
         nteb = 2000000
         nstlim = 18000000
         ntave = 25000
-        frame_size = 10000
+        frame_size = 100
         if debug:
             running_rates = RunningRates(nstlim, frame_size, 1, True)
         else:
