@@ -50,6 +50,10 @@ def main():
         nteb = 20000
         nstlim = 60000
         ntave = 250
+        if quick and debug:
+            number_of_steps_in_group = 1
+        else:
+            number_of_steps_in_group = 50
 
     else:
         ntcmdprep = 200000
@@ -58,8 +62,8 @@ def main():
         nteb = 2000000
         nstlim = 18000000
         ntave = 25000
+        number_of_steps_in_group = 100
 
-    number_of_steps_in_group = 100
 
     # This variable indicates the number of frames at the beginning of stage 5 (production) to ignore.
     #
@@ -168,7 +172,8 @@ def create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd
 def create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
     group = set_dihedral_group(system)
     return [group, DualBoostUpperBoundIntegrator(group,  dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
-                                                     nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
+                                                 nteb=nteb, nstlim=nstlim, ntave=ntave,
+                                                 sigma0p=6.0 * kilocalories_per_mole, temperature=temperature)]
 
 
 def print_integration_algorithms(filename):
@@ -176,7 +181,7 @@ def print_integration_algorithms(filename):
     prmtop_file = './data/dip.top'
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
-    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints = HBonds)
+    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
     temperature = 298.15
     dt = 2.0 * femtoseconds
     ntcmdprep = 200000
@@ -214,8 +219,6 @@ def print_integration_algorithms(filename):
     DebugLogger.write_integration_algorithm_to_file(filename, integrator)
 
     sys.exit(22)
-
-
 
 
 def create_output_directories(directories):
