@@ -6,7 +6,7 @@ then
     exit
 fi
 
-if [ "$#" -ne 3 ]; then
+if [ "$#" -lt 3 ]; then
     echo "Usage do-average-test.sh location-of-cmd-directory run-type output-directory"
     exit 2
 fi
