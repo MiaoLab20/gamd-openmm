@@ -151,7 +151,7 @@ def main():
         nteb = 2000000
         nstlim = 18000000
         ntave = 25000
-        frame_size = 100
+        frame_size = 10000
         if debug:
             running_rates = RunningRates(nstlim, frame_size, 1, True)
         else:
@@ -272,7 +272,6 @@ def print_integration_algorithms(filename):
     coordinates_file = './data/md-4ns.rst7'
     prmtop_file = './data/dip.top'
     prmtop = AmberPrmtopFile(prmtop_file)
-    inpcrd = AmberInpcrdFile(coordinates_file)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
     temperature = 298.15
     dt = 2.0 * femtoseconds
@@ -282,9 +281,6 @@ def print_integration_algorithms(filename):
     nteb = 2000000
     nstlim = 18000000
     ntave = 25000
-
-    number_of_steps_in_group = 100
-    starting_offset = 0
 
     [group, integrator] = create_lower_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
                                                                   nteb, nstlim, ntave)
@@ -388,8 +384,6 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
-    # dihedral_boost = True
-    # (simulation, integrator) = createGamdSimulationFromAmberFiles(prmtop_file, coordinates_file, dihedral_boost=dihedral_boost)
 
     if boost_type == "gamd-cmd-base":
         [group, integrator] = create_gamd_cmd_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb,
@@ -414,7 +408,6 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
     elif boost_type == "upper-dual":
         [group, integrator] = create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
                                                                  nteb, nstlim, ntave)
-
     else:
         usage()
         sys.exit(1)
@@ -472,12 +465,10 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
                                             totalEnergy=True, volume=True))
         print("startup time: \t", time.time() - starttime)
         write_mode = "w"
-        start_step = 1
 
     gamd_logger = GamdLogger(output_directory + "/gamd.log", write_mode, integrator, simulation)
     gamd_reweighting_logger = GamdLogger(output_directory + "/gamd-reweighting.log", write_mode, integrator, simulation)
     start_production_logging_step = ntcmd + nteb + (running_rates.get_batch_run_rate() * reweighting_offset)
-    start_production_logging_frame = int(start_production_logging_step / running_rates.get_batch_run_rate())
 
     with open(output_directory + "/" + "production-start-step.txt", "w") as prodstartstep_file:
         prodstartstep_file.write(str(start_production_logging_step))
@@ -489,7 +480,12 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
     print("Running: \t " + str(integrator.get_total_simulation_steps()) + " steps")
 
     if debug:
-        debug_logger = DebugLogger(output_directory + "/debug.csv", write_mode)
+        ignore_fields = {"stageOneIfValueIsZeroOrNegative", "stageTwoIfValueIsZeroOrNegative",
+                         "stageThreeIfValueIsZeroOrNegative", "stageFourIfValueIsZeroOrNegative",
+                         "stageFiveIfValueIsZeroOrNegative", "thermal_energy", "collision_rate",
+                         "vscale", "fscale", "noisescale"}
+        debug_filename = os.path.join(output_directory, "debug.csv")
+        debug_logger = DebugLogger(debug_filename, write_mode, ignore_fields)
         print("Debugging enabled.")
         debug_logger.write_integration_algorithm_to_file(output_directory + "/integration-algorithm.txt", integrator)
         debug_logger.write_global_variables_headers(integrator)
@@ -596,8 +592,6 @@ def write_out_phi_psi_cpptraj_command(output_directory, starting_frame):
         dat_command_file.write("dihedral phi :1@C :2@N :2@CA :2@C out graphics/phi-psi-cpptraj.dat" + "\n")
         dat_command_file.write("dihedral psi :2@N :2@CA :2@C :3@N out graphics/phi-psi-cpptraj.dat" + "\n")
         dat_command_file.write("go" + "\n")
-
-
 
 
 if __name__ == "__main__":

@@ -7,32 +7,43 @@ import sys
 
 class DebugLogger:
 
-    def __init__(self, filename, mode):
+    def __init__(self, filename, mode, denyList=None):
         self.filename = filename
         self.debugLog = open(filename, mode)
+        if denyList is None:
+            self.denyList = []
+        else:
+            self.denyList = denyList
 
     def __del__(self):
         self.debugLog.close()
 
-    def write_global_variables_headers(self, integrator):
+    def __get_all_headers(self, integrator):
+        result = []
         number_of_globals = integrator.getNumGlobalVariables()
-        second_to_last = number_of_globals - 1
         for index in range(0, number_of_globals):
             name = integrator.getGlobalVariableName(index)
-            self.debugLog.write(str(name))
-            if index < second_to_last:
-                self.debugLog.write(",")
+            result.append(name)
+        return result
+
+    def __get_filtered_headers(self, integrator):
+        all_headers = self.__get_all_headers(integrator)
+        headers = [header for header in all_headers if header not in self.denyList]
+        return headers
+
+    def write_global_variables_headers(self, integrator):
+        headers = self.__get_filtered_headers(integrator)
+        headers_string = ",".join(map(str, headers))
+        self.debugLog.write(headers_string)
         self.debugLog.write("\n")
 
     def write_global_variables_values(self, integrator):
-        number_of_globals = integrator.getNumGlobalVariables()
-        second_to_last = number_of_globals - 1
-        for index in range(0, number_of_globals):
-            name = integrator.getGlobalVariableName(index)
-            value = integrator.getGlobalVariableByName(name)
-            self.debugLog.write(str(value))
-            if index < second_to_last:
-                self.debugLog.write(",")
+        headers = self.__get_filtered_headers(integrator)
+        values = []
+        for header in headers:
+            values.append(integrator.getGlobalVariableByName(header))
+        values_string = ",".join(map(str, values))
+        self.debugLog.write(str(values_string))
         self.debugLog.write("\n")
 
     @staticmethod
