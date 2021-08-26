@@ -81,7 +81,7 @@ class LowerBoundIntegrator(DualBoostIntegrator):
         # exit()
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(
-            self, compute_type=ComputeType.GROUP):
+            self, compute_type):
         super()._lower_bound_calculate_threshold_energy_and_effective_harmonic_constant(
             compute_type)
 
@@ -120,6 +120,6 @@ class UpperBoundIntegrator(DualBoostIntegrator):
                                                    collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(
-            self, compute_type=ComputeType.GROUP):
+            self, compute_type):
         super()._upper_bound_calculate_threshold_energy_and_effective_harmonic_constant(
             compute_type)
