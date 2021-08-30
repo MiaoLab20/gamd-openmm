@@ -428,6 +428,11 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                 "v", "v + fscale*f*{0}/m".format(total_force_scaling_factor))
 
         if self._boost_method == BoostMethod.GROUPS:
+
+            if 0 not in self.get_group_dict():
+                # We take care of all of the forces that aren't a part of the group.
+                self.addComputePerDof("v", "v + fscale*f0/m")
+
             # We should be able to include force group 0 in our id list
             # for future non-dependent boosts.
             for group_id in self.get_group_dict():
