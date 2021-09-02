@@ -176,7 +176,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
     def __init__(self, group_dict, boost_type, boost_method,
                  dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0p,
-                 sigma0D, collision_rate, temperature, restart_filename):
+                 sigma0d, collision_rate, temperature, restart_filename):
         """
         Parameters
         ----------
@@ -198,7 +198,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         :param sigma0p:    The upper limit of the standard deviation of the 
             potential boost that allows for accurate reweighting. Total boost
             portion.
-        :param sigma0D:    The upper limit of the standard deviation of the 
+        :param sigma0d:    The upper limit of the standard deviation of the 
             potential boost that allows for accurate reweighting. Dihedral
             boost portion.
         :param collision_rate:      Collision rate (gamma) compatible
@@ -231,7 +231,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             "dt", "energy", "energy0", "energy1", "energy2", "energy3", 
             "energy4"]
         self.sigma0p = sigma0p
-        self.sigma0D = sigma0D
+        self.sigma0d = sigma0d
         self.debuggingIsEnabled = True
 
         super(GroupBoostIntegrator, self).__init__(
@@ -272,7 +272,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         #  hacky?
         self.addGlobalVariable("sigma0_Total", self.sigma0p)
-        self.addGlobalVariable("sigma0_Dihedral", self.sigma0D)
+        self.addGlobalVariable("sigma0_Dihedral", self.sigma0d)
 
         super(GroupBoostIntegrator, self)._add_common_variables()
         return

@@ -9,7 +9,7 @@ from ..stage_integrator import ComputeType
 
 class DualBoostIntegrator(GroupBoostIntegrator, ABC):
     def __init__(self, group, dt, ntcmdprep, ntcmd, ntebprep,
-                 nteb, nstlim, ntave, sigma0p, sigma0D, collision_rate,
+                 nteb, nstlim, ntave, sigma0p, sigma0d, collision_rate,
                  temperature, restart_filename):
         """
         Parameters
@@ -25,7 +25,7 @@ class DualBoostIntegrator(GroupBoostIntegrator, ABC):
                           running average window size).
         :param sigma0p:    The upper limit of the standard deviation of the potential boost that allows for
                           accurate reweighting. Applies to the total boost portion.
-        :param sigma0D:    The upper limit of the standard deviation of the potential boost that allows for
+        :param sigma0d:    The upper limit of the standard deviation of the potential boost that allows for
                           accurate reweighting. Applies to the dihedral boost portion.
         :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
@@ -38,7 +38,7 @@ class DualBoostIntegrator(GroupBoostIntegrator, ABC):
                                                   BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL,
                                                   dt, ntcmdprep, ntcmd,
                                                   ntebprep, nteb, nstlim, ntave,
-                                                  sigma0p, sigma0D,
+                                                  sigma0p, sigma0d,
                                                   collision_rate, temperature,
                                                   restart_filename)
 
@@ -48,7 +48,7 @@ class LowerBoundIntegrator(DualBoostIntegrator):
                  ntcmd=1000000, ntebprep=200000, nteb=1000000,
                  nstlim=3000000, ntave=50000,
                  sigma0p=6.0 * unit.kilocalories_per_mole,
-                 sigma0D=6.0 * unit.kilocalories_per_mole,
+                 sigma0d=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds,
                  temperature=298.15 * unit.kelvin, restart_filename=None):
         """
@@ -65,7 +65,7 @@ class LowerBoundIntegrator(DualBoostIntegrator):
                           running average window size).
         :param sigma0p:    The upper limit of the standard deviation of the potential boost that allows for
                           accurate reweighting. Applies to the total boost portion.
-        :param sigma0D:    The upper limit of the standard deviation of the potential boost that allows for
+        :param sigma0d:    The upper limit of the standard deviation of the potential boost that allows for
                           accurate reweighting. Applies to the dihedral boost portion.
         :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
@@ -73,7 +73,7 @@ class LowerBoundIntegrator(DualBoostIntegrator):
         """
         self.__group = group
         super(LowerBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep,
-                                                   nteb, nstlim, ntave, sigma0p, sigma0D,
+                                                   nteb, nstlim, ntave, sigma0p, sigma0d,
                                                    collision_rate, temperature, restart_filename)
         
         # for i in range(self.getNumComputations()):
@@ -91,7 +91,7 @@ class UpperBoundIntegrator(DualBoostIntegrator):
                  ntcmd=1000000, ntebprep=200000, nteb=1000000,
                  nstlim=3000000, ntave=50000,
                  sigma0p=6.0 * unit.kilocalories_per_mole,
-                 sigma0D=6.0 * unit.kilocalories_per_mole,
+                 sigma0d=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds,
                  temperature=298.15 * unit.kelvin, restart_filename=None):
         """
@@ -108,7 +108,7 @@ class UpperBoundIntegrator(DualBoostIntegrator):
                           running average window size).
         :param sigma0p:    The upper limit of the standard deviation of the potential boost that allows for
                           accurate reweighting. Applies to the total boost portion.
-        :param sigma0D:    The upper limit of the standard deviation of the potential boost that allows for
+        :param sigma0d:    The upper limit of the standard deviation of the potential boost that allows for
                           accurate reweighting. Applies to the dihedral boost portion.
         :param collision_rate:      Collision rate (gamma) compatible with 1/picoseconds, default: 1.0/unit.picoseconds
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
@@ -116,7 +116,7 @@ class UpperBoundIntegrator(DualBoostIntegrator):
         """
         self.__group = group
         super(UpperBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep, nteb,
-                                                   nstlim, ntave, sigma0p, sigma0D,
+                                                   nstlim, ntave, sigma0p, sigma0d,
                                                    collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(
