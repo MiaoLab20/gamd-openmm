@@ -265,6 +265,7 @@ def create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd
     group = set_dihedral_group(system)
     return [group, DualBoostUpperBoundIntegrator(group,  dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                  nteb=nteb, nstlim=nstlim, ntave=ntave,
+                                                 sigma0d=6.0 * kilocalories_per_mole,
                                                  sigma0p=6.0 * kilocalories_per_mole, temperature=temperature)]
 
 
