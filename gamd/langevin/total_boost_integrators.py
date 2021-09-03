@@ -54,6 +54,8 @@ class TotalBoostIntegrator(GroupBoostIntegrator, ABC):
                                                    collision_rate, temperature,
                                                    restart_filename)
 
+        self.addGlobalVariable("sigma0_" + BoostType.TOTAL.value, sigma0)
+
 
 class LowerBoundIntegrator(TotalBoostIntegrator):
     def __init__(self, dt=2.0 * unit.femtoseconds, ntcmdprep=200000, ntcmd=1000000, ntebprep=200000, nteb=1000000,

@@ -43,6 +43,8 @@ class DihedralBoostIntegrator(GroupBoostIntegrator, ABC):
                                                       temperature,
                                                       restart_filename)
 
+        self.addGlobalVariable("sigma0_" + BoostType.DIHEDRAL.value, sigma0)
+
 
 class LowerBoundIntegrator(DihedralBoostIntegrator):
     def __init__(self, group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000,

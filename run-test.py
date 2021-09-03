@@ -1,23 +1,17 @@
 #!/usr/bin/env python3
 
-from simtk.openmm.app import *
-from simtk.openmm import *
-from simtk.unit import *
-import os
-import sys
-import time
-from gamd.DebugLogger import DebugLogger
-from gamd.GamdLogger import GamdLogger
-from gamd import utils as utils
+import datetime
 import shutil
 import subprocess
-import datetime
-from gamd.langevin.total_boost_integrators import LowerBoundIntegrator as TotalBoostLowerBoundIntegrator
-from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalBoostUpperBoundIntegrator
-from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as DihedralBoostLowerBoundIntegrator
-from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator as DihedralBoostUpperBoundIntegrator
-from gamd.langevin.dual_boost_integrators import LowerBoundIntegrator as DualBoostLowerBoundIntegrator
-from gamd.langevin.dual_boost_integrators import UpperBoundIntegrator as DualBoostUpperBoundIntegrator
+import time
+
+from simtk.openmm import *
+from simtk.openmm.app import *
+
+from gamd import utils as utils
+from gamd.DebugLogger import DebugLogger
+from gamd.GamdLogger import GamdLogger
+from gamd.integrator_factory import *
 
 
 class RunningRates:
@@ -192,83 +186,6 @@ def main():
 #            group = i
 
 
-def set_all_forces_to_group(system):
-    group = 1
-    for force in system.getForces():
-        force.setForceGroup(group)
-    return group
-
-
-def set_dihedral_group(system):
-    group = 1
-    for force in system.getForces():
-        if force.__class__.__name__ == 'PeriodicTorsionForce':
-            force.setForceGroup(group)
-            break
-    return group
-
-
-def create_gamd_cmd_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave):
-    """
-        This integrator is meant for use in generating a conventional MD baseline to compare against
-        for the other integrators.
-
-    :param system:
-    :param temperature:
-    :return:
-    """
-    group = set_dihedral_group(system)
-    return [set_dihedral_group(system), DihedralBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
-                                                                          ntebprep=ntebprep, nteb=nteb, nstlim=nstlim,
-                                                                          ntave=ntave, temperature=temperature,
-                                                                          sigma0=0.0 * kilocalories_per_mole)]
-
-
-def create_lower_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
-    # The group is set, so that we can output the dihedral energy.  It doesn't impact calculations for total boost,
-    # since we are utilizing the OpenMM provided variables with them not split out for total boost calculations.
-    group = set_dihedral_group(system)
-    return [group, TotalBoostLowerBoundIntegrator(dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
-                                                                       ntebprep=ntebprep, nteb=nteb, nstlim=nstlim,
-                                                                       ntave=ntave, temperature=temperature)]
-
-
-def create_upper_total_boost_integrator(system, temperature, dt,ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
-    # The group is set, so that we can output the dihedral energy.  It doesn't impact calculations for total boost,
-    # since we are utilizing the OpenMM provided variables with them not split out for total boost calculations.
-    group = set_dihedral_group(system)
-    return [group, TotalBoostUpperBoundIntegrator(dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
-                                                                       ntebprep=ntebprep, nteb=nteb, nstlim=nstlim,
-                                                                       ntave=ntave, sigma0=2.5 * kilocalories_per_mole, temperature=temperature)]
-
-
-def create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
-    group = set_all_forces_to_group(system)
-    return [group, DihedralBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
-                                                     nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
-
-
-def create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
-    group = set_dihedral_group(system)
-    return [group, DihedralBoostUpperBoundIntegrator(group,  dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
-                                                     nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
-
-
-def create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
-    group = set_dihedral_group(system)
-    return [group, DualBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
-                                                     nteb=nteb, nstlim=nstlim, ntave=ntave, temperature=temperature)]
-
-
-def create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
-    group = set_dihedral_group(system)
-    return [group, DualBoostUpperBoundIntegrator(group,  dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
-                                                 nteb=nteb, nstlim=nstlim, ntave=ntave,
-                                                 sigma0d=6.0 * kilocalories_per_mole,
-                                                 sigma0p=6.0 * kilocalories_per_mole, temperature=temperature)]
-
-
 def print_integration_algorithms(filename):
     coordinates_file = './data/md-4ns.rst7'
     prmtop_file = './data/dip.top'
@@ -283,28 +200,42 @@ def print_integration_algorithms(filename):
     nstlim = 18000000
     ntave = 25000
 
-    [group, integrator] = create_lower_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
+    [group, group, integrator] = create_lower_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+                                                                     ntebprep,
+                                                                     nteb, nstlim, ntave)
     DebugLogger.write_integration_algorithm_to_file(filename, integrator)
 
-    [group, integrator] = create_upper_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
+    [group, group, integrator] = create_upper_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+                                                                     ntebprep,
+                                                                     nteb, nstlim, ntave)
     DebugLogger.write_integration_algorithm_to_file(filename, integrator)
 
-    [group, integrator] = create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
+    [group, group, integrator] = create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+                                                                        ntebprep,
+                                                                        nteb, nstlim, ntave)
     DebugLogger.write_integration_algorithm_to_file(filename, integrator)
 
-    [group, integrator] = create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
+    [group, group, integrator] = create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+                                                                        ntebprep,
+                                                                        nteb, nstlim, ntave)
     DebugLogger.write_integration_algorithm_to_file(filename, integrator)
 
-    [group, integrator] = create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
+    [group, group, integrator] = create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                    nteb, nstlim, ntave)
     DebugLogger.write_integration_algorithm_to_file(filename, integrator)
 
-    [group, integrator] = create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
+    [group, group, integrator] = create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                                                                    nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
+    [group, group, integrator] = create_lower_non_bonded_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+                                                                          ntebprep,
+                                                                          nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
+    [group, group, integrator] = create_upper_non_bonded_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+                                                                          ntebprep,
+                                                                          nteb, nstlim, ntave)
     DebugLogger.write_integration_algorithm_to_file(filename, integrator)
 
     sys.exit(22)
@@ -317,7 +248,8 @@ def create_output_directories(directories):
 
 def usage():
     print("run-test.py boost-type [output-directory] [platform | device] [device] [debug] [quick] [print-algorithms]\n")
-    print("\tboost-type:\t\tgamd-cmd-base|lower-total|upper-total|lower-dihedral|upper-dihedral|lower-dual|upper-dual\n")
+    print("\tboost-type:\t\tgamd-cmd-base|lower-total|upper-total|lower-dihedral|upper-dihedral|\n"
+           "\t\t\t\tlower-dual|upper-dual|lower-nonbonded|upper-nonbonded\n")
     print("\toutput-directory:\tDirectory to output files. [default: output]\n")
     print("\tplatform:\t\tCUDA|OpenCL|CPU [defaults to OpenMM best guess for fastest]\n")
     print("\tdevice:\t\t\tUsed to specify the device index, when multiple GPUs exist on \n\t\t\t\tthe system. [defaults to CUDA, if platform not specified.]\n")
@@ -386,32 +318,30 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
     inpcrd = AmberInpcrdFile(coordinates_file)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
 
-    if boost_type == "gamd-cmd-base":
-        [group, integrator] = create_gamd_cmd_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb,
-                                                         nstlim, ntave)
-    elif boost_type == "lower-total":
-        [group, integrator] = create_lower_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
-    elif boost_type == "upper-total":
-        [group, integrator] = create_upper_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                  nteb, nstlim, ntave)
-    elif boost_type == "lower-dihedral":
-        [group, integrator] = create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
-                                                                     ntebprep,
-                                                                     nteb, nstlim, ntave)
-    elif boost_type == "upper-dihedral":
-        [group, integrator] = create_upper_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
-                                                                     ntebprep,
-                                                                     nteb, nstlim, ntave)
-    elif boost_type == "lower-dual":
-        [group, integrator] = create_lower_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                 nteb, nstlim, ntave)
+    if boost_type == "upper-total" or boost_type == "upper-nonbonded":
+        integrator_information = GamdIntegratorFactory.get_integrator(boost_type, system, temperature, dt, ntcmdprep,
+                                                                      ntcmd, ntebprep, nteb, nstlim, ntave,
+                                                                      2.5 * kilocalories_per_mole)
     elif boost_type == "upper-dual":
-        [group, integrator] = create_upper_dual_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep,
-                                                                 nteb, nstlim, ntave)
+        integrator_information = GamdIntegratorFactory.get_integrator(boost_type, system, temperature, dt, ntcmdprep,
+                                                                      ntcmd, ntebprep, nteb, nstlim, ntave,
+                                                                      2.0 * kilocalories_per_mole,
+                                                                      2.0 * kilocalories_per_mole)
     else:
-        usage()
-        sys.exit(1)
+        try:
+            integrator_information = GamdIntegratorFactory.get_integrator(boost_type, system, temperature, dt,
+                                                                          ntcmdprep,
+                                                                          ntcmd, ntebprep, nteb, nstlim, ntave)
+        except ValueError as e:
+            print(e)
+            usage()
+            sys.exit(1)
+
+    first_boost_group = integrator_information[0]
+    second_boost_group = integrator_information[1]
+    integrator = integrator_information[2]
+    first_boost_type = integrator_information[3]
+    second_boost_type = integrator_information[4]
 
     if not restarting:
         create_output_directories([output_directory, output_directory + "/states/", output_directory + "/positions/",
@@ -466,9 +396,17 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
                                             totalEnergy=True, volume=True))
         print("startup time: \t", time.time() - starttime)
         write_mode = "w"
+    gamd_log_filename = os.path.join(output_directory, "gamd.log")
+    gamd_reweighting_filename = os.path.join(output_directory, "gamd-reweighting.log")
 
-    gamd_logger = GamdLogger(output_directory + "/gamd.log", write_mode, integrator, simulation)
-    gamd_reweighting_logger = GamdLogger(output_directory + "/gamd-reweighting.log", write_mode, integrator, simulation)
+    gamd_logger = GamdLogger(gamd_log_filename, write_mode, integrator, simulation,
+                             first_boost_type, first_boost_group,
+                             second_boost_type, second_boost_group)
+
+    gamd_reweighting_logger = GamdLogger(gamd_reweighting_filename, write_mode, integrator, simulation,
+                                         first_boost_type, first_boost_group,
+                                         second_boost_type, second_boost_group)
+
     start_production_logging_step = ntcmd + nteb + (running_rates.get_batch_run_rate() * reweighting_offset)
 
     with open(output_directory + "/" + "production-start-step.txt", "w") as prodstartstep_file:
@@ -505,9 +443,9 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         #                exit()
         # END TEST
 
-        gamd_logger.mark_energies(group)
+        gamd_logger.mark_energies()
         if running_rates.is_save_step(step):
-            gamd_reweighting_logger.mark_energies(group)
+            gamd_reweighting_logger.mark_energies()
 
         try:
 

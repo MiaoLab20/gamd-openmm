@@ -32,6 +32,7 @@ class BoostType(Enum):
     TOTAL = "Total"
     DIHEDRAL = "Dihedral"
     DUAL_TOTAL_DIHEDRAL = "DualTotalDihedral"
+    NON_BONDED = "NonBonded"
 
 
 class BoostMethod(Enum):

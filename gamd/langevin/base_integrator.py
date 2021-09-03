@@ -270,10 +270,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                                 for key, value in
                                 self.global_variables_by_boost_type.items()}
 
-        #  hacky?
-        self.addGlobalVariable("sigma0_Total", self.sigma0p)
-        self.addGlobalVariable("sigma0_Dihedral", self.sigma0d)
-
         super(GroupBoostIntegrator, self)._add_common_variables()
         return
 
