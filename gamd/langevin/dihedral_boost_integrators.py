@@ -38,8 +38,7 @@ class DihedralBoostIntegrator(GroupBoostIntegrator, ABC):
                                                       BoostMethod.GROUPS,
                                                       dt, ntcmdprep, ntcmd,
                                                       ntebprep, nteb, nstlim,
-                                                      ntave, 0, sigma0,
-                                                      collision_rate,
+                                                      ntave, collision_rate,
                                                       temperature,
                                                       restart_filename)
 

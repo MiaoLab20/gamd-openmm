@@ -1,20 +1,20 @@
 from abc import ABC
 
-from gamd.langevin.base_integrator import GroupBoostIntegrator
 from simtk import unit as unit
-from ..stage_integrator import BoostType
+
+from gamd.langevin.base_integrator import GroupBoostIntegrator
 from ..stage_integrator import BoostMethod
-from ..stage_integrator import ComputeType
+from ..stage_integrator import BoostType
 
 
-class NonBondedBoostIntegrator(GroupBoostIntegrator, ABC):
-    def __init__(self, group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
-                 ntave, sigma0, collision_rate,
+class NonBondedDihedralBoostIntegrator(GroupBoostIntegrator, ABC):
+    def __init__(self, nonbonded_group, dihedral_group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
+                 ntave, sigma0p, sigma0d, collision_rate,
                  temperature, restart_filename):
         """
         Parameters
         ----------
-        :param group:     The system group provided used by OpenMM for the NonBonded Energy and Forces.
+        :param group:     The system group provided used by OpenMM for the NonBondedDihedral Energy and Forces.
         :param dt:        The Amount of time between each time step.
         :param ntcmdprep: The number of conventional MD steps for system equilibration.
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
@@ -29,30 +29,32 @@ class NonBondedBoostIntegrator(GroupBoostIntegrator, ABC):
         :param temperature:         "Bath" temperature value compatible with units.kelvin, default: 298.15*unit.kelvin
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
-        group_dict = {group: "NonBonded"}
+        group_dict = {nonbonded_group: "NonBonded", dihedral_group: "Dihedral"}
 
-        super(NonBondedBoostIntegrator, self).__init__(group_dict,
-                                                      BoostType.NON_BONDED,
-                                                      BoostMethod.GROUPS,
-                                                      dt, ntcmdprep, ntcmd,
-                                                      ntebprep, nteb, nstlim,
-                                                      ntave, collision_rate,
-                                                      temperature,
-                                                      restart_filename)
+        super(NonBondedDihedralBoostIntegrator, self).__init__(group_dict,
+                                                               BoostType.DUAL_NON_BONDED_DIHEDRAL,
+                                                               BoostMethod.GROUPS,
+                                                               dt, ntcmdprep, ntcmd,
+                                                               ntebprep, nteb, nstlim,
+                                                               ntave, collision_rate,
+                                                               temperature,
+                                                               restart_filename)
 
-        self.addGlobalVariable("sigma0_" + BoostType.NON_BONDED.value, sigma0)
+        self.addGlobalVariable("sigma0_" + BoostType.NON_BONDED.value, sigma0p)
+        self.addGlobalVariable("sigma0_" + BoostType.DIHEDRAL.value, sigma0d)
 
 
-class LowerBoundIntegrator(NonBondedBoostIntegrator):
-    def __init__(self, group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000,
+class LowerBoundIntegrator(NonBondedDihedralBoostIntegrator):
+    def __init__(self, nonbonded_group, dihedral_group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000,
                  ntcmd=1000000, ntebprep=200000, nteb=1000000,
-                 nstlim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
+                 nstlim=3000000, ntave=50000, sigma0p=6.0 * unit.kilocalories_per_mole,
+                 sigma0d=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds,
                  temperature=298.15 * unit.kelvin, restart_filename=None):
         """
         Parameters
         ----------
-        :param group:     The system group provided used by OpenMM for the NonBonded Energy and Forces.
+        :param group:     The system group provided used by OpenMM for the NonBondedDihedral Energy and Forces.
         :param dt:        The Amount of time between each time step.
         :param ntcmdprep: The number of conventional MD steps for system equilibration.
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
@@ -68,7 +70,8 @@ class LowerBoundIntegrator(NonBondedBoostIntegrator):
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
         self.__group = 1
-        super(LowerBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0,
+        super(LowerBoundIntegrator, self).__init__(nonbonded_group, dihedral_group, dt, ntcmdprep, ntcmd, ntebprep,
+                                                   nteb, nstlim, ntave, sigma0p, sigma0d,
                                                    collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(
@@ -77,16 +80,17 @@ class LowerBoundIntegrator(NonBondedBoostIntegrator):
             compute_type)
 
 
-class UpperBoundIntegrator(NonBondedBoostIntegrator):
-    def __init__(self, group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000,
+class UpperBoundIntegrator(NonBondedDihedralBoostIntegrator):
+    def __init__(self, nonbonded_group, dihedral_group, dt=2.0 * unit.femtoseconds, ntcmdprep=200000,
                  ntcmd=1000000, ntebprep=200000, nteb=1000000,
-                 nstlim=3000000, ntave=50000, sigma0=6.0 * unit.kilocalories_per_mole,
+                 nstlim=3000000, ntave=50000, sigma0p=6.0 * unit.kilocalories_per_mole,
+                 sigma0d=6.0 * unit.kilocalories_per_mole,
                  collision_rate=1.0 / unit.picoseconds,
                  temperature=298.15 * unit.kelvin, restart_filename=None):
         """
         Parameters
         ----------
-        :param group:     The system group provided used by OpenMM for the NonBonded Energy and Forces.
+        :param group:     The system group provided used by OpenMM for the NonBondedDihedral Energy and Forces.
         :param dt:        The Amount of time between each time step.
         :param ntcmdprep: The number of conventional MD steps for system equilibration.
         :param ntcmd:     The total number of conventional MD steps (including ntcmdprep). (must be a multiple of ntave)
@@ -102,8 +106,8 @@ class UpperBoundIntegrator(NonBondedBoostIntegrator):
         :param restart_filename:    The file name of the restart file.  (default=None indicates new simulation.)
         """
         self.__group = 1
-        super(UpperBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd,
-                                                   ntebprep, nteb, nstlim, ntave, sigma0,
+        super(UpperBoundIntegrator, self).__init__(nonbonded_group, dihedral_group, dt, ntcmdprep, ntcmd,
+                                                   ntebprep, nteb, nstlim, ntave, sigma0p, sigma0d,
                                                    collision_rate, temperature, restart_filename)
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(

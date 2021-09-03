@@ -175,8 +175,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
     """
 
     def __init__(self, group_dict, boost_type, boost_method,
-                 dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, sigma0p,
-                 sigma0d, collision_rate, temperature, restart_filename):
+                 dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave,
+                 collision_rate, temperature, restart_filename):
         """
         Parameters
         ----------
@@ -195,12 +195,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         :param ntave:     The number of steps used to smooth the 
             average and sigma of potential energy (corresponds to a 
             running average window size).
-        :param sigma0p:    The upper limit of the standard deviation of the 
-            potential boost that allows for accurate reweighting. Total boost
-            portion.
-        :param sigma0d:    The upper limit of the standard deviation of the 
-            potential boost that allows for accurate reweighting. Dihedral
-            boost portion.
         :param collision_rate:      Collision rate (gamma) compatible
             with 1/picoseconds, default: 1.0/unit.picoseconds
         :param temperature:         "Bath" temperature value compatible
@@ -230,8 +224,6 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.debug_global_variables = [
             "dt", "energy", "energy0", "energy1", "energy2", "energy3", 
             "energy4"]
-        self.sigma0p = sigma0p
-        self.sigma0d = sigma0d
         self.debuggingIsEnabled = True
 
         super(GroupBoostIntegrator, self).__init__(

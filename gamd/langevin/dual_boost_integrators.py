@@ -38,12 +38,11 @@ class DualBoostIntegrator(GroupBoostIntegrator, ABC):
                                                   BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL,
                                                   dt, ntcmdprep, ntcmd,
                                                   ntebprep, nteb, nstlim, ntave,
-                                                  sigma0p, sigma0d,
                                                   collision_rate, temperature,
                                                   restart_filename)
 
-        self.addGlobalVariable("sigma0_" + BoostType.TOTAL.value, self.sigma0p)
-        self.addGlobalVariable("sigma0_" + BoostType.DIHEDRAL.value, self.sigma0d)
+        self.addGlobalVariable("sigma0_" + BoostType.TOTAL.value, sigma0p)
+        self.addGlobalVariable("sigma0_" + BoostType.DIHEDRAL.value, sigma0d)
 
 
 class LowerBoundIntegrator(DualBoostIntegrator):
@@ -78,10 +77,6 @@ class LowerBoundIntegrator(DualBoostIntegrator):
         super(LowerBoundIntegrator, self).__init__(group, dt, ntcmdprep, ntcmd, ntebprep,
                                                    nteb, nstlim, ntave, sigma0p, sigma0d,
                                                    collision_rate, temperature, restart_filename)
-        
-        # for i in range(self.getNumComputations()):
-        #    print(self.getComputationStep(i))
-        # exit()
 
     def _calculate_threshold_energy_and_effective_harmonic_constant(
             self, compute_type):

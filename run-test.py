@@ -238,6 +238,16 @@ def print_integration_algorithms(filename):
                                                                           nteb, nstlim, ntave)
     DebugLogger.write_integration_algorithm_to_file(filename, integrator)
 
+    [group, group, integrator] = create_lower_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt,
+                                                                                         ntcmdprep, ntcmd,
+                                                                                         ntebprep, nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
+    [group, group, integrator] = create_upper_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt,
+                                                                                         ntcmdprep, ntcmd,
+                                                                                         ntebprep, nteb, nstlim, ntave)
+    DebugLogger.write_integration_algorithm_to_file(filename, integrator)
+
     sys.exit(22)
 
 
@@ -249,7 +259,8 @@ def create_output_directories(directories):
 def usage():
     print("run-test.py boost-type [output-directory] [platform | device] [device] [debug] [quick] [print-algorithms]\n")
     print("\tboost-type:\t\tgamd-cmd-base|lower-total|upper-total|lower-dihedral|upper-dihedral|\n"
-           "\t\t\t\tlower-dual|upper-dual|lower-nonbonded|upper-nonbonded\n")
+           "\t\t\t\tlower-dual|upper-dual|lower-nonbonded|upper-nonbonded|\n"
+           "\t\t\t\tlower-dual-nonbonded-dihedral|upper-dual-nonbonded-dihedral\n")
     print("\toutput-directory:\tDirectory to output files. [default: output]\n")
     print("\tplatform:\t\tCUDA|OpenCL|CPU [defaults to OpenMM best guess for fastest]\n")
     print("\tdevice:\t\t\tUsed to specify the device index, when multiple GPUs exist on \n\t\t\t\tthe system. [defaults to CUDA, if platform not specified.]\n")
