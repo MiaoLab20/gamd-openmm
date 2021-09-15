@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import os
 import matplotlib.pyplot as plt
 from pprint import pprint
 
@@ -16,17 +17,20 @@ def main():
     phi_filepath = "/graphics-out/pmf-phi-reweight-CE2.xvg"
     psi_filepath = "/graphics-out/pmf-psi-reweight-CE2.xvg"
 
-    create_graphic(cmd_directory, gamd_1_directory, gamd_2_directory, gamd_3_directory, phi_filepath, "Phi")
-    create_graphic(cmd_directory, gamd_1_directory, gamd_2_directory, gamd_3_directory, psi_filepath, "Psi")
+    graph_title = os.getcwd()
+    create_graphic(cmd_directory, gamd_1_directory, gamd_2_directory, gamd_3_directory, phi_filepath, "Phi",
+                   graph_title)
+    create_graphic(cmd_directory, gamd_1_directory, gamd_2_directory, gamd_3_directory, psi_filepath, "Psi",
+                   graph_title)
 
 
 #
 # Driver method for creating the graphics from the coordinates in the directory for a given file type.
 #
-def create_graphic(cmd_directory, gamd_1_directory, gamd_2_directory, gamd_3_directory, filepath, xlabel):
+def create_graphic(cmd_directory, gamd_1_directory, gamd_2_directory, gamd_3_directory, filepath, xlabel, graph_title):
     coordinates = gather_coordinates(filepath, cmd_directory, gamd_1_directory, gamd_2_directory, gamd_3_directory)
     graph_values = create_averages_and_errors(coordinates)
-    generate_graphic_file(graph_values, xlabel)
+    generate_graphic_file(graph_values, xlabel, graph_title)
 
 
 def usage():
@@ -47,7 +51,7 @@ def is_number(candidate):
 #
 
 
-def generate_graphic_file(coordinates, xlabel):
+def generate_graphic_file(coordinates, xlabel, graph_title):
     cmd_x = coordinates[0]["x"]
     cmd_y = coordinates[0]["y"]
     gamd_x = coordinates[1]
@@ -60,6 +64,7 @@ def generate_graphic_file(coordinates, xlabel):
     plt.xlabel(xlabel)
     plt.errorbar(gamd_x, gamd_y, yerr=gamd_y_errors, capsize=2, errorevery=1, alpha=0.5, label="GaMD")
     plt.legend()
+    plt.title(graph_title)
 
     plt.savefig("1D-" + xlabel + ".png")
     plt.close()
