@@ -134,10 +134,14 @@ def main():
         nstlim = 60000
         ntave = 250
         frame_size = 50
-        if debug:
-            running_rates = RunningRates(nstlim, frame_size, 1, True)
-        else:
-            running_rates = RunningRates(nstlim, frame_size, frame_size, False)
+    elif boost_type == "gamd-cmd-base":
+        ntcmdprep = 200000
+        ntcmd = 1000000
+        ntebprep = 200000
+        nteb = 2000000
+        nstlim = 500000000
+        ntave = 25000
+        frame_size = 100
     else:
         ntcmdprep = 200000
         ntcmd = 1000000
@@ -146,10 +150,12 @@ def main():
         nstlim = 18000000
         ntave = 25000
         frame_size = 100
-        if debug:
-            running_rates = RunningRates(nstlim, frame_size, 1, True)
-        else:
-            running_rates = RunningRates(nstlim, frame_size, frame_size, False)
+
+    if debug:
+        running_rates = RunningRates(nstlim, frame_size, 1, True)
+    else:
+        running_rates = RunningRates(nstlim, frame_size, frame_size, False)
+
 
     # This variable indicates the number of frames at the beginning of stage 5 (production) to ignore.
     #
