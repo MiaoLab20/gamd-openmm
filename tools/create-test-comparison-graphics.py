@@ -54,7 +54,7 @@ def generate_graphic_file(coordinates, xlabel):
     gamd_y = coordinates[2][0]
     gamd_y_errors = [coordinates[2][1], coordinates[2][2]]
     plt.plot(cmd_x, cmd_y, "", label="Conventional MD")
-    plt.axis([-180,180,0,10])
+    plt.axis([-180,180,0,8])
 
     plt.ylabel("PMF")
     plt.xlabel(xlabel)
