@@ -1,6 +1,6 @@
 #!/bin/bash
 
-boost_types=( "lower-total" "upper-total" "lower-dihedral" "upper-dihedral" "lower-dual" "upper-dual" "lower-nonbonded" "upper-nonbonded" "lower-dual-nonbonded-dihedral" "upper-dual-nonbonded-dihedral")
+boost_types=( "lower-dual" "upper-dual" "lower-dual-nonbonded-dihedral" "upper-dual-nonbonded-dihedral" "lower-nonbonded" "upper-nonbonded" "lower-total" "upper-total" "lower-dihedral" "upper-dihedral" )
 
 if ! command -v PyReweighting-1D.py &> /dev/null
 then
