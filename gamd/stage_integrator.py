@@ -448,6 +448,7 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
             self._add_gamd_boost_calculations_step(ComputeType.TOTAL)
 
         self._add_gamd_update_step()
+        self._add_boosts_to_starting_energies()
 
     def _add_stage_four_instructions(self):
 
@@ -745,6 +746,19 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
                                                        group_name)
             expression = "{0} + {1}".format(total_energy_name, group_boost_name)
 
+            self.addComputeGlobal(total_energy_name, expression)
+
+        return
+
+    def _add_boosts_to_starting_energies(self):
+        if (self._boost_method == BoostMethod.TOTAL or
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL):
+
+            total_energy_name = self._append_group_name("StartingPotentialEnergy",
+                                                    BoostType.TOTAL.value)
+            total_boost_name = self._append_group_name("BoostPotential",
+                                                    BoostType.TOTAL.value)
+            expression = "{0} + {1}".format(total_energy_name, total_boost_name)
             self.addComputeGlobal(total_energy_name, expression)
 
         return
