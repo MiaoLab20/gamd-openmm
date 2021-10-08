@@ -57,6 +57,7 @@ def generate_graphic_file(coordinates, xlabel, graph_title):
     gamd_x = coordinates[1]
     gamd_y = coordinates[2][0]
     gamd_y_errors = [coordinates[2][1], coordinates[2][2]]
+    plt.figure(figsize=(10.24, 7.68), dpi=400)
     plt.plot(cmd_x, cmd_y, "", label="Conventional MD")
     plt.axis([-180,180,0,8])
 
