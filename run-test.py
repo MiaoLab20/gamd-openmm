@@ -123,7 +123,7 @@ def is_argument_integer(n):
 
 def main():
     [boost_type, output_directory, device, platform, debug, quick] = handle_arguments()
-    temperature = 298.15
+    temperature = 300
     dt = 2.0 * femtoseconds
 
     if quick:
@@ -149,7 +149,7 @@ def main():
         nteb = 2000000
         nstlim = 18000000
         ntave = 25000
-        frame_size = 100
+        frame_size = 10
 
     if debug:
         running_rates = RunningRates(nstlim, frame_size, 1, True)
@@ -169,6 +169,11 @@ def main():
                                      output_directory, platform, device, running_rates, starting_offset,
                                      debug)
 
+
+    output_starting_parameters(output_directory, temperature, dt, ntcmdprep, ntcmd, ntebprep,
+                               nteb, nstlim, ntave, frame_size)
+
+
     print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
     end_date_time = datetime.datetime.now()
     print("End Time: \t", end_date_time.strftime("%b-%d-%Y    %H:%M"))
@@ -181,7 +186,6 @@ def main():
     production_starting_frame = ((ntcmd + nteb) / frame_size) + starting_offset
     run_post_simulation(temperature, output_directory, production_starting_frame)
 
-
 #
 #   NOTE:  Don't do this.  It moves the forces into separate groups, so that they don't get handled properly.
 #
@@ -190,6 +194,23 @@ def main():
 #        force.setForceGroup(i)
 #        if force.__class__.__name__ == 'PeriodicTorsionForce':
 #            group = i
+
+
+def output_starting_parameters(output_directory, temperature, dt, ntcmdprep, ntcmd,
+                               ntebprep, nteb, nstlim, ntave, frame_size):
+    filename = os.path.join(output_directory, "starting-parameters.txt")
+    with open(filename, "w") as output:
+        output.write("temperature={0}\n".format(temperature))
+        output.write("dt={0}\n".format(dt))
+        output.write("ntcmdprep={0}\n".format(ntcmdprep))
+        output.write("ntcmd={0}\n".format(ntcmd))
+        output.write("ntebprep={0}\n".format(ntebprep))
+        output.write("nteb={0}\n".format(nteb))
+        output.write("nstlim={0}\n".format(nstlim))
+        output.write("ntave={0}\n".format(ntave))
+        output.write("frame_size={0}\n".format(frame_size))
+
+
 
 
 def print_integration_algorithms(filename):
