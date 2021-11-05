@@ -215,12 +215,19 @@ def output_starting_parameters(output_directory, temperature, dt, ntcmdprep, ntc
 
 
 def print_integration_algorithms(filename):
-    pdb_filename = './data/rna_ext_fixed.pdb'
+    #pdb_filename = './data/rna_ds_separated25A_wet.pdb'
+    pdb_filename = './data/rna_ds_separated25A_dry.pdb'
     pdb = PDBFile(pdb_filename)
     pdb_parmed_for_box = parmed.load_file(pdb_filename)
-    forcefield = ForceField('amoeba2018.xml')
-    system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
-    temperature = 298.15
+    # Use for explicit solvent
+    #forcefield = ForceField('amoeba2018.xml')
+    # Use for implicit solvent
+    forcefield = ForceField('amoeba2018.xml', 'amoeba2018_gk.xml') # for implicit solvent
+    # Use for explicit solvent
+    #system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
+    # Use for implicit solvent
+    system = forcefield.createSystem(pdb.topology, nonbondedMethod=NoCutoff, constraints=HBonds)
+    temperature = unitless_temperature
     dt = 2.0 * femtoseconds
     ntcmdprep = 200000
     ntcmd = 1000000
@@ -348,16 +355,19 @@ def handle_arguments():
 def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
                    output_directory, platform_name, device, running_rates: RunningRates, reweighting_offset=0,
                    debug=False):
-    pdb_filename = './data/rna_ext_fixed.pdb'
+    #pdb_filename = './data/rna_ds_separated25A_wet.pdb'
+    pdb_filename = './data/rna_ds_separated25A_dry.pdb'
     starttime = time.time()
     restarting = False
     restart_checkpoint_filename = os.path.join(output_directory, "gamd.backup")
     temperature = unitless_temperature * kelvin
     pdb = PDBFile(pdb_filename)
     pdb_parmed_for_box = parmed.load_file(pdb_filename)
-    forcefield = ForceField('amoeba2018.xml')
-    system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
-
+    #forcefield = ForceField('amoeba2018.xml')
+    forcefield = ForceField('amoeba2018.xml', 'amoeba2018_gk.xml') # for implicit solvent
+    #system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
+    system = forcefield.createSystem(pdb.topology, nonbondedMethod=NoCutoff, constraints=HBonds)
+    
     if boost_type == "upper-total" or boost_type == "upper-nonbonded":
         integrator_information = GamdIntegratorFactory.get_integrator(boost_type, system, temperature, dt, ntcmdprep,
                                                                       ntcmd, ntebprep, nteb, nstlim, ntave,
@@ -392,13 +402,13 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         platform = Platform.getPlatformByName(platform_name)
         properties['CudaPrecision'] = 'mixed'
         properties['DeviceIndex'] = device
-        simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
+        simulation = Simulation(pdb.topology, system, integrator, platform, properties)
     elif platform_name == "OpenCL":
         platform = Platform.getPlatformByName(platform_name)
         properties['DeviceIndex'] = device
-        simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
+        simulation = Simulation(pdb.topology, system, integrator, platform, properties)
     else:
-        simulation = Simulation(prmtop.topology, system, integrator)
+        simulation = Simulation(pdb.topology, system, integrator)
 
     """ # uncomment to view integrator computations
     for i in range(integrator.getNumComputations()):

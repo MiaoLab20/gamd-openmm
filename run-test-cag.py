@@ -13,7 +13,6 @@ from gamd.DebugLogger import DebugLogger
 from gamd.GamdLogger import GamdLogger
 from gamd.integrator_factory import *
 
-
 class RunningRates:
 
     def __init__(self, number_of_simulation_steps: int, save_rate: int, reporting_rate: int,
@@ -218,7 +217,7 @@ def print_integration_algorithms(filename):
     prmtop_file = './data/rna_ds_separated25A_wet.parm7'
     prmtop = AmberPrmtopFile(prmtop_file)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
-    temperature = 298.15
+    temperature = 300.0 #298.15
     dt = 2.0 * femtoseconds
     ntcmdprep = 200000
     ntcmd = 1000000
@@ -354,8 +353,9 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
     temperature = unitless_temperature * kelvin
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
+    #system = prmtop.createSystem(implicitSolvent=GBn2, constraints=HBonds)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
-
+    
     if boost_type == "upper-total" or boost_type == "upper-nonbonded":
         integrator_information = GamdIntegratorFactory.get_integrator(boost_type, system, temperature, dt, ntcmdprep,
                                                                       ntcmd, ntebprep, nteb, nstlim, ntave,
