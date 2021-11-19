@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import datetime
+import os
 import shutil
 import subprocess
+import sys
 import time
 
 from simtk.openmm import *
@@ -209,8 +211,6 @@ def output_starting_parameters(output_directory, temperature, dt, ntcmdprep, ntc
         output.write("nstlim={0}\n".format(nstlim))
         output.write("ntave={0}\n".format(ntave))
         output.write("frame_size={0}\n".format(frame_size))
-
-
 
 
 def print_integration_algorithms(filename):
