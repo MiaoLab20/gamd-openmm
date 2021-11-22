@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import time
 
-import parmed
 from simtk.openmm import *
 from simtk.openmm.app import *
 
@@ -215,19 +214,11 @@ def output_starting_parameters(output_directory, temperature, dt, ntcmdprep, ntc
 
 
 def print_integration_algorithms(filename):
-    #pdb_filename = './data/rna_ds_separated25A_wet.pdb'
-    pdb_filename = './data/uucg_ss_dry.pdb'
-    pdb = PDBFile(pdb_filename)
-    pdb_parmed_for_box = parmed.load_file(pdb_filename)
-    # Use for explicit solvent
-    #forcefield = ForceField('amoeba2018.xml')
-    # Use for implicit solvent
-    forcefield = ForceField('amoeba2018.xml', 'amoeba2018_gk.xml') # for implicit solvent
-    # Use for explicit solvent
-    #system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
-    # Use for implicit solvent
-    system = forcefield.createSystem(pdb.topology, nonbondedMethod=NoCutoff, constraints=HBonds)
-    temperature = unitless_temperature
+    coordinates_file = './data/md-4ns.rst7'
+    prmtop_file = './data/dip.top'
+    prmtop = AmberPrmtopFile(prmtop_file)
+    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
+    temperature = 298.15
     dt = 2.0 * femtoseconds
     ntcmdprep = 200000
     ntcmd = 1000000
@@ -355,19 +346,16 @@ def handle_arguments():
 def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave, boost_type,
                    output_directory, platform_name, device, running_rates: RunningRates, reweighting_offset=0,
                    debug=False):
-    #pdb_filename = './data/rna_ds_separated25A_wet.pdb'
-    pdb_filename = './data/uucg_ss_dry.pdb'
+    coordinates_file = './data/md-4ns.rst7'
+    prmtop_file = './data/dip.top'
     starttime = time.time()
     restarting = False
     restart_checkpoint_filename = os.path.join(output_directory, "gamd.backup")
     temperature = unitless_temperature * kelvin
-    pdb = PDBFile(pdb_filename)
-    pdb_parmed_for_box = parmed.load_file(pdb_filename)
-    #forcefield = ForceField('amoeba2018.xml')
-    forcefield = ForceField('amoeba2018.xml', 'amoeba2018_gk.xml') # for implicit solvent
-    #system = forcefield.createSystem(pdb.topology, nonbondedMethod=PME, nonbondedCutoff=0.8*nanometer, constraints=HBonds)
-    system = forcefield.createSystem(pdb.topology, nonbondedMethod=NoCutoff, constraints=HBonds)
-    
+    prmtop = AmberPrmtopFile(prmtop_file)
+    inpcrd = AmberInpcrdFile(coordinates_file)
+    system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
+
     if boost_type == "upper-total" or boost_type == "upper-nonbonded":
         integrator_information = GamdIntegratorFactory.get_integrator(boost_type, system, temperature, dt, ntcmdprep,
                                                                       ntcmd, ntebprep, nteb, nstlim, ntave,
@@ -402,13 +390,13 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         platform = Platform.getPlatformByName(platform_name)
         properties['CudaPrecision'] = 'mixed'
         properties['DeviceIndex'] = device
-        simulation = Simulation(pdb.topology, system, integrator, platform, properties)
+        simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
     elif platform_name == "OpenCL":
         platform = Platform.getPlatformByName(platform_name)
         properties['DeviceIndex'] = device
-        simulation = Simulation(pdb.topology, system, integrator, platform, properties)
+        simulation = Simulation(prmtop.topology, system, integrator, platform, properties)
     else:
-        simulation = Simulation(pdb.topology, system, integrator)
+        simulation = Simulation(prmtop.topology, system, integrator)
 
     """ # uncomment to view integrator computations
     for i in range(integrator.getNumComputations()):
@@ -427,15 +415,9 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
         running_range = running_rates.get_restart_batch_run_range(integrator)
     else:
         running_range = running_rates.get_batch_run_range()
-        
-        """
         simulation.context.setPositions(inpcrd.positions)
         if inpcrd.boxVectors is not None:
             simulation.context.setPeriodicBoxVectors(*inpcrd.boxVectors)
-        """
-        simulation.context.setPositions(pdb.positions)
-        box_vectors = pdb_parmed_for_box.box_vectors
-        simulation.context.setPeriodicBoxVectors(*box_vectors)
         simulation.minimizeEnergy()
         #
         # Should we be setting this to the temperature?
