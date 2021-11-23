@@ -353,9 +353,8 @@ def run_simulation(unitless_temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, n
     temperature = unitless_temperature * kelvin
     prmtop = AmberPrmtopFile(prmtop_file)
     inpcrd = AmberInpcrdFile(coordinates_file)
-    #system = prmtop.createSystem(implicitSolvent=GBn2, constraints=HBonds)
     system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=0.8 * nanometer, constraints=HBonds)
-    
+
     if boost_type == "upper-total" or boost_type == "upper-nonbonded":
         integrator_information = GamdIntegratorFactory.get_integrator(boost_type, system, temperature, dt, ntcmdprep,
                                                                       ntcmd, ntebprep, nteb, nstlim, ntave,
