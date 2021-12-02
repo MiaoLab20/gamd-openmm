@@ -1,0 +1,95 @@
+<?xml version="1.0" ?>
+<gamd>
+    <temperature>298.15</temperature> <!-- units.kelvin -->
+
+    <system>
+        <nonbonded-method>PME</nonbonded-method>
+        <nonbonded-cutoff>0.8</nonbonded-cutoff> <!-- units.picoseconds -->
+        <constraints>HBonds</constraints>
+    </system>
+
+    <barostat>
+        <pressure>1.0</pressure>
+        <frequency>25</frequency>
+    </barostat>
+    <run-minimization>True</run-minimization>
+
+    <integrator>
+        <algorithm>langevin</algorithm>
+        <boost-type>lower-dual</boost-type>
+        <sigma0>
+            <primary>6.0</primary>
+            <secondary>6.0</secondary>
+        </sigma0>
+        <random-seed>0</random-seed>
+        <dt>0.002</dt> <!-- units.picoseconds -->
+        <friction-coefficient>1.0</friction-coefficient> <!-- units.picoseconds**-1 -->
+        <number-of-steps>
+            <conventional-md-prep>200000</conventional-md-prep>
+            <conventional-md>1000000</conventional-md>
+            <gamd-equilibration-prep>600000</gamd-equilibration-prep>
+            <gamd-equilibration>3000000</gamd-equilibration>
+            <gamd-production>14200000</gamd-production>
+            <total-simulation-length>19000000</total-simulation-length>
+        </number-of-steps>
+    </integrator>
+
+
+    <input-files>
+        <amber>
+            <topology>dip.top</topology>
+            <coordinates type="rst7">md-4ns.rst7</coordinates>
+            <!-- <coordinates type="pdb">md-4ns.rst7</coordinates> -->
+        </amber>
+        <charmm>
+                <topology>input.psf</topology>
+                <coordinates>input.pdb</coordinates>
+                <parameters>
+                    <file>charm22.prm</file>
+                    <file>charm22.rtf</file>
+                </parameters>
+        </charmm>
+        <gromacs>
+            <topology>input.top</topology>
+            <coordinates>input.gro</coordinates>
+        </gromacs>
+        <forcefield>
+            <pdb>input.pdb</pdb>
+            <forcefields>
+                <native>
+                    <file>amber99sb.xml</file>
+                    <file>tip3p.xml</file>
+                </native>
+                <external>
+                    <file-path>/tmp/your-file.xml</file-path>
+                    <file-path>/tmp/additional-forcefield.xml</file-path>
+                </external>
+            </forcefields>
+        </forcefield>
+    </input-files>
+
+    <outputs>
+        <directory>output/</directory>
+        <overwrite-output>True</overwrite-output>
+
+        <reporting>
+            <energy>
+                <interval>500</interval>
+            </energy>
+            <coordinates>
+                <file-type>DCD</file-type>
+                <!-- <file-type>PDB</file-type> -->
+                <interval>500</interval>
+            </coordinates>
+            <restart-checkpoint>
+                <interval>50000</interval>
+            </restart-checkpoint>
+            <statistics>
+                <interval>500</interval>
+            </statistics>
+        </reporting>
+
+    </outputs>
+
+
+</gamd>
