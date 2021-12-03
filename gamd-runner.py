@@ -39,11 +39,13 @@ def get_global_variable_names(integrator):
     for index in range(0, integrator.getNumGlobalVariables()):
         print(integrator.getGlobalVariableName(index))
 
+
 def print_global_variables(integrator):
     for index in range(0, integrator.getNumGlobalVariables()):
         name = integrator.getGlobalVariableName(index)
         value = integrator.getGlobalVariableByName(name)
         print(name + ":  " + str(value))
+
 
 class Runner:
     def __init__(self, config, gamdSimulation):
@@ -196,7 +198,8 @@ class Runner:
                         "positions", "coordinates-" + str(chunk*chunk_size) \
                         + ".csv")
                     integrator.create_positions_file(positions_filename)
-                    
+
+
 def main():
     argparser = argparse.ArgumentParser(description=__doc__)
     argparser.add_argument(
@@ -211,7 +214,7 @@ def main():
                            help="Restart simulation from backup checkpoint in "\
                            "input file", action="store_true")
     
-    args = argparser.parse_args() # parse the args into a dictionary
+    args = argparser.parse_args()  # parse the args into a dictionary
     args = vars(args)
     config_file_type = args['input_file_type']
     config_filename = args['input_file']

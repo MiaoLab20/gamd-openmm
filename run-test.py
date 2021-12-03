@@ -171,10 +171,8 @@ def main():
                                      output_directory, platform, device, running_rates, starting_offset,
                                      debug)
 
-
     output_starting_parameters(output_directory, temperature, dt, ntcmdprep, ntcmd, ntebprep,
                                nteb, nstlim, ntave, frame_size)
-
 
     print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
     end_date_time = datetime.datetime.now()

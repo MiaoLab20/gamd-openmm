@@ -12,11 +12,13 @@ from xml.dom import minidom
 
 from simtk import unit
 
+
 def assign_tag(root, tagname, value):
     xmlTag = ET.SubElement(root, tagname)
     if value is not None:
         xmlTag.text = str(value)
     return
+
 
 def serialize_box_vectors(box_vectors, xmlRoot, tagName='box_vectors'):
     '''
@@ -51,6 +53,7 @@ def serialize_box_vectors(box_vectors, xmlRoot, tagName='box_vectors'):
         xmlBox_vectors.text = ''
     return
 
+
 def deserialize_box_vectors(xmlBox_vectors):
     '''
     Takes xml representing box vectors for an openMM or parmed system and
@@ -77,6 +80,7 @@ def deserialize_box_vectors(xmlBox_vectors):
         box_vectors = None
     return box_vectors
 
+
 class AmberConfig:
     def __init__(self):
         self.type = "amber"
@@ -92,7 +96,8 @@ class AmberConfig:
         assign_tag(root, "load_box_vectors_from_coordinates_file", 
                    self.load_box_vecs_from_coords_file)
         return
-    
+
+
 class CharmmConfig:
     def __init__(self):
         self.type = "charmm"
@@ -110,6 +115,7 @@ class CharmmConfig:
             assign_tag(xmlParams, "params_filename", params_filename)
         return
 
+
 class ForceFieldConfig:
     def __init__(self):
         self.type = "forcefield"
@@ -124,7 +130,8 @@ class ForceFieldConfig:
         for forcefield_filename in self.forcefield_filenames:
             assign_tag(xmlParams, "forcefield_filename", forcefield_filename)
         return
-    
+
+
 class GromacsConfig:
     def __init__(self):
         self.type = "gromacs"
@@ -139,6 +146,7 @@ class GromacsConfig:
         assign_tag(root, "top_filename", self.top_filename)
         assign_tag(root, "include_dir", self.include_dir)
         return
+
 
 class Config:
     def __init__(self):

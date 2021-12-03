@@ -6,6 +6,7 @@ Authors: Matthew Copeland, Yinglong Miao
 Contributors: Lane Votapka
 
 """
+
 from simtk.unit import *
 
 from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as DihedralBoostLowerBoundIntegrator

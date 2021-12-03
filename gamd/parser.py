@@ -15,6 +15,7 @@ from abc import abstractmethod
 from simtk import unit
 from gamd import config
 
+
 def strBool(bool_str):
     """
     Take the string "true" or "false" of any case and returns a 
@@ -27,6 +28,7 @@ def strBool(bool_str):
     else:
         raise Exception(
             "argument for strBool must be string either 'True' or 'False'.")
+
 
 class Parser:
     def __init__(self):
@@ -315,7 +317,7 @@ class ParserFactory:
 
 if __name__ == "__main__":
     myparser = XmlParser()
-    myparser.parse_file("/tmp/gamdconfig.xml")
+    myparser.parse_file("sample_input.xml")
         
 
 
