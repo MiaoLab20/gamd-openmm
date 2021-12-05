@@ -16,6 +16,8 @@ class TrackedValue:
             self.__boost_type, "BoostPotential")
         self.__force_scaling_factor_name = tracked_integrator.get_variable_name_by_type(
             self.__boost_type, "ForceScalingFactor")
+        self.__effective_harmonic_constant_name = tracked_integrator.get_variable_name_by_type(
+            self.__boost_type, "k0")
 
     def mark_energy(self):
         if self.__boost_type == BoostType.TOTAL:
@@ -38,6 +40,10 @@ class TrackedValue:
 
     def get_boost_type(self):
         return self.__boost_type
+
+    def get_reporting_effective_harmonic_constant(self):
+        effective_harmonic_constants = self.__integrator.get_effective_harmonic_constants()
+        return str(effective_harmonic_constants[self.__effective_harmonic_constant_name])
 
 
 class GamdLogger:
@@ -82,7 +88,7 @@ class GamdLogger:
     def write_header(self):
         self.gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
         self.gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
-        header_str = "# ntwx,total_nstep,Unboosted-{0}-Energy,Unboosted-{1}-Energy,{0}-Force-Weight,{1}-Force-Weight,{0}-Boost-Energy-Potential,{1}-Boost-Energy\n"
+        header_str = "# ntwx,total_nstep,Unboosted-{0}-Energy,Unboosted-{1}-Energy,{0}-Force-Weight,{1}-Force-Weight,{0}-Boost-Energy-Potential,{1}-Boost-Energy,{0}-Effctive-Harmonic-Constant,{1}-Effctive-Harmonic-Constant\n"
         header = header_str.format(self.tracked_values[0].get_boost_type().value,
                                    self.tracked_values[1].get_boost_type().value)
         self.gamdLog.write(header)
@@ -101,10 +107,16 @@ class GamdLogger:
         first_boost_potential = self.tracked_values[0].get_reporting_boost_potential()
         second_boost_potential = self.tracked_values[1].get_reporting_boost_potential()
 
+        first_effective_harmonic_constant = self.tracked_values[0].get_reporting_effective_harmonic_constant()
+        second_effective_harmonic_constant = self.tracked_values[1].get_reporting_effective_harmonic_constant()
+
         self.gamdLog.write("\t" + str(1) + "\t" + str(step * 1) + "\t" +
                            first_energy + "\t" +
                            second_energy + "\t" +
                            first_force_scaling_factor + "\t" +
                            second_force_scaling_factor + "\t" +
                            first_boost_potential + "\t" +
-                           second_boost_potential + "\n")
+                           second_boost_potential + "\t" +
+                           first_effective_harmonic_constant + "\t" +
+                           second_effective_harmonic_constant + "\n")
+

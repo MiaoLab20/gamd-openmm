@@ -207,7 +207,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         self.global_variables_by_boost_type = {
             "Vmax": -1E99, "Vmin": 1E99,  "Vavg": 0,
-            "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0, "k0": 0,
+            "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0,
             "k0prime": 0, "k0doubleprime": 0, "k0doubleprime_window": 0,
             "boosted_energy": 0, "check_boost": 0,
             "threshold_energy": -1E99}
@@ -242,6 +242,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         self.add_global_variables_by_name("ForceScalingFactor", 1.0)
         self.add_global_variables_by_name("BoostPotential", 0.0)
+        self.add_global_variables_by_name("k0", 0.0)
 
         # This is to make sure that we get the value for the
         # beginningPotentialEnergy at the end of each simulation step.
@@ -495,6 +496,30 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
             boost_potentials[var_name] = var_value
 
         return boost_potentials
+
+    def get_effective_harmonic_constants(self):
+        effective_harmonic_constants = {
+            self._append_group_name(
+                "k0", BoostType.TOTAL.value): 0.0,
+            self._append_group_name(
+                "k0", "Dihedral"): 0.0
+        }
+
+        for group_id in self.get_group_dict():
+            group_name = self.get_group_dict()[group_id]
+            var_name = self._append_group_name("k0",
+                                               group_name)
+            var_value = self.getGlobalVariableByName(var_name)
+            effective_harmonic_constants[var_name] = var_value
+
+        if (self._boost_method == BoostMethod.TOTAL or
+                self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL):
+            var_name = self._append_group_name("k0",
+                                               BoostType.TOTAL.value)
+            var_value = self.getGlobalVariableByName(var_name)
+            effective_harmonic_constants[var_name] = var_value
+
+        return effective_harmonic_constants
 
     def calculate_common_threshold_energy_and_effective_harmonic_constant(
             self, compute_type):

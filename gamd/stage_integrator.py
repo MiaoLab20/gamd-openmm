@@ -523,6 +523,10 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
             self._calculate_threshold_energy_and_effective_harmonic_constant(ComputeType.TOTAL)
 
     @abstractmethod
+    def get_effective_harmonic_constants(self):
+        raise NotImplementedError("must implement get_effective_harmonic_constants")
+
+    @abstractmethod
     def _add_common_variables(self):
         raise NotImplementedError("must implement _add_common_variables")
 
