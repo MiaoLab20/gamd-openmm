@@ -8,6 +8,7 @@ GaMD simulation.
 '''
 import os
 
+import parmed
 from simtk import openmm
 import simtk.openmm.app as openmm_app
 from simtk import unit
@@ -20,7 +21,17 @@ from gamd.langevin.dihedral_boost_integrators import LowerBoundIntegrator as Dih
 from gamd.langevin.dihedral_boost_integrators import UpperBoundIntegrator as DihedralUpperBoundIntegrator
 from gamd.langevin.dual_boost_integrators import LowerBoundIntegrator as DualLowerBoundIntegrator
 from gamd.langevin.dual_boost_integrators import UpperBoundIntegrator as DualUpperBoundIntegrator
+from gamd.integrator_factory import *
 
+def load_pdb_positions_and_box_vectors(pdb_coords_filename):
+    positions = openmm_app.PDBFile(pdb_coords_filename)
+    pdb_parmed = parmed.load_file(pdb_coords_filename)
+    assert pdb_parmed.box_vectors is not None, "No box vectors "\
+        "found in {}. ".format(pdb_coords_filename) \
+        + "Box vectors for an anchor must be defined with a CRYST "\
+        "line within the PDB file."
+    
+    return positions, pdb_parmed.box_vectors
 
 class GamdSimulation:
     def __init__(self):
@@ -28,277 +39,202 @@ class GamdSimulation:
         self.integrator = None
         self.simulation = None
         self.traj_reporter = None
+        self.first_boost_group = None
+        self.second_boost_group = None
+        self.first_boost_type = None
+        self.second_boost_type = None
+        self.platform = "CUDA"
+        self.cuda_device_index = "0"
         
-    
 class GamdSimulationFactory:
     def __init__(self):
         return
         
-    def createGamdSimulation(self, config):
-        gamdSimulation = GamdSimulation()
-        if config.system_files_config.type == "amber":
-            prmtop = openmm_app.AmberPrmtopFile(
-                config.system_files_config.prmtop_filename)
-            inpcrd = openmm_app.AmberInpcrdFile(
-                config.system_files_config.inpcrd_filename)
-            if config.system_files_config.load_box_vecs_from_coords_file:
-                config.box_vectors = inpcrd.boxVectors
-            topology = prmtop
-            positions = inpcrd
-            
-        elif config.system_files_config.type == "charmm":
-            psf = openmm_app.CharmmPsfFile(
-                config.system_files_config.psf_filename)
-            pdb = openmm_app.PDBFile(
-                config.system_files_config.pdb_filename)
-            params = openmm_app.CharmmParameterSet(
-                config.system_files_config.params_filenames)
-            topology = psf
-            positions = pdb
-            
-        elif config.system_files_config.type == "gromacs":
-            gro = openmm_app.GromacsGroFile(
-                config.system_files_config.gro_filename)
-            top = openmm_app.GromacsTopFile(
-                config.system_files_config.top_filename,
-                periodicBoxVectors=gro.getPeriodicBoxVectors(),
-                includeDir=config.system_files_config.include_dir)
-            topology = top
-            positions = gro
-            
-        elif config.system_files_config.type == "forcefield":
-            pdb = openmm_app.PDBFile(
-                config.system_files_config.pdb_filename)
-            forcefield = openmm_app.ForceField(
-                config.system_files_config.forcefield_filenames)
-            topology = pdb
-            positions = pdb
-        
-        else:
-            print("Type:", config.system_files_config.type, "not found.",
-                  "OpenMM files not made.")
-        
-        if config.nonbonded_method == "pme":
+    def createGamdSimulation(self, config, platform_name, cuda_device_index):
+        if config.system.nonbonded_method == "pme":
             nonbondedMethod = openmm_app.PME
             
-        elif config.nonbonded_method == "nocutoff":
+        elif config.system.nonbonded_method == "nocutoff":
             nonbondedMethod = openmm_app.NoCutoff
             
-        elif config.nonbonded_method == "cutoffnonperiodic":
+        elif config.system.nonbonded_method == "cutoffnonperiodic":
             nonbondedMethod = openmm_app.CutoffNonPeriodic
             
-        elif config.nonbonded_method == "cutoffperiodic":
+        elif config.system.nonbonded_method == "cutoffperiodic":
             nonbondedMethod = openmm_app.CutoffPeriodic
             
-        elif config.nonbonded_method == "ewald":
+        elif config.system.nonbonded_method == "ewald":
             nonbondedMethod = openmm_app.Ewald
         
         else:
             raise Exception("nonbonded method not found: %s", 
-                            config.nonbonded_method)
+                            config.system.nonbonded_method)
         
-        if config.constraints == "none" or config.constraints is None:
+        if config.system.constraints == "none" \
+                or config.system.constraints is None:
             constraints = None
         
-        elif config.constraints == "hbonds":
+        elif config.system.constraints == "hbonds":
             constraints = openmm_app.HBonds
             
-        elif config.constraints == "allbonds":
+        elif config.system.constraints == "allbonds":
             constraints = openmm_app.AllBonds
             
-        elif config.constraints == "hangles":
+        elif config.system.constraints == "hangles":
             constraints = openmm_app.HAngles
             
         else:
             raise Exception("constraints not found: %s", 
-                            config.constraints)
-        
-        if config.system_files_config.type == "amber":
+                            config.system.constraints)
+            
+        box_vectors = None
+        gamdSimulation = GamdSimulation()
+        if config.input_files.amber is not None:
+            prmtop = openmm_app.AmberPrmtopFile(
+                config.input_files.amber.topology)
+            topology = prmtop
+            if config.input_files.amber.coordinates_filetype in ["inpcrd", 
+                                                                 "rst7"]:
+                positions = openmm_app.AmberInpcrdFile(
+                    config.input_files.amber.coordinates)
+                box_vectors = positions.boxVectors
+            elif config.input_files.amber.coordinates_filetype == "pdb":
+                pdb_coords_filename = config.input_files.amber.coordinates
+                positions, box_vectors = load_pdb_positions_and_box_vectors(
+                    pdb_coords_filename)
+            else:
+                raise Exception("Invalid input type: %s. Allowed types are: "\
+                                "'pdb' and 'rst7'/'inpcrd'.")
             gamdSimulation.system = prmtop.createSystem(
                 nonbondedMethod=nonbondedMethod, 
-                nonbondedCutoff=config.nonbonded_cutoff, 
+                nonbondedCutoff=config.system.nonbonded_cutoff, 
                 constraints=constraints)
-        
-        elif config.system_files_config.type == "charmm":
+            
+        elif config.input_files.charmm is not None:
+            psf = openmm_app.CharmmPsfFile(
+                config.input_files.charmm.topology)
+            pdb_coords_filename = config.input_files.charmm.coordinates
+            positions, box_vectors = load_pdb_positions_and_box_vectors(
+                pdb_coords_filename)
+            params = openmm_app.CharmmParameterSet(
+                config.input_files.charmm.parameters)
+            topology = psf
             gamdSimulation.system = psf.createSystem(
                 params=params,
                 nonbondedMethod=nonbondedMethod, 
-                nonbondedCutoff=config.nonbonded_cutoff, 
+                nonbondedCutoff=config.system.nonbonded_cutoff, 
                 constraints=constraints)
             
-        elif config.system_files_config.type == "gromacs":
+        elif config.input_files.gromacs is not None:
+            gro = openmm_app.GromacsGroFile(
+                config.input_files.gromacs.coordinates)
+            top = openmm_app.GromacsTopFile(
+                config.input_files.gromacs.topology,
+                periodicBoxVectors=gro.getPeriodicBoxVectors(),
+                includeDir=config.input_files.gromacs.include_dir)
+            topology = top
+            positions = gro
             gamdSimulation.system = top.createSystem(
                 nonbondedMethod=nonbondedMethod, 
-                nonbondedCutoff=config.nonbonded_cutoff, 
+                nonbondedCutoff=config.system.nonbonded_cutoff, 
                 constraints=constraints)
             
-        elif config.system_files_config.type == "forcefield":
+        elif config.input_files.forcefield is not None:
+            pdb_coords_filename = config.input_files.forcefield.coordinates
+            positions, box_vectors = load_pdb_positions_and_box_vectors(
+                pdb_coords_filename)
+            forcefield_filenames \
+                = config.input_files.forcefield.forcefield_list_native \
+                + config.input_files.forcefield.forcefield_list_external
+            forcefield = openmm_app.ForceField(*forcefield_filenames)
+            topology = positions
             gamdSimulation.system = forcefield.createSystem(
-                pdb.topology,
+                topology.topology,
                 nonbondedMethod=nonbondedMethod, 
-                nonbondedCutoff=config.nonbonded_cutoff, 
+                nonbondedCutoff=config.system.nonbonded_cutoff, 
                 constraints=constraints)
-        
+            
         else:
-            print("Type:", config.system_files_config.type, "not found.",
-                  "OpenMM files not made.")
+            raise Exception("No valid input files found. OpenMM simulation "\
+                            "not made.")
         
-        if config.integrator_type == "langevin":
-            if config.total_boost and not config.dihedral_boost:
-                if config.gamd_bound == 'lower':
-                    gamdSimulation.integrator = TotalLowerBoundIntegrator(
-                        dt=config.dt, 
-                        ntcmdprep=config.num_steps_conventional_md_prep, 
-                        ntcmd=config.num_steps_conventional_md, 
-                        ntebprep=config.num_steps_gamd_equilibration_prep, 
-                        nteb=config.num_steps_gamd_equilibration, 
-                        nstlim=config.total_simulation_length, 
-                        ntave=config.num_steps_per_averaging,
-                        sigma0=config.total_boost_sigma0,
-                        collision_rate=config.friction_coefficient,
-                        temperature=config.target_temperature,
-                        restart_filename=None)
-                elif config.gamd_bound == 'upper':
-                    gamdSimulation.integrator = TotalUpperBoundIntegrator(
-                        dt=config.dt, 
-                        ntcmdprep=config.num_steps_conventional_md_prep, 
-                        ntcmd=config.num_steps_conventional_md, 
-                        ntebprep=config.num_steps_gamd_equilibration_prep, 
-                        nteb=config.num_steps_gamd_equilibration, 
-                        nstlim=config.total_simulation_length, 
-                        ntave=config.num_steps_per_averaging,
-                        sigma0=config.total_boost_sigma0,
-                        collision_rate=config.friction_coefficient,
-                        temperature=config.target_temperature,
-                        restart_filename=None)
-                else:
-                    raise Exception(
-                        "This type of langevin integrator not implemented:",
-                        config.gamd_bound)
-            elif not config.total_boost and config.dihedral_boost:
-                if config.gamd_bound == 'lower':
-                    gamdSimulation.integrator = DihedralLowerBoundIntegrator(
-                        group=config.dihedral_group,
-                        dt=config.dt, 
-                        ntcmdprep=config.num_steps_conventional_md_prep, 
-                        ntcmd=config.num_steps_conventional_md, 
-                        ntebprep=config.num_steps_gamd_equilibration_prep, 
-                        nteb=config.num_steps_gamd_equilibration, 
-                        nstlim=config.total_simulation_length, 
-                        ntave=config.num_steps_per_averaging,
-                        sigma0=config.dihedral_boost_sigma0,
-                        collision_rate=config.friction_coefficient,
-                        temperature=config.target_temperature,
-                        restart_filename=None)
-                        
-                elif config.gamd_bound == 'upper':
-                    gamdSimulation.integrator = DihedralUpperBoundIntegrator(
-                        group=config.dihedral_group,
-                        dt=config.dt, 
-                        ntcmdprep=config.num_steps_conventional_md_prep, 
-                        ntcmd=config.num_steps_conventional_md, 
-                        ntebprep=config.num_steps_gamd_equilibration_prep, 
-                        nteb=config.num_steps_gamd_equilibration, 
-                        nstlim=config.total_simulation_length, 
-                        ntave=config.num_steps_per_averaging,
-                        sigma0=config.dihedral_boost_sigma0,
-                        collision_rate=config.friction_coefficient,
-                        temperature=config.target_temperature,
-                        restart_filename=None)
-                else:
-                    raise Exception(
-                        "This type of langevin integrator not implemented:",
-                        config.gamd_bound)
-            elif config.total_boost and config.dihedral_boost:
-                if config.gamd_bound == 'lower':
-                    gamdSimulation.integrator = DualLowerBoundIntegrator(
-                        group=config.dihedral_group,
-                        dt=config.dt, 
-                        ntcmdprep=config.num_steps_conventional_md_prep, 
-                        ntcmd=config.num_steps_conventional_md, 
-                        ntebprep=config.num_steps_gamd_equilibration_prep, 
-                        nteb=config.num_steps_gamd_equilibration, 
-                        nstlim=config.total_simulation_length, 
-                        ntave=config.num_steps_per_averaging,
-                        sigma0=config.dihedral_boost_sigma0,
-                        collision_rate=config.friction_coefficient,
-                        temperature=config.target_temperature,
-                        restart_filename=None)
-                        
-                elif config.gamd_bound == 'upper':
-                    gamdSimulation.integrator = DualUpperBoundIntegrator(
-                        group=config.dihedral_group,
-                        dt=config.dt, 
-                        ntcmdprep=config.num_steps_conventional_md_prep, 
-                        ntcmd=config.num_steps_conventional_md, 
-                        ntebprep=config.num_steps_gamd_equilibration_prep, 
-                        nteb=config.num_steps_gamd_equilibration, 
-                        nstlim=config.total_simulation_length, 
-                        ntave=config.num_steps_per_averaging,
-                        sigma0=config.dihedral_boost_sigma0,
-                        collision_rate=config.friction_coefficient,
-                        temperature=config.target_temperature,
-                        restart_filename=None)
-                else:
-                    raise Exception(
-                        "This type of langevin integrator not implemented:",
-                        config.gamd_bound)
-            else:
-                raise Exception(
-                        "This combination of total and dihedral boosts "\
-                        "not allowed or not yet implemented: Total_boost:",
-                        config.total_boost, "Dihedral_boost:", 
-                        config.dihedral_boost)
-                
+        if config.integrator.algorithm == "langevin":
+            boost_type_str = config.integrator.boost_type
+            gamdIntegratorFactory = GamdIntegratorFactory()
+            result = gamdIntegratorFactory.get_integrator(
+                boost_type_str, gamdSimulation.system, config.temperature, 
+                config.integrator.dt, 
+                config.integrator.number_of_steps.conventional_md_prep, 
+                config.integrator.number_of_steps.conventional_md, 
+                config.integrator.number_of_steps.gamd_equilibration_prep, 
+                config.integrator.number_of_steps.gamd_equilibration, 
+                config.integrator.number_of_steps.total_simulation_length, 
+                config.integrator.number_of_steps.averaging_window_interval,
+                sigma0p=config.integrator.sigma0.primary, 
+                sigma0d=config.integrator.sigma0.secondary)
+            [gamdSimulation.first_boost_group, 
+             gamdSimulation.second_boost_group, 
+             integrator, gamdSimulation.first_boost_type, 
+             gamdSimulation.second_boost_type] = result
+            integrator.setRandomNumberSeed(config.integrator.random_seed)
+            integrator.setFriction(config.integrator.friction_coefficient)
+            gamdSimulation.integrator = integrator
+           
         else:
-            raise Exception("Integrator type not implemented:", 
-                            config.integrator_type)
+            raise Exception("Algorithm not implemented:", 
+                            config.integrator.algorithm)
         
-        if config.use_barostat:
+        if config.barostat is not None:
             barostat = openmm.MonteCarloBarostat(
-                config.barostat_target_pressure, 
-                config.barostat_target_temperature,
-                config.barostat_frequency)
+                config.barostat.pressure, 
+                config.temperature,
+                config.barostat.frequency)
             gamdSimulation.system.addForce(barostat)
         
-        # TODO: only dihedrals being boosted at this time.
-        group = config.dihedral_group
-        for force in gamdSimulation.system.getForces():
-        #     print(force.__class__.__name__)
-            if force.__class__.__name__ == 'PeriodicTorsionForce':
-                force.setForceGroup(group)
-                break        
+        properties = {}
+        if platform_name == "cuda":
+            platform = openmm.Platform.getPlatformByName(platform_name)
+            properties["CudaPrecision"] = "mixed"
+            properties["DeviceIndex"] = cuda_device_index
+            gamdSimulation.simulation = openmm_app.Simulation(
+                topology.topology, gamdSimulation.system, 
+                gamdSimulation.integrator, platform, properties)
+        elif platform_name == "opencl":
+            platform = openmm.Platform.getPlatformByName(platform_name)
+            properties["DeviceIndex"] = cuda_device_index
+            gamdSimulation.simulation = openmm_app.Simulation(
+                topology.topology, gamdSimulation.system, 
+                gamdSimulation.integrator, platform, properties)
+        else:
+            gamdSimulation.simulation = openmm_app.Simulation(
+                topology.topology, gamdSimulation.system, 
+                gamdSimulation.integrator)
         
-        gamdSimulation.simulation = openmm_app.Simulation(
-            topology.topology, gamdSimulation.system, 
-            gamdSimulation.integrator)
+        
         
         gamdSimulation.simulation.context.setPositions(positions.positions)
         gamdSimulation.simulation.context.setPeriodicBoxVectors(
-            *config.box_vectors)
+            *box_vectors)
         if config.run_minimization:
             gamdSimulation.simulation.minimizeEnergy()
         
         gamdSimulation.simulation.context.setVelocitiesToTemperature(
-            config.initial_temperature)
+            config.temperature)
         
-        if config.coordinates_reporter_file_type == None:
-            gamdSimulation.traj_reporter = None
-        
-        elif config.coordinates_reporter_file_type == "dcd":
+        if config.outputs.reporting.coordinates_file_type == "dcd":
             gamdSimulation.traj_reporter = openmm_app.DCDReporter
             
-        elif config.coordinates_reporter_file_type == "pdb":
+        elif config.outputs.reporting.coordinates_file_type == "pdb":
             gamdSimulation.traj_reporter = openmm_app.PDBReporter
             
         else:
             raise Exception("Reporter type not found:", 
-                            config.coordinates_reporter_file_type)
+                            config.outputs.reporting.coordinates.file_type)
     
         return gamdSimulation
     
 if __name__ == "__main__":
     parserFactory = parser.ParserFactory()
-    config = parserFactory.parse_file("/home/lvotapka/gamd/sample_input.xml", "xml")
+    config = parserFactory.parse_file("/home/lvotapka/gamd/example.xml", "xml")
     gamdSimulationFactory = GamdSimulationFactory()
     gamdSimulation = gamdSimulationFactory.createGamdSimulation(config)

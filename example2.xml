@@ -46,41 +46,18 @@
     </integrator>
 
     <input-files>
-        <amber>
-            <topology>data/dip.top</topology>
-            <coordinates type="rst7">data/md-4ns.rst7</coordinates>
-            <!-- <coordinates type="pdb">md-4ns.rst7</coordinates> -->
-        </amber>
-        <charmm>
-            <topology>input.psf</topology>
-            <coordinates>input.pdb</coordinates>
-            <parameters>
-                <file>charm22.prm</file>
-                <file>charm22.rtf</file>
-            </parameters>
-        </charmm>
-        <gromacs>
-            <topology>input.top</topology>
-            <coordinates>input.gro</coordinates>
-            <include-dir>/usr/local/gromacs/share/gromacs/top</include-dir>
-        </gromacs>
         <forcefield>
-            <coordinates>input.pdb</coordinates>
+            <coordinates>data/dip.pdb</coordinates>
             <forcefields>
                 <native>
-                    <file>amber99sb.xml</file>
-                    <file>tip3p.xml</file>
+                    <file>amoeba2018.xml</file>
                 </native>
-                <external>
-                    <file-path>/tmp/your-file.xml</file-path>
-                    <file-path>/tmp/additional-forcefield.xml</file-path>
-                </external>
             </forcefields>
         </forcefield>
     </input-files>
 
     <outputs>
-        <directory>output/</directory>
+        <directory>output_amoeba/</directory>
         <overwrite-output>True</overwrite-output>
 
         <reporting>

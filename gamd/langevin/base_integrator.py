@@ -96,6 +96,12 @@ class GamdLangevinIntegrator(GamdStageIntegrator, ABC):
         self.addComputeGlobal("noisescale",
                               "sqrt(thermal_energy*(1-vscale*vscale))")
 
+    def setFriction(self, coeff):
+        self.collision_rate = coeff
+        
+    def getFriction(self):
+        return self.collision_rate
+    
     def _add_common_variables(self):
         garbage = {self.addGlobalVariable(key, value)
                    for key, value in self.global_variables.items()}

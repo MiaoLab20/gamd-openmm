@@ -10,273 +10,252 @@ user.
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
+import numpy as np
 from simtk import unit
 
 
-def assign_tag(root, tagname, value):
+def assign_tag(root, tagname, value, attributes=None):
+    if attributes is None:
+        attributes = {}
     xmlTag = ET.SubElement(root, tagname)
     if value is not None:
         xmlTag.text = str(value)
+    for attribute in attributes:
+        xmlTag.set(attribute, attributes[attribute])
+        
     return
 
-
-def serialize_box_vectors(box_vectors, xmlRoot, tagName='box_vectors'):
-    '''
-    Takes a 3x3 simtk.unit.Quantity representing an openMM or Parmed system box 
-    vectors and serializes it as xml, saving the text into xmlRoot.
-    '''
-    xmlBox_vectors = ET.SubElement(xmlRoot, tagName)
-    if box_vectors is not None:
-        box_vectors_unitless = box_vectors.value_in_unit(unit.nanometer)
-        xmlA = ET.SubElement(xmlBox_vectors, 'A')
-        xmlAx = ET.SubElement(xmlA, 'x')
-        xmlAx.text = str(box_vectors_unitless[0][0])
-        xmlAy = ET.SubElement(xmlA, 'y')
-        xmlAy.text = str(box_vectors_unitless[0][1])
-        xmlAz = ET.SubElement(xmlA, 'z')
-        xmlAz.text = str(box_vectors_unitless[0][2])
-        xmlB = ET.SubElement(xmlBox_vectors, 'B')
-        xmlBx = ET.SubElement(xmlB, 'x')
-        xmlBx.text = str(box_vectors_unitless[1][0])
-        xmlBy = ET.SubElement(xmlB, 'y')
-        xmlBy.text = str(box_vectors_unitless[1][1])
-        xmlBz = ET.SubElement(xmlB, 'z')
-        xmlBz.text = str(box_vectors_unitless[1][2])
-        xmlC = ET.SubElement(xmlBox_vectors, 'C')
-        xmlCx = ET.SubElement(xmlC, 'x')
-        xmlCx.text = str(box_vectors_unitless[2][0])
-        xmlCy = ET.SubElement(xmlC, 'y')
-        xmlCy.text = str(box_vectors_unitless[2][1])
-        xmlCz = ET.SubElement(xmlC, 'z')
-        xmlCz.text = str(box_vectors_unitless[2][2])
-    else:
-        xmlBox_vectors.text = ''
-    return
-
-
-def deserialize_box_vectors(xmlBox_vectors):
-    '''
-    Takes xml representing box vectors for an openMM or parmed system and
-    creates a simtk.unit.Quantity object for it.
-    '''
-    if xmlBox_vectors.text is not None:
-        xmlA = xmlBox_vectors.find('A')
-        xmlAx = float(xmlA.find('x').text)
-        xmlAy = float(xmlA.find('y').text)
-        xmlAz = float(xmlA.find('z').text)
-        xmlB = xmlBox_vectors.find('B')
-        xmlBx = float(xmlB.find('x').text)
-        xmlBy = float(xmlB.find('y').text)
-        xmlBz = float(xmlB.find('z').text)
-        xmlC = xmlBox_vectors.find('C')
-        xmlCx = float(xmlC.find('x').text)
-        xmlCy = float(xmlC.find('y').text)
-        xmlCz = float(xmlC.find('z').text)
-        box_vectors = unit.Quantity([[xmlAx, xmlAy, xmlAz], 
-                                     [xmlBx, xmlBy, xmlBz],
-                                     [xmlCx, xmlCy, xmlCz]], 
-                                     unit=unit.nanometer)
-    else:
-        box_vectors = None
-    return box_vectors
-
-
-class AmberConfig:
+class SystemConfig:
     def __init__(self):
-        self.type = "amber"
-        self.prmtop_filename = None
-        self.inpcrd_filename = None
-        self.load_box_vecs_from_coords_file = True
+        self.nonbonded_method = "PME"
+        self.nonbonded_cutoff = 0.9*unit.nanometer
+        self.constraints = "HBonds"
         return
     
     def serialize(self, root):
-        assign_tag(root, "type", self.type)
-        assign_tag(root, "prmtop_filename", self.prmtop_filename)
-        assign_tag(root, "inpcrd_filename", self.inpcrd_filename)
-        assign_tag(root, "load_box_vectors_from_coordinates_file", 
-                   self.load_box_vecs_from_coords_file)
+        assign_tag(root, "nonbonded-method", self.nonbonded_method)
+        assign_tag(root, "nonbonded-cutoff", self.nonbonded_cutoff.value_in_unit(unit.nanometers))
+        assign_tag(root, "constraints", self.constraints)
+        return
+
+class BarostatConfig:
+    def __init__(self):
+        self.pressure = 1.0 * unit.bar
+        self.frequency = 25
+        return
+    
+    def serialize(self, root):
+        assign_tag(root, "pressure", self.pressure.value_in_unit(unit.bar))
+        assign_tag(root, "frequency", self.frequency)
+        return
+
+class IntegratorSigmaConfig:
+    def __init__(self):
+        self.primary = 6.0 * unit.kilocalories_per_mole
+        self.secondary = 6.0 * unit.kilocalories_per_mole
+        return
+    
+    def serialize(self, root):
+        assign_tag(root, "primary", self.primary.value_in_unit(unit.kilocalories_per_mole))
+        assign_tag(root, "secondary", self.secondary.value_in_unit(unit.kilocalories_per_mole))
+        return
+
+class IntegratorNumberOfStepsConfig:
+    def __init__(self):
+        self.conventional_md_prep = 200000
+        self.conventional_md = 1000000
+        self.gamd_equilibration_prep = 600000
+        self.gamd_equilibration = 3000000
+        self.gamd_production = 14200000
+        self.total_simulation_length = 19000000
+        self.averaging_window_interval = 500
+        return
+    
+    def serialize(self, root):
+        assign_tag(root, "conventional-md-prep", self.conventional_md_prep)
+        assign_tag(root, "conventional-md", self.conventional_md)
+        assign_tag(root, "gamd-equilibration-prep", self.gamd_equilibration_prep)
+        assign_tag(root, "gamd-equilibration", self.gamd_equilibration)
+        assign_tag(root, "gamd-production", self.gamd_production)
+        assign_tag(root, "total-simulation-length", self.total_simulation_length)
+        assign_tag(root, "averaging-window-interval", self.averaging_window_interval)
+        return
+
+class IntegratorConfig:
+    def __init__(self):
+        self.algorithm = "langevin"
+        self.boost_type = "lower-dual"
+        self.sigma0 = IntegratorSigmaConfig()
+        self.random_seed = 0
+        self.dt = 0.002 * unit.picoseconds
+        self.friction_coefficient = 1.0 * unit.picoseconds ** -1
+        self.number_of_steps = IntegratorNumberOfStepsConfig()
+        return
+        
+    def serialize(self, root):
+        assign_tag(root, "algorithm", self.algorithm)
+        assign_tag(root, "boost-type", self.boost_type)
+        xml_sigma0_tags = ET.SubElement(root, "sigma0")
+        self.sigma0.serialize(xml_sigma0_tags)
+        assign_tag(root, "random-seed", self.random_seed)
+        assign_tag(root, "dt", self.dt.value_in_unit(unit.picoseconds))
+        assign_tag(root, "friction-coefficient", self.friction_coefficient.value_in_unit(unit.picoseconds**-1))
+        xml_number_of_steps_tags = ET.SubElement(root, "number-of-steps")
+        self.number_of_steps.serialize(xml_number_of_steps_tags)
+        return
+
+class AmberConfig:
+    def __init__(self):
+        self.topology = ""
+        self.coordinates = ""
+        self.coordinates_filetype = ""
+        return
+    
+    def serialize(self, root):
+        assign_tag(root, "topology", self.topology)
+        assign_tag(root, "coordinates", self.coordinates, {"type": self.coordinates_filetype})
         return
 
 
 class CharmmConfig:
     def __init__(self):
-        self.type = "charmm"
-        self.psf_filename = None
-        self.pdb_filename = None
-        self.params_filenames = []
+        self.topology = ""
+        self.coordinates = ""
+        self.parameters = []
         return
     
     def serialize(self, root):
-        assign_tag(root, "type", self.type)
-        assign_tag(root, "psf_filename", self.psf_filename)
-        assign_tag(root, "pdb_filename", self.pdb_filename)
-        xmlParams = ET.SubElement(root, 'params_filenames')
-        for params_filename in self.params_filenames:
-            assign_tag(xmlParams, "params_filename", params_filename)
+        assign_tag(root, "topology", self.topology)
+        assign_tag(root, "coordinates", self.coordinates)
+        xmlParams = ET.SubElement(root, 'parameters')
+        for params_filename in self.parameters:
+            assign_tag(xmlParams, "file", params_filename)
         return
-
-
-class ForceFieldConfig:
-    def __init__(self):
-        self.type = "forcefield"
-        self.forcefield_filenames = []
-        self.pdb_filename = None
-        return
-    
-    def serialize(self, root):
-        assign_tag(root, "type", self.type)
-        assign_tag(root, "pdb_filename", self.pdb_filename)
-        xmlParams = ET.SubElement(root, 'forcefield_filenames')
-        for forcefield_filename in self.forcefield_filenames:
-            assign_tag(xmlParams, "forcefield_filename", forcefield_filename)
-        return
-
 
 class GromacsConfig:
     def __init__(self):
-        self.type = "gromacs"
-        self.gro_filename = None
-        self.top_filename = None
-        self.include_dir = None
+        self.topology = ""
+        self.coordinates = ""
+        self.include_dir = ""
         return
     
     def serialize(self, root):
-        assign_tag(root, "type", self.type)
-        assign_tag(root, "gro_filename", self.gro_filename)
-        assign_tag(root, "top_filename", self.top_filename)
-        assign_tag(root, "include_dir", self.include_dir)
+        assign_tag(root, "topology", self.topology)
+        assign_tag(root, "coordinates", self.coordinates)
+        assign_tag(root, "include-dir", self.include_dir)
         return
 
+class ForceFieldConfig:
+    def __init__(self):
+        self.coordinates = ""
+        self.forcefield_list_native = []
+        self.forcefield_list_external = []
+        return
+    
+    def serialize(self, root):
+        assign_tag(root, "coordinates", self.coordinates)
+        xmlForcefields = ET.SubElement(root, "forcefields")
+        xmlNative = ET.SubElement(xmlForcefields, "native")
+        xmlExternal = ET.SubElement(xmlForcefields, "external")
+        for native_filename in self.forcefield_list_native:
+            assign_tag(xmlNative, "file", native_filename)
+        for external_filename in self.forcefield_list_external:
+            assign_tag(xmlExternal, "file", external_filename)
+        return
+
+class InputFilesConfig:
+    def __init__(self):
+        self.amber = None
+        self.charmm = None
+        self.gromacs = None
+        self.forcefield = None
+        return
+    
+    def serialize(self, root):
+        if self.amber is not None:
+            xml_amber_tags = ET.SubElement(root, "amber")
+            self.amber.serialize(xml_amber_tags)
+        if self.charmm is not None:
+            xml_charmm_tags = ET.SubElement(root, "charmm")
+            self.charmm.serialize(xml_charmm_tags)
+        if self.gromacs is not None:
+            xml_gromacs_tags = ET.SubElement(root, "gromacs")
+            self.gromacs.serialize(xml_gromacs_tags)
+        if self.forcefield is not None:
+            xml_forcefield_tags = ET.SubElement(root, "forcefield")
+            self.forcefield.serialize(xml_forcefield_tags)
+        return
+
+class OutputsReportingConfig:
+    def __init__(self):
+        self.energy_interval = 500
+        self.coordinates_file_type = "DCD"
+        self.coordinates_interval = 500
+        self.restart_checkpoint_interval = 50000
+        self.statistics_interval = 500
+        return
+    
+    def compute_chunk_size(self):
+        gcd = np.gcd.reduce(
+            [self.energy_interval, self.coordinates_interval,
+             self.restart_checkpoint_interval, self.statistics_interval])
+        return gcd
+    
+    def serialize(self, root):
+        xml_energy_tags = ET.SubElement(root, "energy")
+        assign_tag(xml_energy_tags, "interval", self.energy_interval)
+        xml_coordinates_tags = ET.SubElement(root, "coordinates")
+        assign_tag(xml_coordinates_tags, "file-type", self.coordinates_file_type)
+        assign_tag(xml_coordinates_tags, "interval", self.coordinates_interval)
+        xml_restart_checkpoint_tags = ET.SubElement(root, "restart-checkpoint")
+        assign_tag(xml_restart_checkpoint_tags, "interval", self.restart_checkpoint_interval)
+        xml_statistics_tags = ET.SubElement(root, "statistics")
+        assign_tag(xml_statistics_tags, "interval", self.statistics_interval)
+        return
+
+class OutputsConfig:
+    def __init__(self):
+        self.directory = ""
+        self.overwrite_output = True
+        self.reporting = OutputsReportingConfig()
+        return
+    
+    def serialize(self, root):
+        assign_tag(root, "directory", self.directory)
+        assign_tag(root, "overwrite-output", self.overwrite_output)
+        xml_reporting_tags = ET.SubElement(root, "reporting")
+        self.reporting.serialize(xml_reporting_tags)
+        return
 
 class Config:
     def __init__(self):
         # set all the default values
         
-        # system input files: Amber, Charmm, or other
-        self.system_files_config = AmberConfig()
-        self.box_vectors = None
-        self.output_directory = "output/"
-        self.overwrite_output = False
-        self.chunk_size = 1000
-        
-        # OpenMM system parameters
-        self.nonbonded_method = "PME"
-        self.nonbonded_cutoff = 0.9*unit.nanometer
-        self.constraints = "HBonds"
-        
-        # OpenMM integrator parameters
-        self.integrator_type = 'langevin'
-        self.friction_coefficient = 1.0 / unit.picosecond
-        self.target_temperature = 298.15 * unit.kelvin
-        self.random_seed = -1
-        self.dt = 2.0 * unit.femtosecond
-        
-        # OpenMM barostat parameters
-        self.use_barostat = False
-        self.barostat_target_pressure = 1.0 * unit.bar
-        self.barostat_target_temperature = 298.15 * unit.kelvin
-        self.barostat_frequency = 25
-        
-        # OpenMM simulation parameters
+        self.temperature = 298.15 * unit.kelvin
+        self.system = SystemConfig()
+        self.barostat = None #BarostatConfig()
         self.run_minimization = True
-        self.initial_temperature = 298.15 * unit.kelvin
-
-        # OpenMM reporter parameters
-        self.energy_reporter_frequency = 5000
-        self.coordinates_reporter_frequency = 5000
-        self.coordinates_reporter_file_type = "DCD"
-        
-        # GaMD integrator parameters
-        self.gamd_bound = 'lower'
-        self.total_simulation_length = 30000
-        self.total_boost = True
-        self.total_boost_sigma0 = 6.0 * unit.kilocalories_per_mole
-        self.dihedral_boost = False
-        self.dihedral_boost_sigma0 = 6.0 * unit.kilocalories_per_mole
-        self.num_steps_conventional_md = 10000
-        self.num_steps_conventional_md_prep = 2000
-        self.num_steps_per_averaging = 500
-        self.num_steps_gamd_equilibration = 10000
-        self.num_steps_gamd_equilibration_prep = 2000
-        
-        # backup checkpoints
-        self.restart_checkpoint_filename = "gamd.backup"
-        self.restart_checkpoint_frequency = 1000
-        
-        self.dihedral_group=1
+        self.integrator = IntegratorConfig()
+        self.input_files = InputFilesConfig()
+        self.outputs = OutputsConfig()
     
     def serialize(self, filename):
         root = ET.Element('gamd')
-        xml_sys_files = ET.SubElement(root, "system_files")
-        self.system_files_config.serialize(xml_sys_files)
-        serialize_box_vectors(self.box_vectors, root, 
-                              tagName='box_vectors')
-        assign_tag(root, "output_directory", self.output_directory)
-        assign_tag(root, "overwrite_output", self.overwrite_output)
-        assign_tag(root, "chunk_size", self.chunk_size)
-        assign_tag(root, "nonbonded_method", self.nonbonded_method)
-        assign_tag(root, "nonbonded_cutoff", 
-                   self.nonbonded_cutoff.value_in_unit(unit.nanometer))
-        assign_tag(root, "constraints", self.constraints)
-        
-        assign_tag(root, "integrator_type", self.integrator_type)
-        assign_tag(root, "friction_coefficient", 
-                   self.friction_coefficient.value_in_unit(unit.picosecond**-1))
-        assign_tag(root, "target_temperature", 
-                   self.target_temperature.value_in_unit(unit.kelvin))
-        assign_tag(root, "random_seed", self.random_seed)
-        assign_tag(root, "dt", 
-                   self.dt.value_in_unit(unit.picosecond))
-        
-        assign_tag(root, "use_barostat", self.use_barostat)
-        assign_tag(root, "barostat_target_pressure", 
-                   self.barostat_target_pressure.value_in_unit(unit.bar))
-        assign_tag(root, "barostat_target_temperature", 
-                   self.barostat_target_temperature.value_in_unit(unit.kelvin))
-        assign_tag(root, "barostat_frequency", self.barostat_frequency)
-        
-        assign_tag(root, "run_minimization", self.run_minimization)
-        assign_tag(root, "initial_temperature", 
-                   self.initial_temperature.value_in_unit(unit.kelvin))
-        
-        assign_tag(root, "energy_reporter_frequency", 
-                   self.energy_reporter_frequency)
-        assign_tag(root, "coordinates_reporter_frequency", 
-                   self.coordinates_reporter_frequency)
-        assign_tag(root, "coordinates_reporter_file_type", 
-                   self.coordinates_reporter_file_type)
-        
-        assign_tag(root, "gamd_bound", self.gamd_bound)
-        assign_tag(root, "total_simulation_length", 
-                   self.total_simulation_length)
-        assign_tag(root, "total_boost", self.total_boost)
-        assign_tag(root, "total_boost_sigma0", 
-                   self.total_boost_sigma0.value_in_unit(
-                       unit.kilocalories_per_mole))
-        assign_tag(root, "dihedral_boost", self.dihedral_boost)
-        assign_tag(root, "dihedral_boost_sigma0", 
-                   self.dihedral_boost_sigma0.value_in_unit(
-                       unit.kilocalories_per_mole))
-        assign_tag(root, "num_steps_conventional_md", 
-                   self.num_steps_conventional_md)
-        assign_tag(root, "num_steps_conventional_md_prep", 
-                   self.num_steps_conventional_md_prep)
-        assign_tag(root, "num_steps_per_averaging", 
-                   self.num_steps_per_averaging)
-        assign_tag(root, "num_steps_gamd_equilibration", 
-                   self.num_steps_gamd_equilibration)
-        assign_tag(root, "num_steps_gamd_equilibration_prep", 
-                   self.num_steps_gamd_equilibration_prep)
-        
-        assign_tag(root, "restart_checkpoint_filename", 
-                   self.restart_checkpoint_filename)
-        assign_tag(root, "restart_checkpoint_frequency", 
-                   self.restart_checkpoint_frequency)
-        
-        assign_tag(root, "dihedral_group", self.dihedral_group)
+        assign_tag(root, "temperature", self.temperature.value_in_unit(unit.kelvin))
+        xml_system = ET.SubElement(root, "system")
+        self.system.serialize(xml_system)
+        xml_barostat = ET.SubElement(root, "barostat")
+        self.barostat.serialize(xml_barostat)
+        assign_tag(root, "run-minimization", self.run_minimization)
+        xml_integrator = ET.SubElement(root, "integrator")
+        self.integrator.serialize(xml_integrator)
+        xml_input_files = ET.SubElement(root, "input-files")
+        self.input_files.serialize(xml_input_files)
+        xml_outputs = ET.SubElement(root, "output")
+        self.outputs.serialize(xml_outputs)
         
         xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(
-            indent="   ")
+            indent="    ")
         our_file=open(filename, 'w')
         our_file.write(xmlstr)
         our_file.close()
