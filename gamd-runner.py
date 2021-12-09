@@ -256,7 +256,7 @@ class Runner:
             state_data_name = os.path.join(
                 output_directory, 'state-data.restart%d.log' % restart_index)
             traj_name = os.path.join(
-                self.config.output_directory, 
+                self.config.outputs.directory, 
                 'output.restart%d.%s' % (restart_index, extension))
             running_range = self.running_rates.get_restart_batch_run_range(integrator)
             
