@@ -40,7 +40,6 @@
             <gamd-equilibration-prep>2000</gamd-equilibration-prep>
             <gamd-equilibration>20000</gamd-equilibration>
             <gamd-production>30000</gamd-production>
-            <total-simulation-length>60000</total-simulation-length>
             <averaging-window-interval>50</averaging-window-interval>
         </number-of-steps>
     </integrator>

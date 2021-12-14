@@ -62,13 +62,13 @@ class IntegratorSigmaConfig:
 
 class IntegratorNumberOfStepsConfig:
     def __init__(self):
-        self.conventional_md_prep = 200000
-        self.conventional_md = 1000000
-        self.gamd_equilibration_prep = 600000
-        self.gamd_equilibration = 3000000
-        self.gamd_production = 14200000
-        self.total_simulation_length = 19000000
-        self.averaging_window_interval = 500
+        self.conventional_md_prep = 0
+        self.conventional_md = 0
+        self.gamd_equilibration_prep = 0
+        self.gamd_equilibration = 0
+        self.gamd_production = 0
+        #self.total_simulation_length = 19000000
+        self.averaging_window_interval = 0
         return
     
     def serialize(self, root):
@@ -77,7 +77,7 @@ class IntegratorNumberOfStepsConfig:
         assign_tag(root, "gamd-equilibration-prep", self.gamd_equilibration_prep)
         assign_tag(root, "gamd-equilibration", self.gamd_equilibration)
         assign_tag(root, "gamd-production", self.gamd_production)
-        assign_tag(root, "total-simulation-length", self.total_simulation_length)
+        #assign_tag(root, "total-simulation-length", self.total_simulation_length)
         assign_tag(root, "averaging-window-interval", self.averaging_window_interval)
         return
 

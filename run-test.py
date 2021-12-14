@@ -19,7 +19,7 @@ from gamd.integrator_factory import *
 class RunningRates:
 
     def __init__(self, number_of_simulation_steps: int, save_rate: int, reporting_rate: int,
-                 debugging_enabled: bool = False, debugging_step_function=None) -> None:
+                 debugging_enabled: bool=False, debugging_step_function=None) -> None:
         """Constructor
 
             The save_rate determines that rate at which to write out

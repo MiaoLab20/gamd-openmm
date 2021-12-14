@@ -20,12 +20,12 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 
-from gamd import utils as utils
-from gamd import parser
-from gamd import gamdSimulation
-from gamd.stage_integrator import BoostType
-from gamd.DebugLogger import DebugLogger
-from gamd.GamdLogger import GamdLogger
+from gamd_openmm.gamd import utils as utils
+from gamd_openmm.gamd import parser
+from gamd_openmm.gamd import gamdSimulation
+from gamd_openmm.gamd.stage_integrator import BoostType
+from gamd_openmm.gamd.DebugLogger import DebugLogger
+from gamd_openmm.gamd.GamdLogger import GamdLogger
 
 RESTART_CHECKPOINT_FILENAME = "gamd_restart.checkpoint"
 
@@ -486,16 +486,16 @@ def main():
     argparser.add_argument("-p", "--platform", dest="platform", default="CUDA",
                            help="Define the platform that will run the "\
                            "simulations. Default is 'CUDA', but other options"\
-                           "include: 'reference', 'CPU', and 'OpenGL'.", 
+                           "include: 'reference', 'CPU', and 'OpenCL'.", 
                            type=str)
-    argparser.add_argument("-c", "--cuda_index", dest="cuda_index", default="0",
-                           help="modify which cuda_device_index to run the "\
+    argparser.add_argument("-d", "--device_index", dest="device_index", default="0",
+                           help="modify which device_index to run the "\
                            "simulation on. For example, the number 0 or 1 "\
                            "would suffice. To run on multiple GPU indices, "
                            "simply enter comma separated indices. Example: "\
                            "'0,1'. If a value is not supplied, the value '0' "\
                            "will be used by default.", type=str)
-    argparser.add_argument("-d", "--debug", dest="debug", default=False,
+    argparser.add_argument("-D", "--debug", dest="debug", default=False,
                            help="Whether to start the run in debug mode.", 
                            action="store_true")
     
@@ -505,7 +505,7 @@ def main():
     config_filename = args["input_file"]
     restart = args["restart"]
     platform = args["platform"]
-    cuda_index = args["cuda_index"]
+    cuda_index = args["device_index"]
     debug = args["debug"]
     
     parserFactory = parser.ParserFactory()
