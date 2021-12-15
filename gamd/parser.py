@@ -12,7 +12,9 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from abc import ABCMeta, ABC
 from abc import abstractmethod
+
 from simtk import unit
+
 from gamd import config
 
 
@@ -354,6 +356,9 @@ class XmlParser(Parser):
             else:
                 print("Warning: parameter in XML not found in config. "\
                       "Spelling error?", tag.tag)
+        
+        self.config.integrator.number_of_steps.compute_total_simulation_length()
+        return
 
 class ParserFactory:
     def __init__(self):
@@ -372,6 +377,4 @@ class ParserFactory:
 
 
 if __name__ == "__main__":
-    myparser = XmlParser()
-    myparser.parse_file("../example.xml")
-    myparser.config.serialize("/tmp/gamdconfig.xml")
+    pass

@@ -67,7 +67,7 @@ class IntegratorNumberOfStepsConfig:
         self.gamd_equilibration_prep = 0
         self.gamd_equilibration = 0
         self.gamd_production = 0
-        #self.total_simulation_length = 19000000
+        self.total_simulation_length = 0
         self.averaging_window_interval = 0
         return
     
@@ -80,6 +80,10 @@ class IntegratorNumberOfStepsConfig:
         #assign_tag(root, "total-simulation-length", self.total_simulation_length)
         assign_tag(root, "averaging-window-interval", self.averaging_window_interval)
         return
+    
+    def compute_total_simulation_length(self):
+        self.total_simulation_length = self.conventional_md \
+            + self.gamd_equilibration + self.gamd_production
 
 class IntegratorConfig:
     def __init__(self):
@@ -244,14 +248,15 @@ class Config:
         assign_tag(root, "temperature", self.temperature.value_in_unit(unit.kelvin))
         xml_system = ET.SubElement(root, "system")
         self.system.serialize(xml_system)
-        xml_barostat = ET.SubElement(root, "barostat")
-        self.barostat.serialize(xml_barostat)
+        if self.barostat is not None:
+            xml_barostat = ET.SubElement(root, "barostat")
+            self.barostat.serialize(xml_barostat)
         assign_tag(root, "run-minimization", self.run_minimization)
         xml_integrator = ET.SubElement(root, "integrator")
         self.integrator.serialize(xml_integrator)
         xml_input_files = ET.SubElement(root, "input-files")
         self.input_files.serialize(xml_input_files)
-        xml_outputs = ET.SubElement(root, "output")
+        xml_outputs = ET.SubElement(root, "outputs")
         self.outputs.serialize(xml_outputs)
         
         xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(
@@ -262,5 +267,4 @@ class Config:
         
 
 if __name__ == "__main__":
-    myconfig = Config()
-    myconfig.serialize("/tmp/gamdconfig.xml")
+    pass

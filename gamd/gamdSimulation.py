@@ -234,7 +234,4 @@ class GamdSimulationFactory:
         return gamdSimulation
     
 if __name__ == "__main__":
-    parserFactory = parser.ParserFactory()
-    config = parserFactory.parse_file("/home/lvotapka/gamd/example.xml", "xml")
-    gamdSimulationFactory = GamdSimulationFactory()
-    gamdSimulation = gamdSimulationFactory.createGamdSimulation(config)
+    pass

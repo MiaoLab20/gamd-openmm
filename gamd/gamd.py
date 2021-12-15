@@ -20,12 +20,12 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 
-from gamd_openmm.gamd import utils as utils
-from gamd_openmm.gamd import parser
-from gamd_openmm.gamd import gamdSimulation
-from gamd_openmm.gamd.stage_integrator import BoostType
-from gamd_openmm.gamd.DebugLogger import DebugLogger
-from gamd_openmm.gamd.GamdLogger import GamdLogger
+from gamd import utils as utils
+from gamd import parser
+from gamd import gamdSimulation
+from gamd.stage_integrator import BoostType
+from gamd.DebugLogger import DebugLogger
+from gamd.GamdLogger import GamdLogger
 
 RESTART_CHECKPOINT_FILENAME = "gamd_restart.checkpoint"
 
