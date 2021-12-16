@@ -377,86 +377,6 @@ class Runner:
                 simulation.saveCheckpoint(step_checkpoint_filename)
                 integrator.create_positions_file(positions_filename)
             
-        """
-        with open(os.path.join(output_directory, "gamd.log"), write_mode) \
-                as gamdLog:
-            if not restart:
-                gamdLog.write(
-                    "# Gaussian accelerated Molecular Dynamics log file\n")
-                gamdLog.write(
-                    "# All energy terms are stored in unit of kcal/mol\n")
-                gamdLog.write(
-                    "# ntwx,total_nstep,Unboosted-Potential-Energy,"\
-                    "Unboosted-Dihedral-Energy,Total-Force-Weight,"\
-                    "Dihedral-Force-Weight,Boost-Energy-Potential,"\
-                    "Boost-Energy-Dihedral\n")
-            
-            for chunk in range(start_chunk, end_chunk):
-                if chunk % (restart_checkpoint_interval // chunk_size) == 0:
-                    simulation.saveCheckpoint(restart_checkpoint_filename)
-                
-                '''
-                # TEST
-                if chunk == 249:
-                    print("sudden, unexpected interruption!")
-                    exit()
-                # END TEST
-                '''
-                if chunk % (statistics_interval // chunk_size) == 0:
-                    state = simulation.context.getState(getEnergy=True)
-                    dihedral_state = simulation.context.getState(getEnergy=True, groups={group})
-                    force_scaling_factors = integrator.get_force_scaling_factors()
-                    boost_potentials = integrator.get_boost_potentials()
-                    total_potential_energy = str(state.getPotentialEnergy() / (kilojoules_per_mole * 4.184))
-                    dihedral_energy = str(dihedral_state.getPotentialEnergy() / (kilojoules_per_mole * 4.184))
-                    total_force_scaling_factor = str(force_scaling_factors["ForceScalingFactor_" + BoostType.TOTAL.value])
-                    dihedral_force_scaling_factor = str(force_scaling_factors["ForceScalingFactor_Dihedral"])
-                    total_boost_potential = str(boost_potentials["BoostPotential_" + BoostType.TOTAL.value] / 4.184)
-                    dihedral_boost_potential = str(boost_potentials["BoostPotential_Dihedral"] / 4.184)
-                
-                try:
-                    simulation.step(chunk_size)
-                    #print_global_variables(integrator)
-                    state = simulation.context.getState(
-                        getEnergy=True, groups={group})
-                    
-                    # TODO: deal with these strange units issues
-                    gamdLog.write("\t".join((
-                        str(chunk_size), str(chunk*chunk_size), 
-                        total_potential_energy, dihedral_energy,
-                        total_force_scaling_factor, 
-                        dihedral_force_scaling_factor,
-                        total_boost_potential, dihedral_boost_potential))+"\n")
-    
-                except Exception as e:
-                    print("Failure on step " + str(chunk*chunk_size))
-                    print(e)
-                    state = simulation.context.getState(
-                        getEnergy=True, groups={group})
-                    gamdLog.write("\t".join((
-                        "Fail Step: " + str(chunk_size), str(chunk*chunk_size), 
-                        total_potential_energy, dihedral_energy,
-                        total_force_scaling_factor, 
-                        dihedral_force_scaling_factor,
-                        total_boost_potential, dihedral_boost_potential))+"\n")
-                    sys.exit(2)
-                
-                assert integrator.ntave >= chunk_size, "The number of steps "\
-                    "per averaging must be greater than or equal to chunk_size."
-                if chunk % (integrator.ntave // chunk_size) == 0:
-    
-                    simulation.saveState(
-                        os.path.join(output_directory, 
-                                     "states", str(chunk*chunk_size) + ".xml"))
-                    simulation.saveCheckpoint(
-                        os.path.join(output_directory, "checkpoints",
-                                     str(chunk*chunk_size) + ".bin"))
-                    positions_filename = os.path.join(output_directory,
-                        "positions", "coordinates-" + str(chunk*chunk_size) \
-                        + ".csv")
-                    integrator.create_positions_file(positions_filename)
-        """
-        
         print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
         end_date_time = datetime.datetime.now()
         print("End Time: \t", end_date_time.strftime("%b-%d-%Y    %H:%M"))
@@ -513,7 +433,6 @@ def main():
     gamdSimulationFactory = gamdSimulation.GamdSimulationFactory()
     gamdSim = gamdSimulationFactory.createGamdSimulation(
         config, platform, cuda_index)
-    
     # If desired, modify OpenMM objects in gamdSimulation object here...
     
     runner = Runner(config, gamdSim, debug)

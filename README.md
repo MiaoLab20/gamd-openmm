@@ -10,12 +10,61 @@ Gaussian Accelerated Molecular Dynamics (GaMD) is a biomolecular enhanced sampli
     ```
     conda install -c conda-forge ambertools=20
     ```  
-4.  Finally, you'll need the PyReweighting scripts, which can be cloned from 
+4.  You'll need the PyReweighting scripts, which can be cloned from 
 the [PyReweighting Git Repository](https://github.com/MiaoLab20/PyReweighting).  (NOTE:  If you are 
 doing development on the GaMD module itself and want to use the test scripts, the PyReweighting project
  directory should be added to your path, so that the scripts can find it.)
+5.  Clone and Install this package: 
+    ```
+    git clone https://github.com/MiaoLab20/GaMD-OpenMM.git
+    cd GaMD-OpenMM
+    python setup.py install
+    ```
 
+## Testing (Optional)
+You may also optionally run tests: 
+    ```
+    python setup.py test
+    ```
+
+## Run
+You can try a test run of GaMD in OpenMM. From within the GaMD-OpenMM/ 
+directory: 
+    ```
+    cd gamd
+    python gamdRunner.py xml tests/data/dip_amber.xml
+    ```
+
+This will made a directory named output/ in the current directory where one
+can find all of the GaMD output logs, trajectories, etc. This is a very short
+run for demonstration and testing purposes only.
+
+### Important Options and Hints
+
+* The gamdRunner.py program can be run with the '-h' argument to see all
+available options. Please see *link to RTD here* for a
+detailed description of programs and options.
 
 ## Status
 
      The dihedral and total boost algorithms are working and have been validated.
+
+## Authors and Contributors
+
+The following people have contributed directly to the coding and validation
+efforts of GaMD-OpenMM (listed an alphabetical order of last name). 
+Thanks also to everyone who has helped or will help improve this project by 
+providing feedback, bug reports, or other comments.
+
+* Matthew Copeland
+* Hung Do
+* Keya Joshi
+* Yinglong Miao
+* Lane Votapka
+* Jinan Wang
+
+### Citing GaMD-OpenMM
+
+If you use GaMD-OpenMM, please cite the following paper:
+
+* CITATION HERE
