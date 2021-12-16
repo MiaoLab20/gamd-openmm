@@ -13,8 +13,14 @@ dependencies:
   - pytest
   - pytest-cov
   - codecov
+  
+    # Other dependencies
+  - numpy
+  - matplotlib
+  - openmm
 
     # Pip-only installs
-  #- pip:
-  #  - codecov
+  - pip:
+    - codecov
+    - parmed
 

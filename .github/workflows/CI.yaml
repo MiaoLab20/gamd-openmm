@@ -58,7 +58,7 @@ jobs:
       # conda setup requires this special shell
       shell: bash -l {0}
       run: |
-        conda install -c conda-forge openmm
+        # conda install -c conda-forge openmm
         python -m pip install . --no-deps
         conda list
 
@@ -69,8 +69,8 @@ jobs:
       shell: bash -l {0}
 
       run: |
-        python setup.py install
-        python -m openmm.testInstallation
+        # python setup.py install
+        # python -m openmm.testInstallation
         pytest -v --cov=gamd --cov-report=xml --color=yes gamd/tests/
 
     - name: CodeCov
