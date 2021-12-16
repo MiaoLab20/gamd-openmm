@@ -68,6 +68,8 @@ jobs:
       shell: bash -l {0}
 
       run: |
+        python setup.py install
+        python -m openmm.testInstallation
         pytest -v --cov=gamd --cov-report=xml --color=yes gamd/tests/
 
     - name: CodeCov
