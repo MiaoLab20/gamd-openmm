@@ -8,10 +8,12 @@ on:
     branches:
       - "master"
       - "main"
+      - "production-deployment"
   pull_request:
     branches:
       - "master"
       - "main"
+      
   schedule:
     # Nightly tests run on master by default:
     #   Scheduled workflows run on the latest commit on the default or base branch.
@@ -25,7 +27,7 @@ jobs:
     strategy:
       matrix:
         os: [macOS-latest, ubuntu-latest, windows-latest]
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.8] #[3.7, 3.8. 3.9]
 
     steps:
     - uses: actions/checkout@v1
