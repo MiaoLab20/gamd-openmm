@@ -30,10 +30,10 @@ You may also optionally run tests:
 ## Run
 You can try a test run of GaMD in OpenMM. From within the GaMD-OpenMM/ 
 directory:
-    ```
-    cd gamd
-    gamdRunner.py xml tests/data/dip_amber.xml
-    ```
+```
+cd gamd
+gamdRunner.py xml tests/data/dip_amber.xml
+```  
 
 This will made a directory named output/ in the current directory where one
 can find all of the GaMD output logs, trajectories, etc. This is a very short
