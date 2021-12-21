@@ -18,13 +18,13 @@ doing development on the GaMD module itself and want to use the test scripts, th
     ```
     git clone https://github.com/MiaoLab20/GaMD-OpenMM.git
     cd GaMD-OpenMM
-    python setup.py install
+    setup.py install
     ```
 
 ## Testing (Optional)
 You may also optionally run tests: 
     ```
-    python setup.py test
+    setup.py test
     ```
 
 ## Run
@@ -32,7 +32,7 @@ You can try a test run of GaMD in OpenMM. From within the GaMD-OpenMM/
 directory: 
     ```
     cd gamd
-    python gamdRunner.py xml tests/data/dip_amber.xml
+    gamdRunner.py xml tests/data/dip_amber.xml
     ```
 
 This will made a directory named output/ in the current directory where one
