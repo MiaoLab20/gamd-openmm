@@ -30,10 +30,8 @@ You may also optionally run tests:
 ## Run
 You can try a test run of GaMD in OpenMM. From within the GaMD-OpenMM/ 
 directory:
-
     ```
     cd gamd
-
     gamdRunner.py xml tests/data/dip_amber.xml
     ```
 
