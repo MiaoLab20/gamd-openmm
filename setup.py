@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 gamd
 Gaussian Accelerated Molecular Dynamics (GaMD) is a biomolecular enhanced 
