@@ -13,7 +13,7 @@ from xml.dom import minidom
 from abc import ABCMeta, ABC
 from abc import abstractmethod
 
-from simtk import unit
+import openmm.unit as unit
 
 from gamd import config
 
@@ -31,6 +31,7 @@ def strBool(bool_str):
         raise Exception(
             "argument for strBool must be string either 'True' or 'False'.")
 
+
 def assign_value(value, func, useunit=None):
     if value is not None:
         if useunit is None:
@@ -40,11 +41,13 @@ def assign_value(value, func, useunit=None):
     else:
         return None
 
+
 def assign_tag(tag, func, useunit=None):
         if tag is not None:
             return assign_value(tag.text, func, useunit)
         else:
             return None
+
 
 class Parser:
     def __init__(self):
@@ -53,6 +56,7 @@ class Parser:
     @abstractmethod
     def parse_file(self, filename):
         raise NotImplementedError("must implement parse_file")
+
 
 def parse_system_tag(tag):
     system_config = config.SystemConfig()
@@ -72,6 +76,7 @@ def parse_system_tag(tag):
                   "tag. Spelling error?", system_tag.tag)
     return system_config
 
+
 def parse_barostat_tag(tag):
     barostat_config = config.BarostatConfig()
     for barostat_tag in tag:
@@ -86,6 +91,7 @@ def parse_barostat_tag(tag):
             print("Warning: parameter in XML not found in "\
                   "barostat tag. Spelling error?", barostat_tag.tag)
     return barostat_config
+
 
 def parse_integrator_tag(tag):
     integrator_config = config.IntegratorConfig()
@@ -151,6 +157,7 @@ def parse_integrator_tag(tag):
             
     return integrator_config
 
+
 def parse_amber_tag(input_files_tag):
     amber_config = config.AmberConfig()
     for amber_tag in input_files_tag:
@@ -165,6 +172,7 @@ def parse_amber_tag(input_files_tag):
             print("Warning: parameter in XML not found in amber tag. "\
                   "Spelling error?", amber_tag.tag)
     return amber_config
+
 
 def parse_charmm_tag(input_files_tag):
     charmm_config = config.CharmmConfig()
@@ -198,7 +206,8 @@ def parse_gromacs_tag(input_files_tag):
             print("Warning: parameter in XML not found in gromacs tag. "\
                   "Spelling error?", gromacs_tag.tag)
     return gromacs_config
-    
+
+
 def parse_forcefield_tag(input_files_tag):
     forcefield_config = config.ForceFieldConfig()
     for forcefield_tag in input_files_tag:
@@ -227,6 +236,7 @@ def parse_forcefield_tag(input_files_tag):
                   "Spelling error?", forcefield_tag.tag)
     
     return forcefield_config
+
 
 def parse_outputs_tag(tag):
     outputs_config = config.OutputsConfig()
@@ -285,6 +295,7 @@ def parse_outputs_tag(tag):
                   outputs_tag.tag)
             
     return outputs_config
+
 
 class XmlParser(Parser):
     
@@ -359,6 +370,7 @@ class XmlParser(Parser):
         
         self.config.integrator.number_of_steps.compute_total_simulation_length()
         return
+
 
 class ParserFactory:
     def __init__(self):

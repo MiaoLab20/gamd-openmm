@@ -13,8 +13,8 @@ from enum import Enum
 __author__ = "Matthew Copeland"
 __version__ = "1.0"
 
-from simtk.openmm import CustomIntegrator
-from simtk import unit as unit
+from openmm import CustomIntegrator
+import openmm.unit as unit
 from abc import ABC
 from abc import abstractmethod
 

@@ -9,9 +9,9 @@ GaMD simulation.
 import os
 
 import parmed
-from simtk import openmm
-import simtk.openmm.app as openmm_app
-from simtk import unit
+import openmm as openmm
+import openmm.app as openmm_app
+import openmm.unit as unit
 
 from gamd import parser
 # change to generic integrator someday

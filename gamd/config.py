@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
 import numpy as np
-from simtk import unit
+import openmm.unit as unit
 
 
 def assign_tag(root, tagname, value, attributes=None):

@@ -1,6 +1,6 @@
 from abc import ABC
 
-from simtk import unit as unit
+import openmm.unit as unit
 
 from gamd.langevin.base_integrator import GroupBoostIntegrator
 from ..stage_integrator import BoostMethod

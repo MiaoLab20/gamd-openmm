@@ -7,7 +7,7 @@ Test the parser.py module.
 import os
 
 import pytest
-from simtk import unit
+import openmm.unit as unit
 
 from gamd import parser
 

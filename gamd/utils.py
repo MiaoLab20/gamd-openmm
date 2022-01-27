@@ -7,12 +7,8 @@ Authors: Matthew Copeland
 
 """
 
-try:
-    from openmm.app.statedatareporter import StateDataReporter
-except:
-    from simtk.openmm.app.statedatareporter import StateDataReporter
-    
-import simtk.unit as unit
+from openmm.app.statedatareporter import StateDataReporter
+import openmm.unit as unit
 
 
 def create_gamd_log(gamdLog, filename):
@@ -44,7 +40,6 @@ class ExpandedStateDataReporter(StateDataReporter):
                          temperature, volume, density, progress, remainingTime,
                          speed, elapsedTime, separator, systemMass, totalSteps)
 
-
     def _constructReportValues(self, simulation, state):
         values = super()._constructReportValues(simulation,state)
         if self._brokenOutForceEnergies:
@@ -54,7 +49,6 @@ class ExpandedStateDataReporter(StateDataReporter):
                     groups={i}).getPotentialEnergy().value_in_unit(
                         unit.kilojoules_per_mole))
         return values
-
 
     def _constructHeaders(self):
         headers = super()._constructHeaders()

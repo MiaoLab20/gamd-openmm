@@ -12,7 +12,7 @@ from __future__ import absolute_import
 __author__ = "Matthew Copeland"
 __version__ = "1.0"
 
-from simtk import unit as unit
+import openmm.unit as unit
 from abc import ABC
 from gamd.langevin.base_integrator import GroupBoostIntegrator
 from ..stage_integrator import BoostType

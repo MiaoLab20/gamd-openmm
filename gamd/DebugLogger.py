@@ -1,7 +1,3 @@
-
-from simtk.openmm.app import *
-from simtk.openmm import *
-from simtk.unit import *
 import sys
 
 

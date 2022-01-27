@@ -1,6 +1,4 @@
-from simtk.openmm.app import *
-from simtk.openmm import *
-from simtk.unit import *
+import openmm.unit as unit
 from .stage_integrator import BoostType
 from .stage_integrator import GamdStageIntegrator
 
@@ -11,7 +9,7 @@ class TrackedValue:
         self.__group = group
         self.__integrator = tracked_integrator
         self.__simulation = tracked_simulation
-        self.__starting_potential_energy = 0 * kilojoules_per_mole
+        self.__starting_potential_energy = 0 * unit.kilojoules_per_mole
         self.__boost_potential_name = tracked_integrator.get_variable_name_by_type(
             self.__boost_type, "BoostPotential")
         self.__force_scaling_factor_name = tracked_integrator.get_variable_name_by_type(
@@ -36,7 +34,8 @@ class TrackedValue:
         return str(boost_potentials[self.__boost_potential_name] / 4.184)
 
     def get_reporting_starting_energy(self):
-        return str(self.__starting_potential_energy / (kilojoules_per_mole * 4.184))
+        return str(self.__starting_potential_energy /
+                   (unit.kilojoules_per_mole * 4.184))
 
     def get_boost_type(self):
         return self.__boost_type

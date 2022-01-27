@@ -7,7 +7,7 @@ Test the gamdSimulation.py module.
 import os
 
 import pytest
-from simtk import unit
+import openmm.unit as unit
 
 from gamd import parser
 from gamd import gamdSimulation
