@@ -1,21 +1,15 @@
-import sys
-import os
 import datetime
 import glob
+import os
 import shutil
 import subprocess
-
-# TODO: need to remove import * - does not conform to PEP8
-#from simtk.openmm import *
-#from simtk.unit import *
+import sys
 
 import openmm.unit as unit
 
 from gamd import utils as utils
 from gamd.DebugLogger import DebugLogger
 from gamd.GamdLogger import GamdLogger
-
-RESTART_CHECKPOINT_FILENAME = "gamd_restart.checkpoint"
 
 
 def create_output_directories(directories, overwrite_output=False):
@@ -246,7 +240,7 @@ class Runner:
             = self.config.outputs.reporting.restart_checkpoint_interval
         statistics_interval = self.config.outputs.reporting.statistics_interval
         restart_checkpoint_filename = os.path.join(
-            output_directory, RESTART_CHECKPOINT_FILENAME)
+            output_directory, "gamd_restart.checkpoint")
         chunk_size = self.chunk_size
         overwrite_output = self.config.outputs.overwrite_output
         if not restart:
