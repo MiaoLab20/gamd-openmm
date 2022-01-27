@@ -1,11 +1,15 @@
+import sys
+import os
 import datetime
 import glob
 import shutil
 import subprocess
 
 # TODO: need to remove import * - does not conform to PEP8
-from simtk.openmm import *
-from simtk.unit import *
+#from simtk.openmm import *
+#from simtk.unit import *
+
+import openmm.unit as unit
 
 from gamd import utils as utils
 from gamd.DebugLogger import DebugLogger
@@ -159,9 +163,6 @@ def create_graphics(execution_directory, command,
 
 
 def run_post_simulation(unitless_temperature, output_directory, starting_frame):
-    with open(output_directory + "/"+ "temperature.dat",
-              "w") as temperature_file:
-        temperature_file.write(str(unitless_temperature))
     shutil.copy("tests/graphics/create-graphics.sh", output_directory + "/")
     write_out_cpptraj_command_files(output_directory, starting_frame)
     shutil.copytree("data", output_directory + "/data")
@@ -210,6 +211,12 @@ def write_out_phi_psi_cpptraj_command(output_directory, starting_frame):
         dat_command_file.write("go" + "\n")
 
 
+def save_output_temperature(output_directory, temperature):
+    temperature_filename = os.path.join(output_directory, "temperature.dat")
+    with open(temperature_filename, "w") as temperature_file:
+        temperature_file.write(str(temperature))
+
+
 class Runner:
     def __init__(self, config, gamdSimulation, debug):
         self.config = config
@@ -223,7 +230,11 @@ class Runner:
             self.running_rates = RunningRates(nstlim, self.chunk_size, 
                                               self.chunk_size, False)
         return
-    
+
+    def run_post_simulation(self, temperature, output_directory,
+                            production_starting_frame):
+        return
+
     def run(self, restart=False):
         debug = self.debug
         start_date_time = datetime.datetime.now()
@@ -428,7 +439,8 @@ class Runner:
                 sys.exit(2)
     
             if (step % ntave) == 0:
-                state_filename = os.path.join(output_directory, "/states/",
+
+                state_filename = os.path.join(output_directory, "states",
                                               str(step) + ".xml")
                 step_checkpoint_filename = os.path.join(output_directory,
                                                         "checkpoints",
@@ -454,8 +466,10 @@ class Runner:
         print("Execution rate for this run:  ", str(steps_per_second),
               " steps per second.")
         print("Daily execution rate:         ",
-              str(daily_execution_rate.value_in_unit(nanoseconds)),
+              str(daily_execution_rate.value_in_unit(unit.nanoseconds)),
               " ns per day.")
-        run_post_simulation(self.config.temperature, output_directory,
-                            production_starting_frame)
+        save_output_temperature(output_directory, self.config.temperature)
+
+        self.run_post_simulation(self.config.temperature, output_directory,
+                                 production_starting_frame)
 
