@@ -146,65 +146,6 @@ class RunningRates:
         return frame * self.get_batch_run_rate()
 
 
-def create_graphics(execution_directory, command,
-                    temperature, output_filename):
-
-    result = subprocess.run(["/bin/bash " + command + " " + " " +
-                             str(temperature)], capture_output=True,
-                            cwd=execution_directory, shell=True)
-    with open(output_filename, "w") as output:
-        output.write(result.stdout.decode('utf-8'))
-
-
-def run_post_simulation(unitless_temperature, output_directory, starting_frame):
-    shutil.copy("tests/graphics/create-graphics.sh", output_directory + "/")
-    write_out_cpptraj_command_files(output_directory, starting_frame)
-    shutil.copytree("data", output_directory + "/data")
-    create_graphics(output_directory + "/", "create-graphics.sh",
-                    str(unitless_temperature),
-                    output_directory + "/" + "graphics.log")
-
-
-def write_out_cpptraj_command_files(output_directory, starting_frame):
-    write_out_phi_cpptraj_command(output_directory, starting_frame)
-    write_out_psi_cpptraj_command(output_directory, starting_frame)
-    write_out_phi_psi_cpptraj_command(output_directory, starting_frame)
-
-
-def write_out_phi_cpptraj_command(output_directory, starting_frame):
-    with open(output_directory + "/" + "phi-dat-commands.cpptraj",
-              "w") as dat_command_file:
-        dat_command_file.write(
-            "trajin output.dcd " + str(int(starting_frame)) + "\n")
-        dat_command_file.write(
-            "dihedral phi :1@C :2@N :2@CA :2@C out graphics/phi-cpptraj.dat"
-            + "\n")
-        dat_command_file.write("go" + "\n")
-
-
-def write_out_psi_cpptraj_command(output_directory, starting_frame):
-    with open(output_directory + "/" + "psi-dat-commands.cpptraj", "w") as dat_command_file:
-        dat_command_file.write(
-            "trajin output.dcd " + str(int(starting_frame)) + "\n")
-        dat_command_file.write(
-            "dihedral psi :2@N :2@CA :2@C :3@N out graphics/psi-cpptraj.dat"
-            + "\n")
-        dat_command_file.write("go" + "\n")
-
-
-def write_out_phi_psi_cpptraj_command(output_directory, starting_frame):
-    with open(output_directory + "/" + "phi-psi-commands.cpptraj", "w") as dat_command_file:
-        dat_command_file.write(
-            "trajin output.dcd " + str(int(starting_frame)) + "\n")
-        dat_command_file.write(
-            "dihedral phi :1@C :2@N :2@CA :2@C out graphics/phi-psi-cpptraj.dat"
-            + "\n")
-        dat_command_file.write(
-            "dihedral psi :2@N :2@CA :2@C :3@N out graphics/phi-psi-cpptraj.dat"
-            + "\n")
-        dat_command_file.write("go" + "\n")
-
-
 def save_output_temperature(output_directory, temperature):
     temperature_filename = os.path.join(output_directory, "temperature.dat")
     with open(temperature_filename, "w") as temperature_file:
@@ -447,6 +388,16 @@ class Runner:
                 simulation.saveCheckpoint(step_checkpoint_filename)
                 integrator.create_positions_file(positions_filename)
 
+        #
+        # These calls are here to garuntee that the file buffers have been
+        # flushed, prior to any post-simulations steps attempting
+        # to utilize these files.
+        #
+        gamd_logger.close()
+        gamd_reweighting_logger.close()
+        if debug:
+            debug_logger.close()
+
         end_date_time = datetime.datetime.now()
         time_difference = end_date_time - start_date_time
         steps_per_second = nstlim / time_difference.seconds
@@ -462,8 +413,8 @@ class Runner:
         print("Daily execution rate:         ",
               str(daily_execution_rate.value_in_unit(unit.nanoseconds)),
               " ns per day.")
-        save_output_temperature(output_directory, self.config.temperature)
 
+        save_output_temperature(output_directory, self.config.temperature)
         self.run_post_simulation(self.config.temperature, output_directory,
                                  production_starting_frame)
 

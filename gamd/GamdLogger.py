@@ -84,6 +84,9 @@ class GamdLogger:
     def __del__(self):
         self.gamdLog.close()
 
+    def close(self):
+        self.gamdLog.close()
+
     def write_header(self):
         self.gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
         self.gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")

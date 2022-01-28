@@ -14,6 +14,9 @@ class DebugLogger:
     def __del__(self):
         self.debugLog.close()
 
+    def close(self):
+        self.debugLog.close()
+
     def __get_all_headers(self, integrator):
         result = []
         number_of_globals = integrator.getNumGlobalVariables()
