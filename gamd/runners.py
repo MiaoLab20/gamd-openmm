@@ -146,12 +146,6 @@ class RunningRates:
         return frame * self.get_batch_run_rate()
 
 
-def save_output_temperature(output_directory, temperature):
-    temperature_filename = os.path.join(output_directory, "temperature.dat")
-    with open(temperature_filename, "w") as temperature_file:
-        temperature_file.write(str(temperature))
-
-
 class Runner:
     def __init__(self, config, gamdSimulation, debug):
         self.config = config
@@ -169,6 +163,24 @@ class Runner:
     def run_post_simulation(self, temperature, output_directory,
                             production_starting_frame):
         return
+
+    def save_initial_configuration(self, production_logging_start_step,
+                                   temperature):
+
+        config_filename = os.path.join(self.config.outputs.directory,
+                                       "input.xml")
+        prodstartstep_filename = os.path.join(self.config.outputs.directory,
+                                              "production-start-step.txt")
+        temperature_filename = os.path.join(self.config.outputs.directory,
+                                            "temperature.dat")
+
+        self.config.serialize(config_filename)
+
+        with open(temperature_filename, "w") as temperature_file:
+            temperature_file.write(str(temperature))
+
+        with open(prodstartstep_filename, "w") as prodstartstep_file:
+            prodstartstep_file.write(str(production_logging_start_step))
 
     def run(self, restart=False):
         debug = self.debug
@@ -291,11 +303,10 @@ class Runner:
                                          (self.running_rates.
                                           get_batch_run_rate()
                                           * reweighting_offset))
-    
-        with open(output_directory + "/" + "production-start-step.txt",
-                  "w") as prodstartstep_file:
-            prodstartstep_file.write(str(production_logging_start_step))
-    
+
+        self.save_initial_configuration(production_logging_start_step,
+                                        self.config.temperature)
+
         if not restart:
             gamd_logger.write_header()
             gamd_reweighting_logger.write_header()
@@ -414,7 +425,6 @@ class Runner:
               str(daily_execution_rate.value_in_unit(unit.nanoseconds)),
               " ns per day.")
 
-        save_output_temperature(output_directory, self.config.temperature)
         self.run_post_simulation(self.config.temperature, output_directory,
                                  production_starting_frame)
 
