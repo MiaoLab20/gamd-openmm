@@ -45,6 +45,12 @@ def main():
     argparser.add_argument("-D", "--debug", dest="debug", default=False,
                            help="Whether to start the run in debug mode.",
                            action="store_true")
+    argparser.add_argument("-o", "--output", dest="output_directory",
+                           default=False,
+                           help="Provides the capability to override the "
+                                "configuration value in your configuration "
+                                "for the output directory.",
+                           type=str)
 
     args = argparser.parse_args()  # parse the args into a dictionary
     args = vars(args)
@@ -57,6 +63,13 @@ def main():
 
     parserFactory = parser.ParserFactory()
     config = parserFactory.parse_file(config_filename, config_file_type)
+
+    if ("output_directory" in args and
+            args["output_directory"] is not None and
+            args["output_directory"] is not False and
+            args["output_directory"].strip()):
+        config.outputs.directory = args["output_directory"]
+    
     gamdSimulationFactory = gamdSimulation.GamdSimulationFactory()
     gamdSim = gamdSimulationFactory.createGamdSimulation(
         config, platform, cuda_index)
