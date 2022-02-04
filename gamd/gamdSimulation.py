@@ -46,7 +46,7 @@ class GamdSimulation:
         self.first_boost_type = None
         self.second_boost_type = None
         self.platform = "CUDA"
-        self.cuda_device_index = "0"
+        self.device_index = 0
 
 
 class GamdSimulationFactory:
@@ -196,17 +196,19 @@ class GamdSimulationFactory:
         properties = {}
         if platform_name == "cuda":
             platform = openmm.Platform.getPlatformByName(platform_name)
-            properties['CudaPrecision'] = "mixed"
+            properties['CudaPrecision'] = 'mixed'
             properties['DeviceIndex'] = device_index
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
                 gamdSimulation.integrator, platform, properties)
+            gamdSimulation.device_index = device_index
         elif platform_name == "opencl":
             platform = openmm.Platform.getPlatformByName(platform_name)
             properties['DeviceIndex'] = device_index
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
                 gamdSimulation.integrator, platform, properties)
+            gamdSimulation.device_index = device_index
         else:
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
@@ -233,6 +235,6 @@ class GamdSimulationFactory:
     
         return gamdSimulation
 
-    
+
 if __name__ == "__main__":
     pass
