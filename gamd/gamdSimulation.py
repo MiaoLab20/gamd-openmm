@@ -194,22 +194,31 @@ class GamdSimulationFactory:
             gamdSimulation.system.addForce(barostat)
         
         properties = {}
-        if platform_name == "cuda":
-            platform = openmm.Platform.getPlatformByName(platform_name)
+        user_platform_name = platform_name.lower()
+        #
+        # NOTE:  The Platform names are case sensitive.  From the OpenMM
+        # docs "The platform name should be one of OpenCL, CUDA, CPU,
+        # or Reference."
+        #
+        if user_platform_name == "cuda":
+            platform = openmm.Platform.getPlatformByName('CUDA')
             properties['CudaPrecision'] = 'mixed'
             properties['DeviceIndex'] = device_index
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
                 gamdSimulation.integrator, platform, properties)
             gamdSimulation.device_index = device_index
-        elif platform_name == "opencl":
-            platform = openmm.Platform.getPlatformByName(platform_name)
+            gamdSimulation.platform = 'CUDA'
+        elif user_platform_name == "opencl":
+            platform = openmm.Platform.getPlatformByName('OPENCL')
             properties['DeviceIndex'] = device_index
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
                 gamdSimulation.integrator, platform, properties)
             gamdSimulation.device_index = device_index
+            gamdSimulation.platform = 'OpenCL'
         else:
+            gamdSimulation.platform = platform_name
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
                 gamdSimulation.integrator)

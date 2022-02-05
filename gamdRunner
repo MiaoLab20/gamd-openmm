@@ -30,7 +30,7 @@ def main():
     argparser.add_argument("-p", "--platform", dest="platform", default="CUDA",
                            help="Define the platform that will run the "
                                 "simulations. Default is 'CUDA', but other "
-                                "options include: 'reference', 'CPU', and "
+                                "options include: 'Reference', 'CPU', and "
                                 "'OpenCL'.",
                            type=str)
     argparser.add_argument("-d", "--device_index", dest="device_index",
