@@ -411,7 +411,10 @@ class Runner:
 
         end_date_time = datetime.datetime.now()
         time_difference = end_date_time - start_date_time
-        steps_per_second = nstlim / time_difference.seconds
+        if time_difference.seconds > 0:
+            steps_per_second = nstlim / time_difference.seconds
+        else:
+            steps_per_second = 0
         daily_execution_rate = (steps_per_second * 3600 * 24 *
                                 self.config.integrator.dt)
         production_starting_frame = (((ntcmd + nteb) / chunk_size) +

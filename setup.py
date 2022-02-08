@@ -27,7 +27,7 @@ except:
 
 setup(
     # Self-descriptive entries which should always be present
-    name='gamd',
+    name='gamd_openmm',
     author='Matthew Copeland',
     author_email='matthew@ku.edu',
     description=short_description,
