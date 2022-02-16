@@ -23,6 +23,7 @@ from gamd.langevin.dual_boost_integrators import LowerBoundIntegrator as DualLow
 from gamd.langevin.dual_boost_integrators import UpperBoundIntegrator as DualUpperBoundIntegrator
 from gamd.integrator_factory import *
 
+
 def load_pdb_positions_and_box_vectors(pdb_coords_filename):
     positions = openmm_app.PDBFile(pdb_coords_filename)
     pdb_parmed = parmed.load_file(pdb_coords_filename)
@@ -32,6 +33,7 @@ def load_pdb_positions_and_box_vectors(pdb_coords_filename):
         "line within the PDB file."
     
     return positions, pdb_parmed.box_vectors
+
 
 class GamdSimulation:
     def __init__(self):
@@ -44,13 +46,14 @@ class GamdSimulation:
         self.first_boost_type = None
         self.second_boost_type = None
         self.platform = "CUDA"
-        self.cuda_device_index = "0"
-        
+        self.device_index = 0
+
+
 class GamdSimulationFactory:
     def __init__(self):
         return
         
-    def createGamdSimulation(self, config, platform_name, cuda_device_index):
+    def createGamdSimulation(self, config, platform_name, device_index):
         if config.system.nonbonded_method == "pme":
             nonbondedMethod = openmm_app.PME
             
@@ -191,25 +194,34 @@ class GamdSimulationFactory:
             gamdSimulation.system.addForce(barostat)
         
         properties = {}
-        if platform_name == "cuda":
-            platform = openmm.Platform.getPlatformByName(platform_name)
-            properties["CudaPrecision"] = "mixed"
-            properties["DeviceIndex"] = cuda_device_index
+        user_platform_name = platform_name.lower()
+        #
+        # NOTE:  The Platform names are case sensitive.  From the OpenMM
+        # docs "The platform name should be one of OpenCL, CUDA, CPU,
+        # or Reference."
+        #
+        if user_platform_name == "cuda":
+            platform = openmm.Platform.getPlatformByName('CUDA')
+            properties['CudaPrecision'] = 'mixed'
+            properties['DeviceIndex'] = device_index
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
                 gamdSimulation.integrator, platform, properties)
-        elif platform_name == "opencl":
-            platform = openmm.Platform.getPlatformByName(platform_name)
-            properties["DeviceIndex"] = cuda_device_index
+            gamdSimulation.device_index = device_index
+            gamdSimulation.platform = 'CUDA'
+        elif user_platform_name == "opencl":
+            platform = openmm.Platform.getPlatformByName('OPENCL')
+            properties['DeviceIndex'] = device_index
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
                 gamdSimulation.integrator, platform, properties)
+            gamdSimulation.device_index = device_index
+            gamdSimulation.platform = 'OpenCL'
         else:
+            gamdSimulation.platform = platform_name
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
                 gamdSimulation.integrator)
-        
-        
         
         gamdSimulation.simulation.context.setPositions(positions.positions)
         gamdSimulation.simulation.context.setPeriodicBoxVectors(
@@ -231,6 +243,7 @@ class GamdSimulationFactory:
                             config.outputs.reporting.coordinates.file_type)
     
         return gamdSimulation
-    
+
+
 if __name__ == "__main__":
     pass

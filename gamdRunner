@@ -30,7 +30,7 @@ def main():
     argparser.add_argument("-p", "--platform", dest="platform", default="CUDA",
                            help="Define the platform that will run the "
                                 "simulations. Default is 'CUDA', but other "
-                                "options include: 'reference', 'CPU', and "
+                                "options include: 'Reference', 'CPU', and "
                                 "'OpenCL'.",
                            type=str)
     argparser.add_argument("-d", "--device_index", dest="device_index",
@@ -58,7 +58,7 @@ def main():
     config_filename = args["input_file"]
     restart = args["restart"]
     platform = args["platform"]
-    cuda_index = args["device_index"]
+    device_index = args["device_index"]
     debug = args["debug"]
 
     parserFactory = parser.ParserFactory()
@@ -69,10 +69,10 @@ def main():
             args["output_directory"] is not False and
             args["output_directory"].strip()):
         config.outputs.directory = args["output_directory"]
-    
+
     gamdSimulationFactory = gamdSimulation.GamdSimulationFactory()
     gamdSim = gamdSimulationFactory.createGamdSimulation(
-        config, platform, cuda_index)
+        config, platform, device_index)
     # If desired, modify OpenMM objects in gamdSimulation object here...
 
     runner = Runner(config, gamdSim, debug)
