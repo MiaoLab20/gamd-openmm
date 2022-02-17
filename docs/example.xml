@@ -86,15 +86,8 @@
             <energy>
                 <interval>500</interval>
             </energy>
-            <coordinates>
-                <file-type>DCD</file-type>
-                <!-- <file-type>PDB</file-type> -->
-                <interval>500</interval>
-            </coordinates>
-            <restart-checkpoint>
-                <interval>50000</interval>
-            </restart-checkpoint>
             <statistics>
+                <file-type>DCD</file-type>
                 <interval>500</interval>
             </statistics>
         </reporting>
