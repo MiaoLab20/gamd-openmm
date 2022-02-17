@@ -262,12 +262,13 @@ def parse_outputs_tag(tag):
                             outputs_config.reporting.statistics_interval \
                                 = assign_tag(statistics_tag, int)
                             outputs_config.reporting.restart_checkpoint_interval \
-                                = assign_tag(restart_tag, int)
+                                = assign_tag(statistics_tag, int)
                             outputs_config.reporting.coordinates_interval \
-                                = assign_tag(coordinates_tag, int)
-                        elif coordinates_tag.tag == "file-type":
+                                = assign_tag(statistics_tag, int)
+                        elif statistics_tag.tag == "file-type":
+                            print("found file type")
                             outputs_config.reporting.coordinates_file_type \
-                                = assign_tag(coordinates_tag, str).lower()
+                                = assign_tag(statistics_tag, str).lower()
                         else:
                             print("Warning: parameter in XML not found in "\
                                   "statistics tag. Spelling error?", 

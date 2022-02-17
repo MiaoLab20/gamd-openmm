@@ -66,7 +66,7 @@ def check_config_from_test_input_xml(config):
     assert config.outputs.reporting.energy_interval == 500
     assert config.outputs.reporting.coordinates_file_type == "dcd"
     assert config.outputs.reporting.coordinates_interval == 500
-    assert config.outputs.reporting.restart_checkpoint_interval == 50000
+    assert config.outputs.reporting.restart_checkpoint_interval == 500
     assert config.outputs.reporting.statistics_interval == 500
     return
 
