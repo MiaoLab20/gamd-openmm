@@ -130,17 +130,17 @@ class RunningRates:
 
     def get_batch_run_range(self):
         return range(1, self.number_of_simulation_steps //
-                     self.get_batch_run_rate() + 1)
+                     self.get_batch_run_rate()+1)
 
     def get_restart_step(self, integrator):
-        start_step = int(integrator.getGlobalVariableByName("stepCount") //
-                         self.get_batch_run_rate())
+        start_step = int(round(integrator.getGlobalVariableByName("stepCount") /
+                         self.get_batch_run_rate()))
         return start_step
 
     def get_restart_batch_run_range(self, integrator):
-        return range(self.get_restart_step(integrator),
+        return range(self.get_restart_step(integrator)+1,
                      self.number_of_simulation_steps //
-                     self.get_batch_run_rate() + 1)
+                     self.get_batch_run_rate()+1)
 
     def get_step_from_frame(self, frame):
         return frame * self.get_batch_run_rate()
@@ -232,12 +232,16 @@ class Runner:
         extension = self.config.outputs.reporting.coordinates_file_type
         if restart:
             simulation.loadCheckpoint(restart_checkpoint_filename)
-            currentStep = int(integrator.getGlobalVariableByName("stepCount"))
+            #currentStep = int(integrator.getGlobalVariableByName("stepCount"))
+            currentStep = int(round(simulation.context.getState().getTime()\
+                              .value_in_unit(unit.picoseconds) \
+                              / self.config.integrator.dt.value_in_unit(
+                                  unit.picoseconds)))
             simulation.currentStep = currentStep
             write_mode = "a"
             start_chunk = (currentStep // chunk_size) + 1
             print("restarting from saved checkpoint:", 
-                  restart_checkpoint_filename, "at step:", start_chunk)
+                  restart_checkpoint_filename, "at step:", currentStep)
             # see how many restart files have already been created
             state_data_restart_files_glob = os.path.join(
                 output_directory, 'state-data.restart*.log')
@@ -246,14 +250,18 @@ class Runner:
             state_data_name = os.path.join(
                 output_directory, 'state-data.restart%d.log' % restart_index)
 
+            #traj_name = os.path.join(
+            #    self.config.outputs.directory, 
+            #    'output.restart%d.%s' % (restart_index, extension))
             traj_name = os.path.join(
-                self.config.outputs.directory, 
-                'output.restart%d.%s' % (restart_index, extension))
-
+                self.config.outputs.directory, 'output.%s' % extension)
+            traj_append = True
+            
             running_range = self.running_rates.get_restart_batch_run_range(
                 integrator)
             
         else:
+            currentStep = 0
             running_range = self.running_rates.get_batch_run_range()
             simulation.saveState(
                 os.path.join(output_directory, "states/initial-state.xml"))
@@ -261,11 +269,13 @@ class Runner:
             start_chunk = 1
             traj_name = os.path.join(
                 self.config.outputs.directory, 'output.%s' % extension)
+            traj_append = False
             state_data_name = os.path.join(output_directory, 'state-data.log')
             
         if traj_reporter:
             simulation.reporters.append(traj_reporter(
-                traj_name, self.config.outputs.reporting.coordinates_interval))
+                traj_name, self.config.outputs.reporting.coordinates_interval,
+                append=traj_append))
         simulation.reporters.append(utils.ExpandedStateDataReporter(
             system, state_data_name, 
             self.config.outputs.reporting.energy_interval, step=True, 
@@ -278,6 +288,7 @@ class Runner:
         end_chunk = int(integrator.get_total_simulation_steps() \
                         // chunk_size) + 1
         
+        print("running_range:", running_range)
         #####################################
         # NEW CODE STARTED HERE
         #####################################
@@ -311,8 +322,8 @@ class Runner:
             gamd_logger.write_header()
             gamd_reweighting_logger.write_header()
     
-        print("Running: \t " + str(integrator.get_total_simulation_steps()) +
-              " steps")
+        print("Running: \t " + str(integrator.get_total_simulation_steps() \
+            - currentStep) + " steps")
     
         if debug:
             ignore_fields = {"stageOneIfValueIsZeroOrNegative",
@@ -343,12 +354,6 @@ class Runner:
             if self.running_rates.is_save_step(step):
                 simulation.saveCheckpoint(restart_checkpoint_filename)
     
-            # TEST
-            #            if step == 250 and not restarting:
-            #                print("sudden, unexpected interruption!")
-            #                exit()
-            # END TEST
-    
             gamd_logger.mark_energies()
             if self.running_rates.is_save_step(step):
                 gamd_reweighting_logger.mark_energies()
@@ -376,11 +381,14 @@ class Runner:
             except Exception as e:
                 print("Failure on step " + str(step))
                 print(e)
+                gamd_logger.close()
+                gamd_reweighting_logger.close()
                 if debug:
                     debug_logger.print_global_variables_to_screen(integrator)
                     debug_logger.write_global_variables_values(integrator)
-                gamd_logger.write_to_gamd_log(step)
-                gamd_reweighting_logger.write_to_gamd_log(step)
+                    debug_logger.close()
+                #gamd_logger.write_to_gamd_log(step)
+                #gamd_reweighting_logger.write_to_gamd_log(step)
     
                 sys.exit(2)
     
@@ -408,11 +416,12 @@ class Runner:
         gamd_reweighting_logger.close()
         if debug:
             debug_logger.close()
-
+        
+        simulation.saveCheckpoint(restart_checkpoint_filename)
         end_date_time = datetime.datetime.now()
         time_difference = end_date_time - start_date_time
         if time_difference.seconds > 0:
-            steps_per_second = nstlim / time_difference.seconds
+            steps_per_second = (nstlim - currentStep) / time_difference.seconds
         else:
             steps_per_second = 0
         daily_execution_rate = (steps_per_second * 3600 * 24 *

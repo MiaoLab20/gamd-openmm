@@ -160,6 +160,7 @@ class GamdSimulationFactory:
         else:
             raise Exception("No valid input files found. OpenMM simulation "\
                             "not made.")
+        
         if config.integrator.algorithm == "langevin":
             boost_type_str = config.integrator.boost_type
             gamdIntegratorFactory = GamdIntegratorFactory()
