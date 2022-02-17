@@ -528,17 +528,17 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         return effective_harmonic_constants
 
     def calculate_common_threshold_energy_and_effective_harmonic_constant(
-            self, compute_type):
+            self, compute_type, group_id=None):
         self.add_compute_global_by_name("threshold_energy", "{0}", ["Vmax"],
-                                        compute_type)
+                                        compute_type, group_id)
 
         self.add_compute_global_by_name(
             "k0prime", "({0}/{1}) * ({2} - {3}) / ({2} - {4})",
             ["sigma0", "sigmaV", "Vmax", "Vmin", "Vavg"],
-            compute_type)
+            compute_type, group_id)
 
         self.add_compute_global_by_name("k0", "min(1.0, {0})", ["k0prime"],
-                                        compute_type)
+                                        compute_type, group_id)
         return
 
     def _upper_bound_calculate_threshold_energy_and_effective_harmonic_constant(
@@ -573,7 +573,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                 self.beginIfBlock(
                     self._append_group_name("k0doubleprime_window", group_name)
                     + " >= 0.0")
-                self.calculate_common_threshold_energy_and_effective_harmonic_constant(ComputeType.GROUP)
+                self.calculate_common_threshold_energy_and_effective_harmonic_constant(ComputeType.GROUP,
+                                                                                       group_id)
                 self.endBlock()
         return
 
