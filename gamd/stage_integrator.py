@@ -660,9 +660,17 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         return
 
     def __add_compute_global_group(self, name, expression, format_list,
-                                   value_by_number=False):
-        for group_id in self.__group_dict:
-            group_name = self.__group_dict[group_id]
+                                   value_by_number=False,
+                                   group_id_argument=None):
+        group_dict = {}
+        if group_id_argument is None:
+            group_dict = self.__group_dict
+        else:
+            group_name = self.__group_dict[group_id_argument]
+            group_dict[group_id_argument] = group_name
+
+        for group_id in group_dict:
+            group_name = group_dict[group_id]
             var_name = self._append_group_name(name, group_name)
             if value_by_number:
                 new_formats = [self._append_group(var, group_id)
@@ -695,7 +703,8 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         return
 
     def add_compute_global_by_name(self, name, expression, format_list,
-                                   compute_type):
+                                   compute_type,
+                                   group_id=None):
         """
             This method will allow you to specify the compute type for which
             you want to run the calculations, using the group list provided
@@ -708,7 +717,8 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
 
         if compute_type == ComputeType.GROUP:
             self.__add_compute_global_group(name, expression, format_list,
-                                            value_by_number)
+                                            value_by_number,
+                                            group_id)
         if compute_type == ComputeType.TOTAL:
             self.__add_compute_global_total(name, expression, format_list,
                                             value_by_number)
