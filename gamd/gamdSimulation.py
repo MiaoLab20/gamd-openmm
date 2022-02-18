@@ -241,7 +241,7 @@ class GamdSimulationFactory:
             
         else:
             raise Exception("Reporter type not found:", 
-                            config.outputs.reporting.coordinates.file_type)
+                            config.outputs.reporting.coordinates_file_type)
     
         return gamdSimulation
 

@@ -208,9 +208,10 @@ class OutputsReportingConfig:
     def serialize(self, root):
         xml_energy_tags = ET.SubElement(root, "energy")
         assign_tag(xml_energy_tags, "interval", self.energy_interval)
+        xml_coordinates_tags = ET.SubElement(root, "coordinates")
+        assign_tag(xml_coordinates_tags, "file-type", self.coordinates_file_type)
         xml_statistics_tags = ET.SubElement(root, "statistics")
         assign_tag(xml_statistics_tags, "interval", self.statistics_interval)
-        assign_tag(xml_statistics_tags, "file-type", self.coordinates_file_type)
         return
 
 class OutputsConfig:

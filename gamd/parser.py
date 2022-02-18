@@ -256,6 +256,16 @@ def parse_outputs_tag(tag):
                             print("Warning: parameter in XML not found in "\
                                   "energy tag. Spelling error?", energy_tag.tag)
                 
+                elif reporting_tag.tag == "coordinates":
+                    for coordinates_tag in reporting_tag:
+                        if coordinates_tag.tag == "file-type":
+                            outputs_config.reporting.coordinates_file_type \
+                                = assign_tag(coordinates_tag, str).lower()
+                        else:
+                            print("Warning: parameter in XML not found in "\
+                                  "coordinates tag. Spelling error?", 
+                                  coordinates_tag.tag)
+                
                 elif reporting_tag.tag == "statistics":
                     for statistics_tag in reporting_tag:
                         if statistics_tag.tag == "interval":
@@ -265,10 +275,7 @@ def parse_outputs_tag(tag):
                                 = assign_tag(statistics_tag, int)
                             outputs_config.reporting.coordinates_interval \
                                 = assign_tag(statistics_tag, int)
-                        elif statistics_tag.tag == "file-type":
-                            print("found file type")
-                            outputs_config.reporting.coordinates_file_type \
-                                = assign_tag(statistics_tag, str).lower()
+                        
                         else:
                             print("Warning: parameter in XML not found in "\
                                   "statistics tag. Spelling error?", 

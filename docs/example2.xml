@@ -63,8 +63,10 @@
             <energy>
                 <interval>500</interval>
             </energy>
-            <statistics>
+            <coordinates>
                 <file-type>DCD</file-type>
+            </coordinates>
+            <statistics>
                 <interval>500</interval>
             </statistics>
         </reporting>
