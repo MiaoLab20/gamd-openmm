@@ -157,12 +157,14 @@ def write_gamd_production_restart_file(output_directory, integrator,
              integrator.get_variable_name_by_type(second_boost_type, "Vmin"),
              integrator.get_variable_name_by_type(second_boost_type, "Vavg"),
              integrator.get_variable_name_by_type(second_boost_type, "sigmaV")]
+
     values = {}
     for name in names:
         values[name] = integrator.getGlobalVariableByName(name)
+
     with open(gamd_prod_restart_filename, "w") as gamd_prod_restart_file:
-        for key, value in values:
-            gamd_prod_restart_file.write(key + "=" + str(value) + "\n")
+        for key in values.keys():
+            gamd_prod_restart_file.write(key + "=" + str(values[key]) + "\n")
 
 
 class Runner:
