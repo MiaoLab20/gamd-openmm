@@ -146,6 +146,25 @@ class RunningRates:
         return frame * self.get_batch_run_rate()
 
 
+def write_gamd_production_restart_file(output_directory, integrator,
+                                       first_boost_type, second_boost_type):
+    gamd_prod_restart_filename = os.path.join(output_directory, "gamd-restart.dat")
+    names = [integrator.get_variable_name_by_type(first_boost_type, "Vmax"),
+             integrator.get_variable_name_by_type(first_boost_type, "Vmin"),
+             integrator.get_variable_name_by_type(first_boost_type, "Vavg"),
+             integrator.get_variable_name_by_type(first_boost_type, "sigmaV"),
+             integrator.get_variable_name_by_type(second_boost_type, "Vmax"),
+             integrator.get_variable_name_by_type(second_boost_type, "Vmin"),
+             integrator.get_variable_name_by_type(second_boost_type, "Vavg"),
+             integrator.get_variable_name_by_type(second_boost_type, "sigmaV")]
+    values = {}
+    for name in names:
+        values[name] = integrator.getGlobalVariableByName(name)
+    with open(gamd_prod_restart_filename, "w") as gamd_prod_restart_file:
+        for key, value in values:
+            gamd_prod_restart_file.write(key + "=" + str(value) + "\n")
+
+
 class Runner:
     def __init__(self, config, gamdSimulation, debug):
         self.config = config
@@ -283,6 +302,19 @@ class Runner:
             potentialEnergy=True, totalEnergy=True, 
             volume=True))
 
+        #
+        #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
+        #
+        gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.dat")
+        gamd_dat_reporter = utils.GamdDatReporter(gamd_running_dat_filename, write_mode,
+                                                  integrator,
+                                                  self.gamdSim.first_boost_type,
+                                                  self.gamdSim.first_boost_group,
+                                                  self.gamdSim.second_boost_type,
+                                                  self.gamdSim.second_boost_group)
+
+        simulation.reporters.append(gamd_dat_reporter)
+
         # TODO: check if we really want to get this quantity from integrator
         # instead of the config object
         end_chunk = int(integrator.get_total_simulation_steps() \
@@ -350,7 +382,7 @@ class Runner:
         batch_run_rate = self.running_rates.get_batch_run_rate()
         for batch_frame in running_range:
             step = self.running_rates.get_step_from_frame(batch_frame)
-    
+
             if self.running_rates.is_save_step(step):
                 simulation.saveCheckpoint(restart_checkpoint_filename)
     
@@ -406,6 +438,11 @@ class Runner:
                 simulation.saveState(state_filename)
                 simulation.saveCheckpoint(step_checkpoint_filename)
                 integrator.create_positions_file(positions_filename)
+
+            if step == nteb:
+                write_gamd_production_restart_file(output_directory, integrator,
+                                                   self.gamdSim.first_boost_type,
+                                                   self.gamdSim.second_boost_type)
 
         #
         # These calls are here to garuntee that the file buffers have been

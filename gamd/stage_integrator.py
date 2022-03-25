@@ -625,7 +625,9 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
 
     def get_variable_name_by_type(self, boost_type, name):
         return self._append_group_name_by_type(name, boost_type)
-    
+
+
+
     def add_global_variables_by_name(self, name, value):
         for group_id in self.__group_dict:
             group_name = self.__group_dict[group_id]
