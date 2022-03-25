@@ -90,7 +90,7 @@ class GamdLogger:
     def write_header(self):
         self.gamdLog.write("# Gaussian accelerated Molecular Dynamics log file\n")
         self.gamdLog.write("# All energy terms are stored in unit of kcal/mol\n")
-        header_str = "# ntwx,total_nstep,Unboosted-{0}-Energy,Unboosted-{1}-Energy,{0}-Force-Weight,{1}-Force-Weight,{0}-Boost-Energy-Potential,{1}-Boost-Energy,{0}-Effctive-Harmonic-Constant,{1}-Effctive-Harmonic-Constant\n"
+        header_str = "# ntwx,total_nstep,Unboosted-{0}-Energy,Unboosted-{1}-Energy,{0}-Force-Weight,{1}-Force-Weight,{0}-Boost-Energy-Potential,{1}-Boost-Energy,{0}-Effective-Harmonic-Constant,{1}-Effective-Harmonic-Constant\n"
         header = header_str.format(self.tracked_values[0].get_boost_type().value,
                                    self.tracked_values[1].get_boost_type().value)
         self.gamdLog.write(header)
