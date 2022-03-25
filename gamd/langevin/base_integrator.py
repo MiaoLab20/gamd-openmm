@@ -214,7 +214,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.global_variables_by_boost_type = {
             "Vmax": -1E99, "Vmin": 1E99,  "Vavg": 0,
             "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0,
-            "k0prime": 0, "k0doubleprime": 0, "k0doubleprime_window": 0,
+            "k": 0.0, "k0prime": 0, "k0doubleprime": 0, "k0doubleprime_window": 0,
             "boosted_energy": 0, "check_boost": 0,
             "threshold_energy": -1E99}
         #
@@ -539,6 +539,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
 
         self.add_compute_global_by_name("k0", "min(1.0, {0})", ["k0prime"],
                                         compute_type, group_id)
+
         return
 
     def _upper_bound_calculate_threshold_energy_and_effective_harmonic_constant(
@@ -566,6 +567,8 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                                         BoostType.TOTAL.value) + " >= 0.0")
             self.calculate_common_threshold_energy_and_effective_harmonic_constant(ComputeType.TOTAL)
             self.endBlock()
+            self.add_compute_global_by_name("k", "({0}/({1} - {2}))", ["k0", "Vmax", "Vmin"],
+                                            ComputeType.TOTAL)
 
         if compute_type == ComputeType.GROUP:
             for group_id in self.get_group_dict():
@@ -576,10 +579,16 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
                 self.calculate_common_threshold_energy_and_effective_harmonic_constant(ComputeType.GROUP,
                                                                                        group_id)
                 self.endBlock()
+                self.add_compute_global_by_name("k", "({0}/({1} - {2}))", ["k0", "Vmax", "Vmin"],
+                                                ComputeType.GROUP, group_id)
+
         return
 
     def _lower_bound_calculate_threshold_energy_and_effective_harmonic_constant(
             self, compute_type):
 
         self.calculate_common_threshold_energy_and_effective_harmonic_constant(compute_type)
+        self.add_compute_global_by_name("k", "({0}/({1} - {2}))", ["k0", "Vmax", "Vmin"],
+                                        compute_type)
+
         return

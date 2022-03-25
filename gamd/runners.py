@@ -307,7 +307,7 @@ class Runner:
         #
         #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
         #
-        gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.dat")
+        gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.csv")
         gamd_dat_reporter = utils.GamdDatReporter(gamd_running_dat_filename, write_mode,
                                                   integrator,
                                                   self.gamdSim.first_boost_type,

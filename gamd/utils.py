@@ -150,6 +150,7 @@ class GamdDatReporter:
                                   tracked_integrator.get_variable_name_by_type(boost_type, "Vavg"),
                                   tracked_integrator.get_variable_name_by_type(boost_type, "sigmaV"),
                                   tracked_integrator.get_variable_name_by_type(boost_type, "k0"),
+                                  tracked_integrator.get_variable_name_by_type(boost_type, "k"),
                                   tracked_integrator.get_variable_name_by_type(boost_type, "sigma0"),
                                   tracked_integrator.get_variable_name_by_type(boost_type, "threshold_energy")]
             self.tracked_values = {}
