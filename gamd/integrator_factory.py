@@ -223,7 +223,7 @@ class GamdIntegratorFactory:
                                                               ntebprep, nteb, nstlim, ntave, sigma0p)
             second_boost_type = BoostType.NON_BONDED
         elif boost_type_str == "lower-dual-nonbonded-dihedral":
-            result = create_upper_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+            result = create_lower_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
                                                                              ntebprep, nteb, nstlim, ntave, sigma0p,
                                                                              sigma0d)
             first_boost_type = BoostType.NON_BONDED
