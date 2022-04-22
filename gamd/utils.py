@@ -60,26 +60,14 @@ class ExpandedStateDataReporter(StateDataReporter):
 
 
 class GamdDatReporter:
-    def __init__(self, filename, mode, integrator,
-                 first_boost_type, first_boost_group,
-                 second_boost_type, second_boost_group):
+    def __init__(self, filename, mode, integrator):
         self.gamdDatFile = None
         self.filename = filename
         self.tracked_integrator = integrator
-        self.tracked_values = []
-        if (first_boost_type == BoostType.DUAL_TOTAL_DIHEDRAL or
-                second_boost_type == BoostType.DUAL_TOTAL_DIHEDRAL or
-                first_boost_type == BoostType.DUAL_NON_BONDED_DIHEDRAL or
-                second_boost_type == BoostType.DUAL_NON_BONDED_DIHEDRAL):
-            raise ValueError("The GamdLogger expects single value boost types as arguments, not compound boost types."
-                             " Compound boost types should be broken up.\n")
-
-        if second_boost_type == BoostType.TOTAL:
-            self.tracked_values.append(self.TrackedValue(second_boost_type, second_boost_group, integrator))
-            self.tracked_values.append(self.TrackedValue(first_boost_type, first_boost_group, integrator))
-        else:
-            self.tracked_values.append(self.TrackedValue(first_boost_type, first_boost_group, integrator))
-            self.tracked_values.append(self.TrackedValue(second_boost_type, second_boost_group, integrator))
+        self.tracked_names = ["Vmax", "Vmin", "Vavg", "sigmaV",
+                              "k0", "k", "sigma0", "threshold_energy"]
+        self.tracked_values = self.TrackedValues(integrator, self.tracked_names)
+        self.headers = self.tracked_values.get_names()
 
         # write_headers uses tracked_values, so we want to only write it out after tracked values is set.
         self.gamdDatFile = open(filename, mode)
@@ -98,10 +86,9 @@ class GamdDatReporter:
 
     def __write_header(self):
         header_str = "step"
-        for tracked_value in self.tracked_values:
-            headers = tracked_value.get_names()
-            for header in headers:
-                header_str = header_str + ", " + header
+
+        for header in self.headers:
+           header_str = header_str + ", " + header
         self.gamdDatFile.write(header_str + "\n")
 
     def describeNextReport(self, simulation):
@@ -117,47 +104,33 @@ class GamdDatReporter:
         return steps, False, False, False, True
 
     def report(self, simulation, state):
-        changes_occurred = False
-        for tracked_value_set in self.tracked_values:
-            changes_occurred = changes_occurred or tracked_value_set.did_values_change()
-        if changes_occurred:
+        if self.tracked_values.did_values_change():
             step = simulation.currentStep
+            self.tracked_values.update_values()
             output_string = self.__create_output_row(step)
             self.gamdDatFile.write(output_string + "\n")
 
-            for tracked_value_set in self.tracked_values:
-                tracked_value_set.update_values()
+
 
     def __create_output_row(self, step):
         output_string = str(step)
-        for tracked_value_set in self.tracked_values:
-            # We want to make sure that our values get printed out in the same order
-            # as our headers did, rather than whatever order a "for key, value" would
-            # give us.
-            values = tracked_value_set.get_values()
-            headers = tracked_value_set.get_names()
-            for header in headers:
-                output_string = output_string + ", " + str(values[header])
+        values = self.tracked_values.get_values()
+        for header in self.headers:
+            output_string = output_string + ", " + str(values[header])
         return output_string
 
-    class TrackedValue:
-        def __init__(self, boost_type, group, tracked_integrator):
-            self.__boost_type = boost_type
-            self.__group = group
+    class TrackedValues:
+        def __init__(self, tracked_integrator, names):
             self.__integrator = tracked_integrator
-            self.tracked_names = [tracked_integrator.get_variable_name_by_type(boost_type, "Vmax"),
-                                  tracked_integrator.get_variable_name_by_type(boost_type, "Vmin"),
-                                  tracked_integrator.get_variable_name_by_type(boost_type, "Vavg"),
-                                  tracked_integrator.get_variable_name_by_type(boost_type, "sigmaV"),
-                                  tracked_integrator.get_variable_name_by_type(boost_type, "k0"),
-                                  tracked_integrator.get_variable_name_by_type(boost_type, "k"),
-                                  tracked_integrator.get_variable_name_by_type(boost_type, "sigma0"),
-                                  tracked_integrator.get_variable_name_by_type(boost_type, "threshold_energy")]
+            self.names = names
+            self.tracked_names = []
+            for name in self.names:
+                actual_names = tracked_integrator.get_names(name)
+                for actual_name in actual_names:
+                    self.tracked_names.append(actual_name)
+
             self.tracked_values = {}
             self.update_values()
-
-        def get_boost_type(self):
-            return self.__boost_type
 
         def did_values_change(self):
             result = False

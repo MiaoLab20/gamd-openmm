@@ -149,18 +149,7 @@ class RunningRates:
 def write_gamd_production_restart_file(output_directory, integrator,
                                        first_boost_type, second_boost_type):
     gamd_prod_restart_filename = os.path.join(output_directory, "gamd-restart.dat")
-    names = [integrator.get_variable_name_by_type(first_boost_type, "Vmax"),
-             integrator.get_variable_name_by_type(first_boost_type, "Vmin"),
-             integrator.get_variable_name_by_type(first_boost_type, "Vavg"),
-             integrator.get_variable_name_by_type(first_boost_type, "sigmaV"),
-             integrator.get_variable_name_by_type(second_boost_type, "Vmax"),
-             integrator.get_variable_name_by_type(second_boost_type, "Vmin"),
-             integrator.get_variable_name_by_type(second_boost_type, "Vavg"),
-             integrator.get_variable_name_by_type(second_boost_type, "sigmaV")]
-
-    values = {}
-    for name in names:
-        values[name] = integrator.getGlobalVariableByName(name)
+    values = integrator.get_statistics()
 
     with open(gamd_prod_restart_filename, "w") as gamd_prod_restart_file:
         for key in values.keys():
@@ -242,6 +231,7 @@ class Runner:
             number_of_steps.gamd_equilibration_prep
 
         nteb = self.config.integrator.number_of_steps.gamd_equilibration
+        last_step_of_equilibration = ntcmd+nteb
 
         nstlim = self.config.integrator.number_of_steps.total_simulation_length
 
@@ -304,16 +294,14 @@ class Runner:
             potentialEnergy=True, totalEnergy=True, 
             volume=True))
 
+        # print(get_global_variable_names(integrator))
+
         #
         #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
         #
         gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.csv")
         gamd_dat_reporter = utils.GamdDatReporter(gamd_running_dat_filename, write_mode,
-                                                  integrator,
-                                                  self.gamdSim.first_boost_type,
-                                                  self.gamdSim.first_boost_group,
-                                                  self.gamdSim.second_boost_type,
-                                                  self.gamdSim.second_boost_group)
+                                                  integrator)
 
         simulation.reporters.append(gamd_dat_reporter)
 
@@ -441,7 +429,8 @@ class Runner:
                 simulation.saveCheckpoint(step_checkpoint_filename)
                 integrator.create_positions_file(positions_filename)
 
-            if step == nteb:
+            if step == last_step_of_equilibration:
+                print("Writing out at ", last_step_of_equilibration)
                 write_gamd_production_restart_file(output_directory, integrator,
                                                    self.gamdSim.first_boost_type,
                                                    self.gamdSim.second_boost_type)

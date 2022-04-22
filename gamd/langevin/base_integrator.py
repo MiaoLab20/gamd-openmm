@@ -211,6 +211,7 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         #
         # These variables are generated per type of boost being performed
         #
+        # Vmax": -1E99,
         self.global_variables_by_boost_type = {
             "Vmax": -1E99, "Vmin": 1E99,  "Vavg": 0,
             "oldVavg": 0, "sigmaV": 0, "M2": 0, "wVavg": 0,
@@ -455,6 +456,59 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         self.addConstrainPositions()
         self.addComputePerDof("v", "(x-newx)/dt")
         return
+
+    def get_names(self, name):
+        """
+        This method will retrieve all of the boost type names in an array
+        associated with the requested global name variable.  (Currently, n
+        not for use with DOF names)
+        """
+        names = self.get_global_names(name)
+        return names
+
+
+    def get_statistics_names(self):
+        """
+           This method retrieves the names of the statistics variables
+           as an array based on the boost type associated with this integrator.
+        """
+        base_names = ["Vmax", "Vmin", "Vavg", "sigmaV"]
+        results = []
+        for name in base_names:
+            compound_names = self.get_global_names(name)
+            for compound_name in compound_names:
+                results.append(compound_name)
+
+        return results
+
+    def get_values(self, name):
+        """
+        This method will retrieve all of the boost type names and values
+        as a dictionary associated with the requested name.  (Currently,
+        not for use with DOF names.)
+        """
+        names = self.get_names(name)
+        for name in names:
+            results[name] = self.getGlobalVariableByName(name)
+        return results
+
+
+    def get_statistics(self):
+        """
+           This method retrieves the names and values of the
+           statistics variables as a dictionary based on the boost
+           type associated with this integrator.
+        """
+        names = self.get_statistics_names()
+        results = {}
+        for name in names:
+            results[name] = self.getGlobalVariableByName(name)
+        return results
+
+
+
+
+
 
     def get_force_scaling_factors(self):
         force_scaling_factors = {
