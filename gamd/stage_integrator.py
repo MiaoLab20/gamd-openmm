@@ -625,7 +625,9 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
 
     def get_variable_name_by_type(self, boost_type, name):
         return self._append_group_name_by_type(name, boost_type)
-    
+
+
+
     def add_global_variables_by_name(self, name, value):
         for group_id in self.__group_dict:
             group_name = self.__group_dict[group_id]
@@ -702,6 +704,25 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
                                             value_by_number)
         return
 
+    def get_global_names(self, name):
+        results = []
+
+        if (self._boost_method == BoostMethod.TOTAL
+            or self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL):
+            results.append(self._append_group_name_by_type(name, BoostType.TOTAL))
+
+        if (self._boost_method == BoostMethod.GROUPS
+            or self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL):
+            for group_id in self.__group_dict:
+                group_name = self.__group_dict[group_id]
+                results.append(self._append_group_name(name, group_name))
+
+        return results
+
+
+
+
+
     def add_compute_global_by_name(self, name, expression, format_list,
                                    compute_type,
                                    group_id=None):
@@ -749,6 +770,24 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
 
     def get_group_dict(self):
         return self.__group_dict
+
+    @abstractmethod
+    def get_statistics_names(self):
+        """
+           This method retrieves the names of the statistics variables
+           as an array based on the boost type associated with this integrator.
+        """
+        raise NotImplementedError("must implement get_stats_names")
+
+    @abstractmethod
+    def get_statistics(self):
+        """
+           This method retrieves the names and values of the
+           statistics variables as a dictionary based on the boost
+           type associated with this integrator.
+        """
+        raise NotImplementedError("must implement get_statistics")
+
 
     def _add_dihedral_boost_to_total_energy(self):
         total_energy_name = self._append_group_name("StartingPotentialEnergy",

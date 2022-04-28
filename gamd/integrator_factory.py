@@ -92,7 +92,7 @@ def create_upper_total_boost_integrator(system, temperature, dt, ntcmdprep, ntcm
 
 def create_lower_dihedral_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave,
                                            sigma0=6.0 * unit.kilocalories_per_mole):
-    group = set_all_forces_to_group(system)
+    group = set_dihedral_group(system)
     integrator = DihedralBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                    nteb=nteb, nstlim=nstlim, ntave=ntave, sigma0=sigma0,
                                                    temperature=temperature)
@@ -223,7 +223,7 @@ class GamdIntegratorFactory:
                                                               ntebprep, nteb, nstlim, ntave, sigma0p)
             second_boost_type = BoostType.NON_BONDED
         elif boost_type_str == "lower-dual-nonbonded-dihedral":
-            result = create_upper_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
+            result = create_lower_dual_non_bonded_dihederal_boost_integrator(system, temperature, dt, ntcmdprep, ntcmd,
                                                                              ntebprep, nteb, nstlim, ntave, sigma0p,
                                                                              sigma0d)
             first_boost_type = BoostType.NON_BONDED
