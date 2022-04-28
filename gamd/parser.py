@@ -78,6 +78,10 @@ def parse_system_tag(tag):
 
 
 def parse_barostat_tag(tag):
+    if len(tag) == 0:
+        return None
+        
+
     barostat_config = config.BarostatConfig()
     for barostat_tag in tag:
         if barostat_tag.tag == "pressure":
@@ -332,7 +336,7 @@ class XmlParser(Parser):
                         assert not input_file_provided, "Only one input set "\
                             "allowed. Cannot provide more than one <amber>, "\
                             "<charmm>, <gromacs>, or <forcefield> tag."
-                        self.config.input_files.amber = parse_charmm_tag(
+                        self.config.input_files.charmm = parse_charmm_tag(
                             input_files_tag)
                         input_file_provided = True
                         
@@ -340,7 +344,7 @@ class XmlParser(Parser):
                         assert not input_file_provided, "Only one input set "\
                             "allowed. Cannot provide more than one <amber>, "\
                             "<charmm>, <gromacs>, or <forcefield> tag."
-                        self.config.input_files.amber = parse_gromacs_tag(
+                        self.config.input_files.gromacs = parse_gromacs_tag(
                             input_files_tag)
                         input_file_provided = True
                         
@@ -348,7 +352,7 @@ class XmlParser(Parser):
                         assert not input_file_provided, "Only one input set "\
                             "allowed. Cannot provide more than one <amber>, "\
                             "<charmm>, <gromacs>, or <forcefield> tag."
-                        self.config.input_files.amber = parse_forcefield_tag(
+                        self.config.input_files.forcefield = parse_forcefield_tag(
                             input_files_tag)
                         input_file_provided = True
                         

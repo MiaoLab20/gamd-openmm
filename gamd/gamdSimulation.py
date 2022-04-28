@@ -24,13 +24,14 @@ from gamd.langevin.dual_boost_integrators import UpperBoundIntegrator as DualUpp
 from gamd.integrator_factory import *
 
 
-def load_pdb_positions_and_box_vectors(pdb_coords_filename):
+def load_pdb_positions_and_box_vectors(pdb_coords_filename, need_box):
     positions = openmm_app.PDBFile(pdb_coords_filename)
     pdb_parmed = parmed.load_file(pdb_coords_filename)
-    assert pdb_parmed.box_vectors is not None, "No box vectors "\
-        "found in {}. ".format(pdb_coords_filename) \
-        + "Box vectors for an anchor must be defined with a CRYST "\
-        "line within the PDB file."
+    if need_box:
+        assert pdb_parmed.box_vectors is not None, "No box vectors "\
+            "found in {}. ".format(pdb_coords_filename) \
+            + "Box vectors for an anchor must be defined with a CRYST "\
+            "line within the PDB file."
     
     return positions, pdb_parmed.box_vectors
 
@@ -54,11 +55,13 @@ class GamdSimulationFactory:
         return
         
     def createGamdSimulation(self, config, platform_name, device_index):
+        need_box = True
         if config.system.nonbonded_method == "pme":
             nonbondedMethod = openmm_app.PME
             
         elif config.system.nonbonded_method == "nocutoff":
             nonbondedMethod = openmm_app.NoCutoff
+            need_box = False
             
         elif config.system.nonbonded_method == "cutoffnonperiodic":
             nonbondedMethod = openmm_app.CutoffNonPeriodic
@@ -104,7 +107,7 @@ class GamdSimulationFactory:
             elif config.input_files.amber.coordinates_filetype == "pdb":
                 pdb_coords_filename = config.input_files.amber.coordinates
                 positions, box_vectors = load_pdb_positions_and_box_vectors(
-                    pdb_coords_filename)
+                    pdb_coords_filename, need_box)
             else:
                 raise Exception("Invalid input type: %s. Allowed types are: "\
                                 "'pdb' and 'rst7'/'inpcrd'.")
@@ -118,9 +121,9 @@ class GamdSimulationFactory:
                 config.input_files.charmm.topology)
             pdb_coords_filename = config.input_files.charmm.coordinates
             positions, box_vectors = load_pdb_positions_and_box_vectors(
-                pdb_coords_filename)
+                pdb_coords_filename, need_box)
             params = openmm_app.CharmmParameterSet(
-                config.input_files.charmm.parameters)
+                *config.input_files.charmm.parameters)
             topology = psf
             gamdSimulation.system = psf.createSystem(
                 params=params,
@@ -135,6 +138,7 @@ class GamdSimulationFactory:
                 config.input_files.gromacs.topology,
                 periodicBoxVectors=gro.getPeriodicBoxVectors(),
                 includeDir=config.input_files.gromacs.include_dir)
+            box_vectors = gro.getPeriodicBoxVectors()
             topology = top
             positions = gro
             gamdSimulation.system = top.createSystem(
@@ -145,7 +149,7 @@ class GamdSimulationFactory:
         elif config.input_files.forcefield is not None:
             pdb_coords_filename = config.input_files.forcefield.coordinates
             positions, box_vectors = load_pdb_positions_and_box_vectors(
-                pdb_coords_filename)
+                pdb_coords_filename, need_box)
             forcefield_filenames \
                 = config.input_files.forcefield.forcefield_list_native \
                 + config.input_files.forcefield.forcefield_list_external
@@ -225,8 +229,9 @@ class GamdSimulationFactory:
                 gamdSimulation.integrator)
         
         gamdSimulation.simulation.context.setPositions(positions.positions)
-        gamdSimulation.simulation.context.setPeriodicBoxVectors(
-            *box_vectors)
+        if box_vectors is not None:
+            gamdSimulation.simulation.context.setPeriodicBoxVectors(
+                *box_vectors)
         if config.run_minimization:
             gamdSimulation.simulation.minimizeEnergy()
         
