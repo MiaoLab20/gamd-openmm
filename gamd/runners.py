@@ -425,9 +425,9 @@ class Runner:
                                                   "positions",
                                                   "coordinates-" + str(
                                                       step) + ".csv")
-                simulation.saveState(state_filename)
-                simulation.saveCheckpoint(step_checkpoint_filename)
-                integrator.create_positions_file(positions_filename)
+                #simulation.saveState(state_filename)
+                #simulation.saveCheckpoint(step_checkpoint_filename)
+                #integrator.create_positions_file(positions_filename)
 
             if step == last_step_of_equilibration:
                 print("Writing out at ", last_step_of_equilibration)
