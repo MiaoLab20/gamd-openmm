@@ -16,7 +16,7 @@ doing development on the GaMD module itself and want to use the test scripts, th
  directory should be added to your path, so that the scripts can find it.)
 5.  Clone and Install this package: 
     ```
-    git clone https://github.com/MiaoLab20/GaMD-OpenMM.git
+    git clone https://github.com/MiaoLab20/gamd-openmm.git
     cd GaMD-OpenMM
     setup.py install
     ```
