@@ -17,7 +17,7 @@ doing development on the GaMD module itself and want to use the test scripts, th
 5.  Clone and Install this package: 
     ```
     git clone https://github.com/MiaoLab20/gamd-openmm.git
-    cd GaMD-OpenMM
+    cd gamd-openmm
     setup.py install
     ```
 
