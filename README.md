@@ -5,7 +5,7 @@ Gaussian Accelerated Molecular Dynamics (GaMD) is a biomolecular enhanced sampli
 
 ## Installation
 1.  You will need to start by installing [Anaconda Python 3.x](https://www.anaconda.com/products/individual#Downloads).
-2.  Next, install OpenMM using the instructions found in the [OpenMM User Guide - Section 2.2 Installing OpenMM](http://docs.openmm.org/latest/userguide/application.html#installing-openmm).
+2.  Next, install OpenMM using the instructions found in the [OpenMM User Guide - Section 2.2 Installing OpenMM](http://docs.openmm.org/latest/userguide/application/01_getting_started.html#installing-openmm).
 3.  You'll need the AmberTools for doing the post MD analysis.  You can do this by executing the following command: 
     ```
     conda install -c conda-forge ambertools=20
