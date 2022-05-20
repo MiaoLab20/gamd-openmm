@@ -209,10 +209,7 @@ class Runner:
         if not restart:
             create_output_directories(
                 [output_directory, 
-                 os.path.join(output_directory, "states/"), 
-                 os.path.join(output_directory, "positions/"),
-                 os.path.join(output_directory, "pdb/"),
-                 os.path.join(output_directory, "checkpoints")],
+                 os.path.join(output_directory, "states/")],
                 overwrite_output)
         
         system = self.gamdSim.system
