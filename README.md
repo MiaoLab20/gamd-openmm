@@ -20,6 +20,10 @@ doing development on the GaMD module itself and want to use the test scripts, th
     cd gamd-openmm
     setup.py install
     ```
+6.  The command gamdRunner can either be copied into your user bin directory or you can updated your
+PATH variable to include the location fo the gamd-openmm directory, if you would like to use the
+gamdRunner for running your simulations.
+
 
 ## Testing (Optional)
 You may also optionally run tests: 
@@ -28,26 +32,36 @@ You may also optionally run tests:
     ```
 
 ## Run
-You can try a test run of GaMD in OpenMM. From within the GaMD-OpenMM/ 
-directory:
+
+You can run gamd by providing your own configuration file to the gamdRunner
+program like the example here.
+
 ```
-cd gamd
-gamdRunner.py xml tests/data/dip_amber.xml
+gamdRunner xml configuration-file.xml
 ```  
 
-This will made a directory named output/ in the current directory where one
-can find all of the GaMD output logs, trajectories, etc. This is a very short
-run for demonstration and testing purposes only.
+We've created the repository [gamd-openmm-examples](https://github.com/MiaoLab20/gamd-openmm-examples) which
+contains real live examples (data files and configuration files) and instructions you can use to validate
+your gamd installation and instructions on restarting and extending simulations.
+
 
 ### Important Options and Hints
 
-* The gamdRunner.py program can be run with the '-h' argument to see all
+* The gamdRunner program can be run with the '-h' argument to see all
 available options. Please see *link to RTD here* for a
 detailed description of programs and options.
 
 ## Status
 
-     The dihedral and total boost algorithms are working and have been validated.
+We have implemented the upper and lower bound versions of the following types of
+gamd boosts:
+
+* dihedral
+* total
+* dual total/dihedral
+* non-bonded
+* dual non-bonded/dihedral
+
 
 ## Authors and Contributors
 
