@@ -438,10 +438,11 @@ class NoLogRunner(Runner):
     def run(self, restart=False):
         debug = self.debug
         chunk_size = self.chunk_size
-        output_directory, overwrite_output, system, simulation, \
-        integrator, dt, traj_reporter, ntcmdprep, ntcmd, ntebprep, \
-        nteb, last_step_of_equilibration, nstlim, ntave, \
-        extension = get_config_and_simulation_values(self.gamdSim, self.config)
+
+        output_directory, overwrite_output, system, simulation, dt, \
+         integrator, traj_reporter, ntcmdprep, ntcmd, ntebprep, \
+         nteb, last_step_of_equilibration, nstlim, ntave, extension\
+            = get_config_and_simulation_values(self.gamdSim, self.config)
 
         restart_checkpoint_filename = os.path.join(
             output_directory, "gamd_restart.checkpoint")
@@ -491,12 +492,12 @@ class NoLogRunner(Runner):
             simulation.reporters.append(traj_reporter(
                 traj_name, self.config.outputs.reporting.coordinates_interval,
                 append=traj_append))
-#        simulation.reporters.append(utils.ExpandedStateDataReporter(
-#            system, state_data_name,
-#            self.config.outputs.reporting.energy_interval, step=True,
-#            brokenOutForceEnergies=True, temperature=True,
-#            potentialEnergy=True, totalEnergy=True,
-#            volume=True))
+        # simulation.reporters.append(utils.ExpandedStateDataReporter(
+        #     system, state_data_name,
+        #     self.config.outputs.reporting.energy_interval, step=True,
+        #     brokenOutForceEnergies=True, temperature=True,
+        #     potentialEnergy=True, totalEnergy=True,
+        #     volume=True))
 
         # print(get_global_variable_names(integrator))
 
@@ -516,7 +517,7 @@ class NoLogRunner(Runner):
         # NEW CODE STARTED HERE
         #####################################
         reweighting_offset = 0
-        gamd_log_filename = os.path.join(output_directory, "gamd.log")
+#        gamd_log_filename = os.path.join(output_directory, "gamd.log")
         # gamd_reweighting_filename = os.path.join(output_directory,
         #                                          "gamd-reweighting.log")
         # gamd_logger = GamdLogger(gamd_log_filename, write_mode, integrator,
@@ -541,8 +542,8 @@ class NoLogRunner(Runner):
         self.save_initial_configuration(production_logging_start_step,
                                         self.config.temperature)
 
-        # if not restart:
-        #     gamd_logger.write_header()
+#        if not restart:
+#             gamd_logger.write_header()
         #     gamd_reweighting_logger.write_header()
 
         print("Running: \t ",
