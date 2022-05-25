@@ -242,6 +242,29 @@ class Runner:
                 traj_name, self.config.outputs.reporting.coordinates_interval,
                 append=traj_append))
 
+    def register_state_data_reporter(self, restart):
+        simulation = self.gamdSim.simulation
+        output_directory = self.config.outputs.directory
+        system = self.gamdSim.system
+
+        if restart:
+            state_data_restart_files_glob = os.path.join(
+                output_directory, 'state-data.restart*.log')
+            state_data_restarts_list = glob.glob(state_data_restart_files_glob)
+            restart_index = len(state_data_restarts_list) + 1
+            state_data_name = os.path.join(
+                output_directory, 'state-data.restart%d.log' % restart_index)
+        else:
+            state_data_name = os.path.join(output_directory, 'state-data.log')
+
+        simulation.reporters.append(utils.ExpandedStateDataReporter(
+            system, state_data_name,
+            self.config.outputs.reporting.energy_interval, step=True,
+            brokenOutForceEnergies=True, temperature=True,
+            potentialEnergy=True, totalEnergy=True,
+            volume=True))
+
+
     def run(self, restart=False):
         debug = self.debug
         chunk_size = self.chunk_size
@@ -269,10 +292,8 @@ class Runner:
             print("restarting from saved checkpoint:",
                   restart_checkpoint_filename, "at step:", current_step)
 
-
             running_range = self.running_rates.get_restart_batch_run_range(
                 integrator)
-            
         else:
             current_step = 0
             running_range = self.running_rates.get_batch_run_range()
@@ -419,34 +440,17 @@ class DeveloperRunner(Runner):
             write_mode = "a"
             print("restarting from saved checkpoint:",
                   restart_checkpoint_filename, "at step:", current_step)
-            # see how many restart files have already been created
-            state_data_restart_files_glob = os.path.join(
-                output_directory, 'state-data.restart*.log')
-            state_data_restarts_list = glob.glob(state_data_restart_files_glob)
-            restart_index = len(state_data_restarts_list) + 1
-            state_data_name = os.path.join(
-                output_directory, 'state-data.restart%d.log' % restart_index)
 
             running_range = self.running_rates.get_restart_batch_run_range(
                 integrator)
-
         else:
             current_step = 0
             running_range = self.running_rates.get_batch_run_range()
-            #            simulation.saveState(
-            #                os.path.join(output_directory, "states/initial-state.xml"))
             write_mode = "w"
-            state_data_name = os.path.join(output_directory, 'state-data.log')
 
         self.register_trajectory_reporter(restart)
-        simulation.reporters.append(utils.ExpandedStateDataReporter(
-            system, state_data_name,
-            self.config.outputs.reporting.energy_interval, step=True,
-            brokenOutForceEnergies=True, temperature=True,
-            potentialEnergy=True, totalEnergy=True,
-            volume=True))
+        self.register_state_data_reporter(restart)
 
-        # print(get_global_variable_names(integrator))
 
         #
         #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
@@ -614,32 +618,16 @@ class NoLogRunner(Runner):
             write_mode = "a"
             print("restarting from saved checkpoint:",
                   restart_checkpoint_filename, "at step:", current_step)
-            # see how many restart files have already been created
-#            state_data_restart_files_glob = os.path.join(
-#                output_directory, 'state-data.restart*.log')
-#            state_data_restarts_list = glob.glob(state_data_restart_files_glob)
-#            restart_index = len(state_data_restarts_list) + 1
-#            state_data_name = os.path.join(
-#                output_directory, 'state-data.restart%d.log' % restart_index)
-
             running_range = self.running_rates.get_restart_batch_run_range(
                 integrator)
-
         else:
             current_step = 0
             running_range = self.running_rates.get_batch_run_range()
             #            simulation.saveState(
             #                os.path.join(output_directory, "states/initial-state.xml"))
             write_mode = "w"
-            state_data_name = os.path.join(output_directory, 'state-data.log')
 
         self.register_trajectory_reporter(restart)
-        # simulation.reporters.append(utils.ExpandedStateDataReporter(
-        #     system, state_data_name,
-        #     self.config.outputs.reporting.energy_interval, step=True,
-        #     brokenOutForceEnergies=True, temperature=True,
-        #     potentialEnergy=True, totalEnergy=True,
-        #     volume=True))
 
         # print(get_global_variable_names(integrator))
 
