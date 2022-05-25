@@ -162,7 +162,6 @@ def get_config_and_simulation_values(gamd_simulation, config):
     simulation = gamd_simulation.simulation
     integrator = gamd_simulation.integrator
     dt = config.integrator.dt
-    traj_reporter = gamd_simulation.traj_reporter
     ntcmdprep = config.integrator.number_of_steps.conventional_md_prep
     ntcmd = config.integrator.number_of_steps.conventional_md
     ntebprep = config.integrator.number_of_steps.gamd_equilibration_prep
@@ -170,11 +169,10 @@ def get_config_and_simulation_values(gamd_simulation, config):
     last_step_of_equilibration = ntcmd + nteb
     nstlim = config.integrator.number_of_steps.total_simulation_length
     ntave = config.integrator.number_of_steps.averaging_window_interval
-    extension = config.outputs.reporting.coordinates_file_type
 
     return [output_directory, overwrite_output, system, simulation, dt,
-            integrator, traj_reporter, ntcmdprep, ntcmd, ntebprep,
-            nteb, last_step_of_equilibration, nstlim, ntave, extension]
+            integrator, ntcmdprep, ntcmd, ntebprep,
+            nteb, last_step_of_equilibration, nstlim, ntave]
 
 
 def print_runtime_information(start_date_time, dt, nstlim, current_step):
@@ -231,12 +229,25 @@ class Runner:
         with open(prodstartstep_filename, "w") as prodstartstep_file:
             prodstartstep_file.write(str(production_logging_start_step))
 
+    def register_trajectory_reporter(self, restart):
+        simulation = self.gamdSim.simulation
+        traj_reporter = self.gamdSim.traj_reporter
+        output_directory = self.config.outputs.directory
+        extension = self.config.outputs.reporting.coordinates_file_type
+        traj_name = os.path.join(output_directory, 'output.%s' % extension)
+        traj_append = restart
+
+        if traj_reporter:
+            simulation.reporters.append(traj_reporter(
+                traj_name, self.config.outputs.reporting.coordinates_interval,
+                append=traj_append))
+
     def run(self, restart=False):
         debug = self.debug
         chunk_size = self.chunk_size
         output_directory, overwrite_output, system, simulation, dt, \
-         integrator, traj_reporter, ntcmdprep, ntcmd, ntebprep, \
-         nteb, last_step_of_equilibration, nstlim, ntave, extension\
+        integrator, ntcmdprep, ntcmd, ntebprep, nteb, \
+        last_step_of_equilibration, nstlim, ntave \
             = get_config_and_simulation_values(self.gamdSim, self.config)
 
         restart_checkpoint_filename = os.path.join(
@@ -258,9 +269,7 @@ class Runner:
             print("restarting from saved checkpoint:",
                   restart_checkpoint_filename, "at step:", current_step)
 
-            traj_name = os.path.join(output_directory, 'output.%s' % extension)
-            traj_append = True
-            
+
             running_range = self.running_rates.get_restart_batch_run_range(
                 integrator)
             
@@ -268,14 +277,9 @@ class Runner:
             current_step = 0
             running_range = self.running_rates.get_batch_run_range()
             write_mode = "w"
-            traj_name = os.path.join(
-                self.config.outputs.directory, 'output.%s' % extension)
-            traj_append = False
 
-        if traj_reporter:
-            simulation.reporters.append(traj_reporter(
-                traj_name, self.config.outputs.reporting.coordinates_interval,
-                append=traj_append))
+        self.register_trajectory_reporter(restart)
+
 
         # TODO: check if we really want to get this quantity from integrator
         # instead of the config object
@@ -393,8 +397,8 @@ class DeveloperRunner(Runner):
         debug = self.debug
         chunk_size = self.chunk_size
         output_directory, overwrite_output, system, simulation, dt, \
-        integrator, traj_reporter, ntcmdprep, ntcmd, ntebprep, \
-        nteb, last_step_of_equilibration, nstlim, ntave, extension \
+        integrator, ntcmdprep, ntcmd, ntebprep, nteb, \
+        last_step_of_equilibration, nstlim, ntave \
             = get_config_and_simulation_values(self.gamdSim, self.config)
 
         restart_checkpoint_filename = os.path.join(
@@ -423,9 +427,6 @@ class DeveloperRunner(Runner):
             state_data_name = os.path.join(
                 output_directory, 'state-data.restart%d.log' % restart_index)
 
-            traj_name = os.path.join(output_directory, 'output.%s' % extension)
-            traj_append = True
-
             running_range = self.running_rates.get_restart_batch_run_range(
                 integrator)
 
@@ -435,15 +436,9 @@ class DeveloperRunner(Runner):
             #            simulation.saveState(
             #                os.path.join(output_directory, "states/initial-state.xml"))
             write_mode = "w"
-            traj_name = os.path.join(
-                self.config.outputs.directory, 'output.%s' % extension)
-            traj_append = False
             state_data_name = os.path.join(output_directory, 'state-data.log')
 
-        if traj_reporter:
-            simulation.reporters.append(traj_reporter(
-                traj_name, self.config.outputs.reporting.coordinates_interval,
-                append=traj_append))
+        self.register_trajectory_reporter(restart)
         simulation.reporters.append(utils.ExpandedStateDataReporter(
             system, state_data_name,
             self.config.outputs.reporting.energy_interval, step=True,
@@ -597,8 +592,8 @@ class NoLogRunner(Runner):
         chunk_size = self.chunk_size
 
         output_directory, overwrite_output, system, simulation, dt, \
-         integrator, traj_reporter, ntcmdprep, ntcmd, ntebprep, \
-         nteb, last_step_of_equilibration, nstlim, ntave, extension\
+        integrator, ntcmdprep, ntcmd, ntebprep, nteb, \
+        last_step_of_equilibration, nstlim, ntave \
             = get_config_and_simulation_values(self.gamdSim, self.config)
 
         restart_checkpoint_filename = os.path.join(
@@ -627,9 +622,6 @@ class NoLogRunner(Runner):
 #            state_data_name = os.path.join(
 #                output_directory, 'state-data.restart%d.log' % restart_index)
 
-            traj_name = os.path.join(output_directory, 'output.%s' % extension)
-            traj_append = True
-
             running_range = self.running_rates.get_restart_batch_run_range(
                 integrator)
 
@@ -639,15 +631,9 @@ class NoLogRunner(Runner):
             #            simulation.saveState(
             #                os.path.join(output_directory, "states/initial-state.xml"))
             write_mode = "w"
-            traj_name = os.path.join(
-                self.config.outputs.directory, 'output.%s' % extension)
-            traj_append = False
             state_data_name = os.path.join(output_directory, 'state-data.log')
 
-        if traj_reporter:
-            simulation.reporters.append(traj_reporter(
-                traj_name, self.config.outputs.reporting.coordinates_interval,
-                append=traj_append))
+        self.register_trajectory_reporter(restart)
         # simulation.reporters.append(utils.ExpandedStateDataReporter(
         #     system, state_data_name,
         #     self.config.outputs.reporting.energy_interval, step=True,
