@@ -223,10 +223,11 @@ class GamdSimulationFactory:
             gamdSimulation.device_index = device_index
             gamdSimulation.platform = 'OpenCL'
         else:
-            gamdSimulation.platform = platform_name
+            platform = openmm.Platform.getPlatformByName(platform_name)
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
-                gamdSimulation.integrator)
+                gamdSimulation.integrator, platform)
+            gamdSimulation.platform = platform_name
         
         gamdSimulation.simulation.context.setPositions(positions.positions)
         if box_vectors is not None:
