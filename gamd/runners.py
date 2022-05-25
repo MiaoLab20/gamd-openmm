@@ -9,7 +9,7 @@ import openmm.unit as unit
 
 from gamd import utils as utils
 from gamd.DebugLogger import DebugLogger, NoOpDebugLogger
-from gamd.GamdLogger import GamdLogger
+from gamd.GamdLogger import GamdLogger, NoOpGamdLogger
 
 
 def create_output_directories(directories, overwrite_output=False):
@@ -205,6 +205,10 @@ class Runner:
         else:
             self.running_rates = RunningRates(nstlim, self.chunk_size, 
                                               self.chunk_size, False)
+        self.gamd_logger_enabled = True
+        self.gamd_reweighting_logger_enabled = False
+        self.state_data_reporter_enabled = False
+        self.gamd_dat_reporter_enabled = False
         return
 
     def run_post_simulation(self, temperature, output_directory,
@@ -243,50 +247,93 @@ class Runner:
                 append=traj_append))
 
     def register_state_data_reporter(self, restart):
-        simulation = self.gamdSim.simulation
-        output_directory = self.config.outputs.directory
-        system = self.gamdSim.system
+        if self.state_data_reporter_enabled:
+            simulation = self.gamdSim.simulation
+            output_directory = self.config.outputs.directory
+            system = self.gamdSim.system
 
-        if restart:
-            state_data_restart_files_glob = os.path.join(
-                output_directory, 'state-data.restart*.log')
-            state_data_restarts_list = glob.glob(state_data_restart_files_glob)
-            restart_index = len(state_data_restarts_list) + 1
-            state_data_name = os.path.join(
-                output_directory, 'state-data.restart%d.log' % restart_index)
-        else:
-            state_data_name = os.path.join(output_directory, 'state-data.log')
+            if restart:
+                state_data_restart_files_glob = os.path.join(
+                    output_directory, 'state-data.restart*.log')
+                state_data_restarts_list = glob.glob(state_data_restart_files_glob)
+                restart_index = len(state_data_restarts_list) + 1
+                state_data_name = os.path.join(
+                    output_directory, 'state-data.restart%d.log' % restart_index)
+            else:
+                state_data_name = os.path.join(output_directory, 'state-data.log')
 
-        simulation.reporters.append(utils.ExpandedStateDataReporter(
-            system, state_data_name,
-            self.config.outputs.reporting.energy_interval, step=True,
-            brokenOutForceEnergies=True, temperature=True,
-            potentialEnergy=True, totalEnergy=True,
-            volume=True))
+            simulation.reporters.append(utils.ExpandedStateDataReporter(
+                system, state_data_name,
+                self.config.outputs.reporting.energy_interval, step=True,
+                brokenOutForceEnergies=True, temperature=True,
+                potentialEnergy=True, totalEnergy=True,
+                volume=True))
 
-    def register_gamd_data_repoter(self, restart):
-        simulation = self.gamdSim.simulation
-        output_directory = self.config.outputs.directory
-        gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.csv")
-        integrator = self.gamdSim.integrator
+    def register_gamd_data_reporter(self, restart):
+        if self.gamd_dat_reporter_enabled:
+            simulation = self.gamdSim.simulation
+            output_directory = self.config.outputs.directory
+            gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.csv")
+            integrator = self.gamdSim.integrator
 
-        #
-        #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
-        #
+            #
+            #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
+            #
 
-        if restart:
-            write_mode = "a"
-        else:
-            write_mode = "w"
-        gamd_dat_reporter = utils.GamdDatReporter(gamd_running_dat_filename, write_mode,
-                                                  integrator)
-        simulation.reporters.append(gamd_dat_reporter)
+            if restart:
+                write_mode = "a"
+            else:
+                write_mode = "w"
+            gamd_dat_reporter = utils.GamdDatReporter(gamd_running_dat_filename, write_mode,
+                                                      integrator)
+            simulation.reporters.append(gamd_dat_reporter)
 
     def register_gamd_logger(self, restart):
-        pass
+        if self.gamd_logger_enabled:
+            output_directory = self.config.outputs.directory
+            gamd_log_filename = os.path.join(output_directory, "gamd.log")
+            integrator = self.gamdSim.integrator
+            simulation = self.gamdSim.simulation
+            if restart:
+                write_mode = "a"
+            else:
+                write_mode = "w"
+
+            gamd_logger = GamdLogger(gamd_log_filename, write_mode, integrator,
+                                     simulation, self.gamdSim.first_boost_type,
+                                     self.gamdSim.first_boost_group,
+                                     self.gamdSim.second_boost_type,
+                                     self.gamdSim.second_boost_group)
+            if not restart:
+                gamd_logger.write_header()
+        else:
+            gamd_logger = NoOpGamdLogger()
+        return gamd_logger
 
     def register_gamd_reweighting_logger(self, restart):
-        pass
+        if self.gamd_reweighting_logger_enabled:
+            output_directory = self.config.outputs.directory
+            integrator = self.gamdSim.integrator
+            simulation = self.gamdSim.simulation
+            gamd_reweighting_filename = os.path.join(output_directory,
+                                                     "gamd-reweighting.log")
+            if restart:
+                write_mode = "a"
+            else:
+                write_mode = "w"
+
+            gamd_reweighting_logger = GamdLogger(gamd_reweighting_filename,
+                                                 write_mode, integrator,
+                                                 simulation,
+                                                 self.gamdSim.first_boost_type,
+                                                 self.gamdSim.first_boost_group,
+                                                 self.gamdSim.second_boost_type,
+                                                 self.gamdSim.second_boost_group)
+            if not restart:
+                gamd_reweighting_logger.write_header()
+        else:
+            gamd_reweighting_logger = NoOpGamdLogger()
+        return gamd_reweighting_logger
 
     def register_debug_logger(self, restart):
         output_directory = self.config.outputs.directory
@@ -445,6 +492,14 @@ class Runner:
 
 
 class DeveloperRunner(Runner):
+    def __init__(self, config, gamdSimulation, debug):
+        super().__init__(config, gamdSimulation, debug)
+        self.gamd_logger_enabled = True
+        self.gamd_reweighting_logger_enabled = True
+        self.state_data_reporter_enabled = True
+        self.gamd_dat_reporter_enabled = True
+        return
+
     def run(self, restart=False):
         chunk_size = self.chunk_size
         output_directory, overwrite_output, system, simulation, dt, \
@@ -480,35 +535,12 @@ class DeveloperRunner(Runner):
 
         self.register_trajectory_reporter(restart)
         self.register_state_data_reporter(restart)
-        self.register_gamd_data_repoter(restart)
+        self.register_gamd_data_reporter(restart)
         debug_logger = self.register_debug_logger(restart)
+        gamd_logger = self.register_gamd_logger(restart)
+        gamd_reweighting_logger = self.register_gamd_reweighting_logger(restart)
 
-
-
-        # TODO: check if we really want to get this quantity from integrator
-        # instead of the config object
-
-        #####################################
-        # NEW CODE STARTED HERE
-        #####################################
         reweighting_offset = 0
-        gamd_log_filename = os.path.join(output_directory, "gamd.log")
-        gamd_reweighting_filename = os.path.join(output_directory,
-                                                 "gamd-reweighting.log")
-        gamd_logger = GamdLogger(gamd_log_filename, write_mode, integrator,
-                                 simulation, self.gamdSim.first_boost_type,
-                                 self.gamdSim.first_boost_group,
-                                 self.gamdSim.second_boost_type,
-                                 self.gamdSim.second_boost_group)
-
-        gamd_reweighting_logger = GamdLogger(gamd_reweighting_filename,
-                                             write_mode, integrator,
-                                             simulation,
-                                             self.gamdSim.first_boost_type,
-                                             self.gamdSim.first_boost_group,
-                                             self.gamdSim.second_boost_type,
-                                             self.gamdSim.second_boost_group)
-
         production_logging_start_step = (ntcmd + nteb +
                                          (self.running_rates.
                                           get_batch_run_rate()
@@ -516,10 +548,6 @@ class DeveloperRunner(Runner):
 
         self.save_initial_configuration(production_logging_start_step,
                                         self.config.temperature)
-
-        if not restart:
-            gamd_logger.write_header()
-            gamd_reweighting_logger.write_header()
 
         print("Running: \t ",
               str(integrator.get_total_simulation_steps() - current_step),
@@ -591,6 +619,13 @@ class DeveloperRunner(Runner):
 
 
 class NoLogRunner(Runner):
+    def __init__(self, config, gamdSimulation, debug):
+        super().__init__(config, gamdSimulation, debug)
+        self.gamd_logger_enabled = False
+        self.gamd_reweighting_logger_enabled = False
+        self.state_data_reporter_enabled = False
+        self.gamd_dat_reporter_enabled = False
+        return
 
     def run(self, restart=False):
         chunk_size = self.chunk_size
