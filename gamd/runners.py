@@ -8,7 +8,7 @@ import sys
 import openmm.unit as unit
 
 from gamd import utils as utils
-from gamd.DebugLogger import DebugLogger
+from gamd.DebugLogger import DebugLogger, NoOpDebugLogger
 from gamd.GamdLogger import GamdLogger
 
 
@@ -264,9 +264,63 @@ class Runner:
             potentialEnergy=True, totalEnergy=True,
             volume=True))
 
+    def register_gamd_data_repoter(self, restart):
+        simulation = self.gamdSim.simulation
+        output_directory = self.config.outputs.directory
+        gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.csv")
+        integrator = self.gamdSim.integrator
+
+        #
+        #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
+        #
+
+        if restart:
+            write_mode = "a"
+        else:
+            write_mode = "w"
+        gamd_dat_reporter = utils.GamdDatReporter(gamd_running_dat_filename, write_mode,
+                                                  integrator)
+        simulation.reporters.append(gamd_dat_reporter)
+
+    def register_gamd_logger(self, restart):
+        pass
+
+    def register_gamd_reweighting_logger(self, restart):
+        pass
+
+    def register_debug_logger(self, restart):
+        output_directory = self.config.outputs.directory
+        integrator = self.gamdSim.integrator
+        debug_filename = os.path.join(output_directory, "debug.csv")
+        if restart:
+            write_mode = "a"
+        else:
+            write_mode = "w"
+
+        if self.debug:
+            ignore_fields = {"stageOneIfValueIsZeroOrNegative",
+                             "stageTwoIfValueIsZeroOrNegative",
+                             "stageThreeIfValueIsZeroOrNegative",
+                             "stageFourIfValueIsZeroOrNegative",
+                             "stageFiveIfValueIsZeroOrNegative",
+                             "thermal_energy", "collision_rate",
+                             "vscale", "fscale", "noisescale"}
+
+            debug_logger = DebugLogger(debug_filename, write_mode,
+                                       ignore_fields)
+            print("Debugging enabled.")
+            int_algorithm_filename = os.path.join(output_directory,
+                                                  "integration-algorithm.txt")
+            debug_logger.write_integration_algorithm_to_file(
+                int_algorithm_filename, integrator)
+
+            debug_logger.write_global_variables_headers(integrator)
+        else:
+            debug_logger = NoOpDebugLogger()
+
+        return debug_logger
 
     def run(self, restart=False):
-        debug = self.debug
         chunk_size = self.chunk_size
         output_directory, overwrite_output, system, simulation, dt, \
         integrator, ntcmdprep, ntcmd, ntebprep, nteb, \
@@ -300,7 +354,7 @@ class Runner:
             write_mode = "w"
 
         self.register_trajectory_reporter(restart)
-
+        debug_logger = self.register_debug_logger(restart)
 
         # TODO: check if we really want to get this quantity from integrator
         # instead of the config object
@@ -330,28 +384,7 @@ class Runner:
         print("Running: \t ",
               str(integrator.get_total_simulation_steps() - current_step),
               " steps")
-    
-        if debug:
-            ignore_fields = {"stageOneIfValueIsZeroOrNegative",
-                             "stageTwoIfValueIsZeroOrNegative",
-                             "stageThreeIfValueIsZeroOrNegative",
-                             "stageFourIfValueIsZeroOrNegative",
-                             "stageFiveIfValueIsZeroOrNegative",
-                             "thermal_energy", "collision_rate",
-                             "vscale", "fscale", "noisescale"}
 
-            debug_filename = os.path.join(output_directory, "debug.csv")
-
-            debug_logger = DebugLogger(debug_filename, write_mode,
-                                       ignore_fields)
-            print("Debugging enabled.")
-            int_algorithm_filename = os.path.join(output_directory,
-                                                  "integration-algorithm.txt")
-            debug_logger.write_integration_algorithm_to_file(
-                int_algorithm_filename, integrator)
-
-            debug_logger.write_global_variables_headers(integrator)
-    
         start_date_time = datetime.datetime.now()
         batch_run_rate = self.running_rates.get_batch_run_rate()
         for batch_frame in running_range:
@@ -374,7 +407,7 @@ class Runner:
                 #
     
                 simulation.step(batch_run_rate)
-                if debug and self.running_rates.is_debugging_step(batch_frame):
+                if self.running_rates.is_debugging_step(batch_frame):
                     debug_logger.write_global_variables_values(integrator)
     
                 if self.running_rates.is_save_step(step):
@@ -384,10 +417,9 @@ class Runner:
                 print("Failure on step " + str(step))
                 print(e)
                 gamd_logger.close()
-                if debug:
-                    debug_logger.print_global_variables_to_screen(integrator)
-                    debug_logger.write_global_variables_values(integrator)
-                    debug_logger.close()
+                debug_logger.print_global_variables_to_screen(integrator)
+                debug_logger.write_global_variables_values(integrator)
+                debug_logger.close()
 
                 sys.exit(2)
     
@@ -402,8 +434,7 @@ class Runner:
         # to utilize these files.
         #
         gamd_logger.close()
-        if debug:
-            debug_logger.close()
+        debug_logger.close()
         
         simulation.saveCheckpoint(restart_checkpoint_filename)
         print_runtime_information(start_date_time, dt, nstlim, current_step)
@@ -415,7 +446,6 @@ class Runner:
 
 class DeveloperRunner(Runner):
     def run(self, restart=False):
-        debug = self.debug
         chunk_size = self.chunk_size
         output_directory, overwrite_output, system, simulation, dt, \
         integrator, ntcmdprep, ntcmd, ntebprep, nteb, \
@@ -450,16 +480,10 @@ class DeveloperRunner(Runner):
 
         self.register_trajectory_reporter(restart)
         self.register_state_data_reporter(restart)
+        self.register_gamd_data_repoter(restart)
+        debug_logger = self.register_debug_logger(restart)
 
 
-        #
-        #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
-        #
-        gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.csv")
-        gamd_dat_reporter = utils.GamdDatReporter(gamd_running_dat_filename, write_mode,
-                                                  integrator)
-
-        simulation.reporters.append(gamd_dat_reporter)
 
         # TODO: check if we really want to get this quantity from integrator
         # instead of the config object
@@ -501,27 +525,6 @@ class DeveloperRunner(Runner):
               str(integrator.get_total_simulation_steps() - current_step),
               " steps")
 
-        if debug:
-            ignore_fields = {"stageOneIfValueIsZeroOrNegative",
-                             "stageTwoIfValueIsZeroOrNegative",
-                             "stageThreeIfValueIsZeroOrNegative",
-                             "stageFourIfValueIsZeroOrNegative",
-                             "stageFiveIfValueIsZeroOrNegative",
-                             "thermal_energy", "collision_rate",
-                             "vscale", "fscale", "noisescale"}
-
-            debug_filename = os.path.join(output_directory, "debug.csv")
-
-            debug_logger = DebugLogger(debug_filename, write_mode,
-                                       ignore_fields)
-            print("Debugging enabled.")
-            int_algorithm_filename = os.path.join(output_directory,
-                                                  "integration-algorithm.txt")
-            debug_logger.write_integration_algorithm_to_file(
-                int_algorithm_filename, integrator)
-
-            debug_logger.write_global_variables_headers(integrator)
-
         start_date_time = datetime.datetime.now()
         batch_run_rate = self.running_rates.get_batch_run_rate()
         for batch_frame in running_range:
@@ -546,7 +549,7 @@ class DeveloperRunner(Runner):
                 #
 
                 simulation.step(batch_run_rate)
-                if debug and self.running_rates.is_debugging_step(batch_frame):
+                if self.running_rates.is_debugging_step(batch_frame):
                     debug_logger.write_global_variables_values(integrator)
 
                 if self.running_rates.is_save_step(step):
@@ -559,10 +562,9 @@ class DeveloperRunner(Runner):
                 print(e)
                 gamd_logger.close()
                 gamd_reweighting_logger.close()
-                if debug:
-                    debug_logger.print_global_variables_to_screen(integrator)
-                    debug_logger.write_global_variables_values(integrator)
-                    debug_logger.close()
+                debug_logger.print_global_variables_to_screen(integrator)
+                debug_logger.write_global_variables_values(integrator)
+                debug_logger.close()
 
                 sys.exit(2)
 
@@ -578,8 +580,7 @@ class DeveloperRunner(Runner):
         #
         gamd_logger.close()
         gamd_reweighting_logger.close()
-        if debug:
-            debug_logger.close()
+        debug_logger.close()
 
         simulation.saveCheckpoint(restart_checkpoint_filename)
         print_runtime_information(start_date_time, dt, nstlim, current_step)
@@ -592,7 +593,6 @@ class DeveloperRunner(Runner):
 class NoLogRunner(Runner):
 
     def run(self, restart=False):
-        debug = self.debug
         chunk_size = self.chunk_size
 
         output_directory, overwrite_output, system, simulation, dt, \
@@ -628,6 +628,9 @@ class NoLogRunner(Runner):
             write_mode = "w"
 
         self.register_trajectory_reporter(restart)
+#        self.register_state_data_reporter(restart)
+#        self.register_gamd_data_repoter(restart)
+        debug_logger = self.register_debug_logger(restart)
 
         # print(get_global_variable_names(integrator))
 
@@ -680,27 +683,6 @@ class NoLogRunner(Runner):
               str(integrator.get_total_simulation_steps() - current_step),
               " steps")
 
-        if debug:
-            ignore_fields = {"stageOneIfValueIsZeroOrNegative",
-                             "stageTwoIfValueIsZeroOrNegative",
-                             "stageThreeIfValueIsZeroOrNegative",
-                             "stageFourIfValueIsZeroOrNegative",
-                             "stageFiveIfValueIsZeroOrNegative",
-                             "thermal_energy", "collision_rate",
-                             "vscale", "fscale", "noisescale"}
-
-#            debug_filename = os.path.join(output_directory, "debug.csv")
-
-#            debug_logger = DebugLogger(debug_filename, write_mode,
-#                                       ignore_fields)
-            print("Debugging enabled.")
-            int_algorithm_filename = os.path.join(output_directory,
-                                                  "integration-algorithm.txt")
-#            debug_logger.write_integration_algorithm_to_file(
-#                int_algorithm_filename, integrator)
-
-#            debug_logger.write_global_variables_headers(integrator)
-
         start_date_time = datetime.datetime.now()
         batch_run_rate = self.running_rates.get_batch_run_rate()
         for batch_frame in running_range:
@@ -725,8 +707,8 @@ class NoLogRunner(Runner):
                 #
 
                 simulation.step(batch_run_rate)
-#                if debug and self.running_rates.is_debugging_step(batch_frame):
-#                    debug_logger.write_global_variables_values(integrator)
+                if self.running_rates.is_debugging_step(batch_frame):
+                    debug_logger.write_global_variables_values(integrator)
 
 #                if self.running_rates.is_save_step(step):
 #                    gamd_logger.write_to_gamd_log(step)
@@ -738,10 +720,9 @@ class NoLogRunner(Runner):
                 print(e)
 #                gamd_logger.close()
 #                gamd_reweighting_logger.close()
-#                if debug:
-#                    debug_logger.print_global_variables_to_screen(integrator)
-#                    debug_logger.write_global_variables_values(integrator)
-#                    debug_logger.close()
+                debug_logger.print_global_variables_to_screen(integrator)
+                debug_logger.write_global_variables_values(integrator)
+                debug_logger.close()
 
                 sys.exit(2)
 
@@ -757,8 +738,7 @@ class NoLogRunner(Runner):
         #
 #        gamd_logger.close()
 #        gamd_reweighting_logger.close()
-#        if debug:
-#            debug_logger.close()
+        debug_logger.close()
 
         simulation.saveCheckpoint(restart_checkpoint_filename)
         print_runtime_information(start_date_time, dt, nstlim, current_step)
