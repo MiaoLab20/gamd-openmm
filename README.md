@@ -5,10 +5,10 @@ Gaussian Accelerated Molecular Dynamics (GaMD) is a biomolecular enhanced sampli
 
 ## Installation
 1.  You will need to start by installing [Anaconda Python 3.x](https://www.anaconda.com/products/individual#Downloads).
-2.  Next, install OpenMM using the instructions found in the [OpenMM User Guide - Section 2.2 Installing OpenMM](http://docs.openmm.org/latest/userguide/application.html#installing-openmm).
-3.  You'll need the AmberTools for doing the post MD analysis.  You can do this by executing the following command: 
+2.  Next, install OpenMM using the instructions found in the [OpenMM User Guide - Section 2.2 Installing OpenMM](http://docs.openmm.org/latest/userguide/application/01_getting_started.html#installing-openmm).
+3.  You'll need the AmberTools for doing the post MD analysis.  You can get these tools by executing the following command: 
     ```
-    conda install -c conda-forge ambertools=20
+    conda install -c conda-forge ambertools
     ```  
 4.  You'll need the PyReweighting scripts, which can be cloned from 
 the [PyReweighting Git Repository](https://github.com/MiaoLab20/PyReweighting).  (NOTE:  If you are 
@@ -16,10 +16,14 @@ doing development on the GaMD module itself and want to use the test scripts, th
  directory should be added to your path, so that the scripts can find it.)
 5.  Clone and Install this package: 
     ```
-    git clone https://github.com/MiaoLab20/GaMD-OpenMM.git
-    cd GaMD-OpenMM
+    git clone https://github.com/MiaoLab20/gamd-openmm.git
+    cd gamd-openmm
     setup.py install
     ```
+6.  The command gamdRunner can either be copied into your user bin directory or you can updated your
+PATH variable to include the location fo the gamd-openmm directory, if you would like to use the
+gamdRunner for running your simulations.
+
 
 ## Testing (Optional)
 You may also optionally run tests: 
@@ -28,26 +32,36 @@ You may also optionally run tests:
     ```
 
 ## Run
-You can try a test run of GaMD in OpenMM. From within the GaMD-OpenMM/ 
-directory:
+
+You can run gamd by providing your own configuration file to the gamdRunner
+program like the example here.
+
 ```
-cd gamd
-gamdRunner.py xml tests/data/dip_amber.xml
+gamdRunner xml configuration-file.xml
 ```  
 
-This will made a directory named output/ in the current directory where one
-can find all of the GaMD output logs, trajectories, etc. This is a very short
-run for demonstration and testing purposes only.
+We've created the repository [gamd-openmm-examples](https://github.com/MiaoLab20/gamd-openmm-examples) which
+contains real examples (data files and configuration files) and instructions you can use to validate
+your gamd installation and learn how to use the available command line options to the gamdRunner.
+
 
 ### Important Options and Hints
 
-* The gamdRunner.py program can be run with the '-h' argument to see all
+* The gamdRunner program can be run with the '-h' argument to see all
 available options. Please see *link to RTD here* for a
 detailed description of programs and options.
 
 ## Status
 
-     The dihedral and total boost algorithms are working and have been validated.
+We have implemented the upper and lower bound versions of the following types of
+gamd boosts:
+
+* dihedral
+* total
+* dual total/dihedral
+* non-bonded
+* dual non-bonded/dihedral
+
 
 ## Authors and Contributors
 

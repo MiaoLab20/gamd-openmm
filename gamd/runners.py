@@ -9,13 +9,12 @@ import sys
 import openmm.unit as unit
 
 from gamd import utils as utils
-from gamd.DebugLogger import DebugLogger
-from gamd.GamdLogger import GamdLogger
+from gamd.DebugLogger import DebugLogger, NoOpDebugLogger
+from gamd.GamdLogger import GamdLogger, NoOpGamdLogger
 
 
 def create_output_directories(directories, overwrite_output=False):
     if overwrite_output:
-        print("Overwrite output set to True")
         for directory in directories:
             if os.path.exists(directory):
                 print("Deleting old output directory:", directory)
@@ -35,6 +34,54 @@ def print_global_variables(integrator):
         name = integrator.getGlobalVariableName(index)
         value = integrator.getGlobalVariableByName(name)
         print(name + ":  " + str(value))
+
+
+def write_gamd_production_restart_file(output_directory, integrator,
+                                       first_boost_type, second_boost_type):
+    gamd_prod_restart_filename = os.path.join(output_directory, "gamd-restart.dat")
+    values = integrator.get_statistics()
+
+    with open(gamd_prod_restart_filename, "w") as gamd_prod_restart_file:
+        for key in values.keys():
+            gamd_prod_restart_file.write(key + "=" + str(values[key]) + "\n")
+
+
+def get_config_and_simulation_values(gamd_simulation, config):
+    output_directory = config.outputs.directory
+    overwrite_output = config.outputs.overwrite_output
+    system = gamd_simulation.system
+    simulation = gamd_simulation.simulation
+    integrator = gamd_simulation.integrator
+    dt = config.integrator.dt
+    ntcmdprep = config.integrator.number_of_steps.conventional_md_prep
+    ntcmd = config.integrator.number_of_steps.conventional_md
+    ntebprep = config.integrator.number_of_steps.gamd_equilibration_prep
+    nteb = config.integrator.number_of_steps.gamd_equilibration
+    last_step_of_equilibration = ntcmd + nteb
+    nstlim = config.integrator.number_of_steps.total_simulation_length
+    ntave = config.integrator.number_of_steps.averaging_window_interval
+
+    return [output_directory, overwrite_output, system, simulation, dt,
+            integrator, ntcmdprep, ntcmd, ntebprep,
+            nteb, last_step_of_equilibration, nstlim, ntave]
+
+
+def print_runtime_information(start_date_time, dt, nstlim, current_step):
+    end_date_time = datetime.datetime.now()
+    time_difference = end_date_time - start_date_time
+    if time_difference.seconds > 0:
+        steps_per_second = (nstlim - current_step) / time_difference.seconds
+    else:
+        steps_per_second = 0
+    daily_execution_rate = (steps_per_second * 3600 * 24 * dt)
+
+    print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M:%S"))
+    print("End Time: \t", end_date_time.strftime("%b-%d-%Y    %H:%M:%S"))
+    print("Execution rate for this run:  ", str(steps_per_second),
+          " steps per second.")
+    print("Daily execution rate:         ",
+          str(daily_execution_rate.value_in_unit(unit.nanoseconds)),
+          " ns per day.")
 
 
 class RunningRates:
@@ -147,20 +194,10 @@ class RunningRates:
         return frame * self.get_batch_run_rate()
 
 
-def write_gamd_production_restart_file(output_directory, integrator,
-                                       first_boost_type, second_boost_type):
-    gamd_prod_restart_filename = os.path.join(output_directory, "gamd-restart.dat")
-    values = integrator.get_statistics()
-
-    with open(gamd_prod_restart_filename, "w") as gamd_prod_restart_file:
-        for key in values.keys():
-            gamd_prod_restart_file.write(key + "=" + str(values[key]) + "\n")
-
-
 class Runner:
-    def __init__(self, config, gamdSimulation, debug):
+    def __init__(self, config, gamd_simulation, debug):
         self.config = config
-        self.gamdSim = gamdSimulation
+        self.gamd_simulation = gamd_simulation
         self.debug = debug
         nstlim = self.config.integrator.number_of_steps.total_simulation_length
         self.chunk_size = self.config.outputs.reporting.compute_chunk_size()
@@ -169,6 +206,10 @@ class Runner:
         else:
             self.running_rates = RunningRates(nstlim, self.chunk_size, 
                                               self.chunk_size, False)
+        self.gamd_logger_enabled = True
+        self.gamd_reweighting_logger_enabled = False
+        self.state_data_reporter_enabled = False
+        self.gamd_dat_reporter_enabled = False
         return
 
     def run_post_simulation(self, temperature, output_directory,
@@ -193,162 +234,118 @@ class Runner:
         with open(prodstartstep_filename, "w") as prodstartstep_file:
             prodstartstep_file.write(str(production_logging_start_step))
 
-    def run(self, restart=False):
-        debug = self.debug
-        start_date_time = datetime.datetime.now()
-        print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
-        initial_temperature = self.config.temperature
-        target_temperature = self.config.temperature
+    def register_trajectory_reporter(self, restart):
+        simulation = self.gamd_simulation.simulation
+        traj_reporter = self.gamd_simulation.traj_reporter
         output_directory = self.config.outputs.directory
-        restart_checkpoint_interval \
-            = self.config.outputs.reporting.restart_checkpoint_interval
-        statistics_interval = self.config.outputs.reporting.statistics_interval
-        restart_checkpoint_filename = os.path.join(
-            output_directory, "gamd_restart.checkpoint")
-        chunk_size = self.chunk_size
-        overwrite_output = self.config.outputs.overwrite_output
-        if not restart:
-            create_output_directories(
-                [output_directory, 
-                 os.path.join(output_directory, "states/"), 
-                 os.path.join(output_directory, "positions/"),
-                 os.path.join(output_directory, "pdb/"),
-                 os.path.join(output_directory, "checkpoints")],
-                overwrite_output)
-        
-        system = self.gamdSim.system
-
-        simulation = self.gamdSim.simulation
-
-        integrator = self.gamdSim.integrator
-
-        traj_reporter = self.gamdSim.traj_reporter
-
-        ntcmdprep = self.config.integrator.number_of_steps.conventional_md_prep
-
-        ntcmd = self.config.integrator.number_of_steps.conventional_md
-
-        ntebprep = self.config.integrator.\
-            number_of_steps.gamd_equilibration_prep
-
-        nteb = self.config.integrator.number_of_steps.gamd_equilibration
-        last_step_of_equilibration = ntcmd+nteb
-
-        nstlim = self.config.integrator.number_of_steps.total_simulation_length
-
-        ntave = self.config.integrator.number_of_steps.\
-            averaging_window_interval
-
-        #group = self.config.dihedral_group
-        
         extension = self.config.outputs.reporting.coordinates_file_type
-        if restart:
-            simulation.loadCheckpoint(restart_checkpoint_filename)
-            #currentStep = int(integrator.getGlobalVariableByName("stepCount"))
-            currentStep = int(round(simulation.context.getState().getTime()\
-                              .value_in_unit(unit.picoseconds) \
-                              / self.config.integrator.dt.value_in_unit(
-                                  unit.picoseconds)))
-            simulation.currentStep = currentStep
-            write_mode = "a"
-            start_chunk = (currentStep // chunk_size) + 1
-            print("restarting from saved checkpoint:", 
-                  restart_checkpoint_filename, "at step:", currentStep)
-            # see how many restart files have already been created
-            state_data_restart_files_glob = os.path.join(
-                output_directory, 'state-data.restart*.log')
-            state_data_restarts_list = glob.glob(state_data_restart_files_glob)
-            restart_index = len(state_data_restarts_list) + 1
-            state_data_name = os.path.join(
-                output_directory, 'state-data.restart%d.log' % restart_index)
+        traj_name = os.path.join(output_directory, 'output.%s' % extension)
+        traj_append = restart
 
-            #traj_name = os.path.join(
-            #    self.config.outputs.directory, 
-            #    'output.restart%d.%s' % (restart_index, extension))
-            traj_name = os.path.join(
-                self.config.outputs.directory, 'output.%s' % extension)
-            traj_append = True
-            
-            running_range = self.running_rates.get_restart_batch_run_range(
-                integrator)
-            
-        else:
-            currentStep = 0
-            running_range = self.running_rates.get_batch_run_range()
-            simulation.saveState(
-                os.path.join(output_directory, "states/initial-state.xml"))
-            write_mode = "w"
-            start_chunk = 1
-            traj_name = os.path.join(
-                self.config.outputs.directory, 'output.%s' % extension)
-            traj_append = False
-            state_data_name = os.path.join(output_directory, 'state-data.log')
-            
         if traj_reporter:
             simulation.reporters.append(traj_reporter(
                 traj_name, self.config.outputs.reporting.coordinates_interval,
                 append=traj_append))
-        simulation.reporters.append(utils.ExpandedStateDataReporter(
-            system, state_data_name, 
-            self.config.outputs.reporting.energy_interval, step=True, 
-            brokenOutForceEnergies=True, temperature=True, 
-            potentialEnergy=True, totalEnergy=True, 
-            volume=True))
 
-        # print(get_global_variable_names(integrator))
+    def register_state_data_reporter(self, restart):
+        if self.state_data_reporter_enabled:
+            simulation = self.gamd_simulation.simulation
+            output_directory = self.config.outputs.directory
+            system = self.gamd_simulation.system
 
-        #
-        #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
-        #
-        gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.csv")
-        gamd_dat_reporter = utils.GamdDatReporter(gamd_running_dat_filename, write_mode,
-                                                  integrator)
+            if restart:
+                state_data_restart_files_glob = os.path.join(
+                    output_directory, 'state-data.restart*.log')
+                state_data_restarts_list = glob.glob(state_data_restart_files_glob)
+                restart_index = len(state_data_restarts_list) + 1
+                state_data_name = os.path.join(
+                    output_directory, 'state-data.restart%d.log' % restart_index)
+            else:
+                state_data_name = os.path.join(output_directory, 'state-data.log')
 
-        simulation.reporters.append(gamd_dat_reporter)
+            simulation.reporters.append(utils.ExpandedStateDataReporter(
+                system, state_data_name,
+                self.config.outputs.reporting.energy_interval, step=True,
+                brokenOutForceEnergies=True, temperature=True,
+                potentialEnergy=True, totalEnergy=True,
+                volume=True))
 
-        # TODO: check if we really want to get this quantity from integrator
-        # instead of the config object
-        end_chunk = int(integrator.get_total_simulation_steps() \
-                        // chunk_size) + 1
-        
-        print("running_range:", running_range)
-        #####################################
-        # NEW CODE STARTED HERE
-        #####################################
-        reweighting_offset = 0
-        gamd_log_filename = os.path.join(output_directory, "gamd.log")
-        gamd_reweighting_filename = os.path.join(output_directory,
-                                                 "gamd-reweighting.log")
-        gamd_logger = GamdLogger(gamd_log_filename, write_mode, integrator,
-                                 simulation, self.gamdSim.first_boost_type,
-                                 self.gamdSim.first_boost_group,
-                                 self.gamdSim.second_boost_type,
-                                 self.gamdSim.second_boost_group)
-    
-        gamd_reweighting_logger = GamdLogger(gamd_reweighting_filename,
-                                             write_mode, integrator,
-                                             simulation,
-                                             self.gamdSim.first_boost_type,
-                                             self.gamdSim.first_boost_group,
-                                             self.gamdSim.second_boost_type,
-                                             self.gamdSim.second_boost_group)
-        
-        production_logging_start_step = (ntcmd + nteb +
-                                         (self.running_rates.
-                                          get_batch_run_rate()
-                                          * reweighting_offset))
+    def register_gamd_data_reporter(self, restart):
+        if self.gamd_dat_reporter_enabled:
+            simulation = self.gamd_simulation.simulation
+            output_directory = self.config.outputs.directory
+            gamd_running_dat_filename = os.path.join(output_directory, "gamd-running.csv")
+            integrator = self.gamd_simulation.integrator
 
-        self.save_initial_configuration(production_logging_start_step,
-                                        self.config.temperature)
+            #
+            #  The GamdDatReporter uses the write mode to determine whether to write out headers or not.
+            #
 
-        if not restart:
-            gamd_logger.write_header()
-            gamd_reweighting_logger.write_header()
-    
-        print("Running: \t " + str(integrator.get_total_simulation_steps() \
-            - currentStep) + " steps")
-    
-        if debug:
+            if restart:
+                write_mode = "a"
+            else:
+                write_mode = "w"
+            gamd_dat_reporter = utils.GamdDatReporter(gamd_running_dat_filename, write_mode,
+                                                      integrator)
+            simulation.reporters.append(gamd_dat_reporter)
+
+    def register_gamd_logger(self, restart):
+        if self.gamd_logger_enabled:
+            output_directory = self.config.outputs.directory
+            gamd_log_filename = os.path.join(output_directory, "gamd.log")
+            integrator = self.gamd_simulation.integrator
+            simulation = self.gamd_simulation.simulation
+            if restart:
+                write_mode = "a"
+            else:
+                write_mode = "w"
+
+            gamd_logger = GamdLogger(gamd_log_filename, write_mode, integrator,
+                                     simulation, self.gamd_simulation.first_boost_type,
+                                     self.gamd_simulation.first_boost_group,
+                                     self.gamd_simulation.second_boost_type,
+                                     self.gamd_simulation.second_boost_group)
+            if not restart:
+                gamd_logger.write_header()
+        else:
+            gamd_logger = NoOpGamdLogger()
+        return gamd_logger
+
+    def register_gamd_reweighting_logger(self, restart):
+        if self.gamd_reweighting_logger_enabled:
+            output_directory = self.config.outputs.directory
+            integrator = self.gamd_simulation.integrator
+            simulation = self.gamd_simulation.simulation
+            gamd_reweighting_filename = os.path.join(output_directory,
+                                                     "gamd-reweighting.log")
+            if restart:
+                write_mode = "a"
+            else:
+                write_mode = "w"
+
+            gamd_reweighting_logger = GamdLogger(gamd_reweighting_filename,
+                                                 write_mode, integrator,
+                                                 simulation,
+                                                 self.gamd_simulation.first_boost_type,
+                                                 self.gamd_simulation.first_boost_group,
+                                                 self.gamd_simulation.second_boost_type,
+                                                 self.gamd_simulation.second_boost_group)
+            if not restart:
+                gamd_reweighting_logger.write_header()
+        else:
+            gamd_reweighting_logger = NoOpGamdLogger()
+        return gamd_reweighting_logger
+
+    def register_debug_logger(self, restart):
+        output_directory = self.config.outputs.directory
+        integrator = self.gamd_simulation.integrator
+        debug_filename = os.path.join(output_directory, "debug.csv")
+        if restart:
+            write_mode = "a"
+        else:
+            write_mode = "w"
+
+        if self.debug:
             ignore_fields = {"stageOneIfValueIsZeroOrNegative",
                              "stageTwoIfValueIsZeroOrNegative",
                              "stageThreeIfValueIsZeroOrNegative",
@@ -356,8 +353,6 @@ class Runner:
                              "stageFiveIfValueIsZeroOrNegative",
                              "thermal_energy", "collision_rate",
                              "vscale", "fscale", "noisescale"}
-
-            debug_filename = os.path.join(output_directory, "debug.csv")
 
             debug_logger = DebugLogger(debug_filename, write_mode,
                                        ignore_fields)
@@ -368,7 +363,62 @@ class Runner:
                 int_algorithm_filename, integrator)
 
             debug_logger.write_global_variables_headers(integrator)
-    
+        else:
+            debug_logger = NoOpDebugLogger()
+
+        return debug_logger
+
+    def run(self, restart=False):
+        chunk_size = self.chunk_size
+        output_directory, overwrite_output, system, simulation, dt, \
+            integrator, ntcmdprep, ntcmd, ntebprep, nteb, \
+            last_step_of_equilibration, nstlim, ntave \
+            = get_config_and_simulation_values(self.gamd_simulation, self.config)
+
+        restart_checkpoint_filename = os.path.join(
+            output_directory, "gamd_restart.checkpoint")
+
+        if not restart:
+            create_output_directories(
+                [output_directory],
+                overwrite_output)
+
+        if restart:
+            simulation.loadCheckpoint(restart_checkpoint_filename)
+            state = simulation.context.getState()
+            state_time = state.getTime().value_in_unit(unit.picoseconds)
+            integrator_dt = dt.value_in_unit(unit.picoseconds)
+            current_step = int(round(state_time / integrator_dt))
+            simulation.currentStep = current_step
+            print("restarting from saved checkpoint:",
+                  restart_checkpoint_filename, "at step:", current_step)
+
+            running_range = self.running_rates.get_restart_batch_run_range(
+                integrator)
+        else:
+            current_step = 0
+            running_range = self.running_rates.get_batch_run_range()
+
+        self.register_trajectory_reporter(restart)
+        self.register_state_data_reporter(restart)
+        self.register_gamd_data_reporter(restart)
+        debug_logger = self.register_debug_logger(restart)
+        gamd_logger = self.register_gamd_logger(restart)
+        gamd_reweighting_logger = self.register_gamd_reweighting_logger(restart)
+
+        reweighting_offset = 0
+        production_logging_start_step = (ntcmd + nteb +
+                                         (self.running_rates.
+                                          get_batch_run_rate()
+                                          * reweighting_offset))
+
+        self.save_initial_configuration(production_logging_start_step,
+                                        self.config.temperature)
+
+        print("Running: \t ",
+              str(integrator.get_total_simulation_steps() - current_step),
+              " steps")
+
         start_date_time = datetime.datetime.now()
         start_time = time.time()
         batch_run_rate = self.running_rates.get_batch_run_rate()
@@ -377,13 +427,13 @@ class Runner:
 
             if self.running_rates.is_save_step(step):
                 simulation.saveCheckpoint(restart_checkpoint_filename)
-    
+
             gamd_logger.mark_energies()
             if self.running_rates.is_save_step(step):
                 gamd_reweighting_logger.mark_energies()
-    
+
             try:
-    
+
                 #
                 #  NOTE:  We need to save off the starting total and dihedral
                 #  potential energies, since we end up modifying them by
@@ -392,82 +442,66 @@ class Runner:
                 #  step for what all of the calculations for boosting were
                 #  based on.
                 #
-    
+
                 simulation.step(batch_run_rate)
-                if debug and self.running_rates.is_debugging_step(batch_frame):
+                if self.running_rates.is_debugging_step(batch_frame):
                     debug_logger.write_global_variables_values(integrator)
-    
+
                 if self.running_rates.is_save_step(step):
                     gamd_logger.write_to_gamd_log(step)
                     if step >= production_logging_start_step:
                         gamd_reweighting_logger.write_to_gamd_log(step)
-    
+
             except Exception as e:
                 print("Failure on step " + str(step))
                 print(e)
                 gamd_logger.close()
                 gamd_reweighting_logger.close()
-                if debug:
-                    debug_logger.print_global_variables_to_screen(integrator)
-                    debug_logger.write_global_variables_values(integrator)
-                    debug_logger.close()
-                #gamd_logger.write_to_gamd_log(step)
-                #gamd_reweighting_logger.write_to_gamd_log(step)
-    
-                sys.exit(2)
-    
-            if (step % ntave) == 0:
+                debug_logger.print_global_variables_to_screen(integrator)
+                debug_logger.write_global_variables_values(integrator)
+                debug_logger.close()
 
-                state_filename = os.path.join(output_directory, "states",
-                                              str(step) + ".xml")
-                step_checkpoint_filename = os.path.join(output_directory,
-                                                        "checkpoints",
-                                                        str(step) + ".bin")
-                positions_filename = os.path.join(output_directory,
-                                                  "positions",
-                                                  "coordinates-" + str(
-                                                      step) + ".csv")
-                #simulation.saveState(state_filename)
-                #simulation.saveCheckpoint(step_checkpoint_filename)
-                #integrator.create_positions_file(positions_filename)
+                sys.exit(2)
 
             if step == last_step_of_equilibration:
-                print("Writing out at ", last_step_of_equilibration)
                 write_gamd_production_restart_file(output_directory, integrator,
-                                                   self.gamdSim.first_boost_type,
-                                                   self.gamdSim.second_boost_type)
+                                                   self.gamd_simulation.first_boost_type,
+                                                   self.gamd_simulation.second_boost_type)
 
         #
-        # These calls are here to garuntee that the file buffers have been
+        # These calls are here to guarantee that the file buffers have been
         # flushed, prior to any post-simulations steps attempting
         # to utilize these files.
         #
         gamd_logger.close()
         gamd_reweighting_logger.close()
-        if debug:
-            debug_logger.close()
-        
+        debug_logger.close()
+
         simulation.saveCheckpoint(restart_checkpoint_filename)
-        end_date_time = datetime.datetime.now()
-        end_time = time.time()
-        time_difference = end_time - start_time
-        if time_difference > 0:
-            steps_per_second = (nstlim - currentStep) / time_difference #.seconds
-        else:
-            steps_per_second = 0
-        daily_execution_rate = (steps_per_second * 3600 * 24 *
-                                self.config.integrator.dt)
+        print_runtime_information(start_date_time, dt, nstlim, current_step)
         production_starting_frame = (((ntcmd + nteb) / chunk_size) +
                                      reweighting_offset)
-
-        #print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
-        print("End Time: \t", end_date_time.strftime("%b-%d-%Y    %H:%M"))
-        print("Execution rate for this run:  ", str(steps_per_second),
-              " steps per second.")
-        print("Daily execution rate:         ",
-              str(daily_execution_rate.value_in_unit(unit.nanoseconds)),
-              " ns per day.")
-
         self.run_post_simulation(self.config.temperature, output_directory,
                                  production_starting_frame)
+
+
+class DeveloperRunner(Runner):
+    def __init__(self, config, gamd_simulation, debug):
+        super().__init__(config, gamd_simulation, debug)
+        self.gamd_logger_enabled = True
+        self.gamd_reweighting_logger_enabled = True
+        self.state_data_reporter_enabled = True
+        self.gamd_dat_reporter_enabled = True
+        return
+
+
+class NoLogRunner(Runner):
+    def __init__(self, config, gamd_simulation, debug):
+        super().__init__(config, gamd_simulation, debug)
+        self.gamd_logger_enabled = False
+        self.gamd_reweighting_logger_enabled = False
+        self.state_data_reporter_enabled = False
+        self.gamd_dat_reporter_enabled = False
+        return
+
 

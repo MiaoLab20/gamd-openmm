@@ -1,7 +1,8 @@
 import openmm.unit as unit
 from .stage_integrator import BoostType
 from .stage_integrator import GamdStageIntegrator
-
+from abc import ABC
+from abc import abstractmethod
 
 class TrackedValue:
     def __init__(self, boost_type, group, tracked_integrator, tracked_simulation):
@@ -43,6 +44,39 @@ class TrackedValue:
     def get_reporting_effective_harmonic_constant(self):
         effective_harmonic_constants = self.__integrator.get_effective_harmonic_constants()
         return str(effective_harmonic_constants[self.__effective_harmonic_constant_name])
+
+
+class BaseGamdLogger(ABC):
+    @abstractmethod
+    def close(self):
+        raise NotImplementedError("must implement close")
+
+    @abstractmethod
+    def write_header(self):
+        raise NotImplementedError("must implement write_header")
+
+    @abstractmethod
+    def mark_energies(self):
+        raise NotImplementedError("must implement mark_energies")
+
+    @abstractmethod
+    def write_to_gamd_log(self, step):
+        raise NotImplementedError("must implement write_to_gamd_log")
+
+
+class NoOpGamdLogger(BaseGamdLogger):
+
+    def close(self):
+        pass
+
+    def write_header(self):
+        pass
+
+    def mark_energies(self):
+        pass
+
+    def write_to_gamd_log(self, step):
+        pass
 
 
 class GamdLogger:

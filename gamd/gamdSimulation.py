@@ -215,7 +215,7 @@ class GamdSimulationFactory:
             gamdSimulation.device_index = device_index
             gamdSimulation.platform = 'CUDA'
         elif user_platform_name == "opencl":
-            platform = openmm.Platform.getPlatformByName('OPENCL')
+            platform = openmm.Platform.getPlatformByName('OpenCL')
             properties['DeviceIndex'] = device_index
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
@@ -223,10 +223,11 @@ class GamdSimulationFactory:
             gamdSimulation.device_index = device_index
             gamdSimulation.platform = 'OpenCL'
         else:
-            gamdSimulation.platform = platform_name
+            platform = openmm.Platform.getPlatformByName(platform_name)
             gamdSimulation.simulation = openmm_app.Simulation(
                 topology.topology, gamdSimulation.system, 
-                gamdSimulation.integrator)
+                gamdSimulation.integrator, platform)
+            gamdSimulation.platform = platform_name
         
         gamdSimulation.simulation.context.setPositions(positions.positions)
         if box_vectors is not None:
