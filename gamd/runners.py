@@ -1,3 +1,4 @@
+import time 
 import datetime
 import glob
 import os
@@ -369,6 +370,7 @@ class Runner:
             debug_logger.write_global_variables_headers(integrator)
     
         start_date_time = datetime.datetime.now()
+        start_time = time.time()
         batch_run_rate = self.running_rates.get_batch_run_rate()
         for batch_frame in running_range:
             step = self.running_rates.get_step_from_frame(batch_frame)
@@ -447,9 +449,10 @@ class Runner:
         
         simulation.saveCheckpoint(restart_checkpoint_filename)
         end_date_time = datetime.datetime.now()
-        time_difference = end_date_time - start_date_time
-        if time_difference.seconds > 0:
-            steps_per_second = (nstlim - currentStep) / time_difference.seconds
+        end_time = time.time()
+        time_difference = end_time - start_time
+        if time_difference > 0:
+            steps_per_second = (nstlim - currentStep) / time_difference #.seconds
         else:
             steps_per_second = 0
         daily_execution_rate = (steps_per_second * 3600 * 24 *
@@ -457,7 +460,7 @@ class Runner:
         production_starting_frame = (((ntcmd + nteb) / chunk_size) +
                                      reweighting_offset)
 
-        print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
+        #print("Start Time: \t", start_date_time.strftime("%b-%d-%Y    %H:%M"))
         print("End Time: \t", end_date_time.strftime("%b-%d-%Y    %H:%M"))
         print("Execution rate for this run:  ", str(steps_per_second),
               " steps per second.")
