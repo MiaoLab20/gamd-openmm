@@ -41,8 +41,9 @@ gamdRunner xml configuration-file.xml
 ```  
 
 We've created the repository [gamd-openmm-examples](https://github.com/MiaoLab20/gamd-openmm-examples) which
-contains real examples (data files and configuration files) and instructions you can use to validate
-your gamd installation and learn how to use the available command line options to the gamdRunner.
+contains examples (data files and configuration files) and instructions you can use to validate
+your gamd installation. This project can also help you learn how to use the available command line
+options to the gamdRunner and about some of the options for the configuration file.
 
 
 ### Important Options and Hints
