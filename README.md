@@ -45,7 +45,7 @@ contains examples (data files and configuration files) and instructions you can 
 your gamd installation. This project can also help you learn how to use the available command line
 options to the gamdRunner and about some of the options for the configuration file.
 
-*NOTE:*  The gamdRunner and the gamd-openmm code currently only supports running the conventional md, equilibration, and production stages as a part of a single execution.
+_*NOTE:*_  The gamdRunner and the gamd-openmm code currently only supports running the conventional md, equilibration, and production stages as a part of a single execution.
 
 ### Important Options and Hints
 
