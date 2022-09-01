@@ -186,14 +186,19 @@ def parse_charmm_tag(input_files_tag):
         elif charmm_tag.tag == "coordinates":
             charmm_config.coordinates = assign_tag(charmm_tag, str)
         elif charmm_tag.tag == "parameters":
-            charmm_config.parameters = []
-            for xml_params_filename in charmm_tag:
-                charmm_config.parameters.append(
-                    assign_tag(xml_params_filename, str))
+            charmm_config.parameters = assign_tag(charmm_tag, str)
+            #print(charmm_tag.list())
+            #for xml_params_filename in charmm_tag:
+            #    charmm_config.parameters.append(
+            #        assign_tag(xml_params_filename, str))
+        elif charmm_tag.tag == "box_vector":
+            charmm_config.box_vector = assign_tag(charmm_tag, str)
+            #print(charmm_config.box_vector)
         else:
             print("Warning: parameter in XML not found in "\
-                  "charmm tag. Spelling error?", 
+                  "charmm tag. Spelling error?",
                   charmm_tag.tag)
+
     return charmm_config
 
 def parse_gromacs_tag(input_files_tag):
