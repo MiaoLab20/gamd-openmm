@@ -266,7 +266,7 @@ class GamdSimulationFactory:
             gamdSimulation.platform = platform_name
 
         gamdSimulation.simulation.context.setPositions(positions.positions)
-        if box_vectors is not None:
+        if box_vectors is not None and config.input_files.charmm is None:
             gamdSimulation.simulation.context.setPeriodicBoxVectors(
                 *box_vectors)
         if config.run_minimization:
