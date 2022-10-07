@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 import openmm.unit as unit
+import openmm.app as openmm_app
 
 from gamd import utils as utils
 from gamd.DebugLogger import DebugLogger, NoOpDebugLogger
@@ -242,10 +243,14 @@ class Runner:
         traj_name = os.path.join(output_directory, 'output.%s' % extension)
         traj_append = restart
 
-        if traj_reporter:
+        if traj_reporter == openmm_app.DCDReporter:
             simulation.reporters.append(traj_reporter(
                 traj_name, self.config.outputs.reporting.coordinates_interval,
                 append=traj_append))
+        elif traj_reporter == openmm_app.PDBReporter:
+            simulation.reporters.append(traj_reporter(
+                traj_name, self.config.outputs.reporting.coordinates_interval))
+        
 
     def register_state_data_reporter(self, restart):
         if self.state_data_reporter_enabled:
