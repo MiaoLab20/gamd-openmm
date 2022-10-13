@@ -24,11 +24,15 @@ from gamd.langevin.total_boost_integrators import UpperBoundIntegrator as TotalB
 from gamd.stage_integrator import BoostType
 
 
-def set_all_forces_to_group(system):
-    group = 1
+def print_force_group_information(system):
+    for force in system.getForces():
+        print("Force:  ", force)
+        print("Force Group:  ", force.getForceGroup())
+
+
+def set_all_forces_to_group(system, group):
     for force in system.getForces():
         force.setForceGroup(group)
-    return group
 
 
 def set_dihedral_group(system):
@@ -190,6 +194,7 @@ class GamdIntegratorFactory:
     @staticmethod
     def get_integrator(boost_type_str, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave,
                        sigma0p=6.0 * unit.kilocalories_per_mole, sigma0d=6.0 * unit.kilocalories_per_mole):
+        set_all_forces_to_group(system, 0)
         result = []
         first_boost_type = BoostType.TOTAL
         second_boost_type = BoostType.DIHEDRAL
