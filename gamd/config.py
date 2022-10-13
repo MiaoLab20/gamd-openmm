@@ -30,12 +30,16 @@ class SystemConfig:
         self.nonbonded_method = "PME"
         self.nonbonded_cutoff = 0.9*unit.nanometer
         self.constraints = "HBonds"
+        self.switch_distance = 1.0*unit.nanometer
+        self.ewald_error_tolerance = 0.0005
         return
 
     def serialize(self, root):
         assign_tag(root, "nonbonded-method", self.nonbonded_method)
         assign_tag(root, "nonbonded-cutoff", self.nonbonded_cutoff.value_in_unit(unit.nanometers))
         assign_tag(root, "constraints", self.constraints)
+        assign_tag(root, "switch-distance", self.switch_distance.value_in_unit(unit.nanometers))
+        assign_tag(root, "ewald-error-tolerance", self.ewald_error_tolerance)
         return
 
 class BarostatConfig:
@@ -124,15 +128,16 @@ class CharmmConfig:
     def __init__(self):
         self.topology = ""
         self.coordinates = ""
+        self.coordinates_filetype = ""
         self.parameters = ""
-        self.box_vector = ""
+        self.box_vectors = []
         return
 
     def serialize(self, root):
         assign_tag(root, "topology", self.topology)
-        assign_tag(root, "coordinates", self.coordinates)
+        assign_tag(root, "coordinates", self.coordinates, {"type": self.coordinates_filetype})
         assign_tag(root, "parameters", self.parameters)
-        assign_tag(root, "box_vector", self.box_vector)
+        assign_tag(root, "box_vector", self.box_vectors)
         return
 
 class GromacsConfig:

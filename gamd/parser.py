@@ -71,6 +71,13 @@ def parse_system_tag(tag):
         elif system_tag.tag == "constraints":
             system_config.constraints \
                 = assign_tag(system_tag, str).lower()
+        elif system_tag.tag == "switch-distance":
+            system_config.switch_distance \
+                = assign_tag(system_tag, float, 
+                                  useunit=unit.nanometer)
+        elif system_tag.tag == "ewald-error-tolerance":
+            system_config.ewald_error_tolerance \
+                = assign_tag(system_tag, float)
         else:
             print("Warning: parameter in XML not found in system "\
                   "tag. Spelling error?", system_tag.tag)
@@ -185,20 +192,30 @@ def parse_charmm_tag(input_files_tag):
             charmm_config.topology = assign_tag(charmm_tag, str)
         elif charmm_tag.tag == "coordinates":
             charmm_config.coordinates = assign_tag(charmm_tag, str)
+            if "type" in charmm_tag.attrib:
+                type_attrib = charmm_tag.attrib["type"]
+                charmm_config.coordinates_filetype = type_attrib
+
+        elif charmm_tag.tag == "box_vectors":
+            vecA,vecB,vecC = charmm_tag.text.split()
+            charmm_config.box_vectors = [float(vecA), float(vecB), float(vecC)]
+
         elif charmm_tag.tag == "parameters":
-            charmm_config.parameters = assign_tag(charmm_tag, str)
-            #print(charmm_tag.list())
-            #for xml_params_filename in charmm_tag:
-            #    charmm_config.parameters.append(
-            #        assign_tag(xml_params_filename, str))
-        elif charmm_tag.tag == "box_vector":
-            charmm_config.box_vector = assign_tag(charmm_tag, str)
-            #print(charmm_config.box_vector)
+            # parsing list of parameter files like CHARMM-GUI does
+            extlist = ['rtf', 'prm', 'str']
+            parFiles = ()
+            for line in open(charmm_tag.text, 'r'):
+                if '!' in line: line = line.split('!')[0]
+                parfile = line.strip()
+                if len(parfile) != 0:
+                    ext = parfile.lower().split('.')[-1]
+                    if not ext in extlist: continue
+                    parFiles += ( parfile, )
+            charmm_config.parameters = parFiles
         else:
             print("Warning: parameter in XML not found in "\
-                  "charmm tag. Spelling error?",
+                  "charmm tag. Spelling error?", 
                   charmm_tag.tag)
-
     return charmm_config
 
 def parse_gromacs_tag(input_files_tag):

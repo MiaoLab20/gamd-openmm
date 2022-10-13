@@ -119,54 +119,37 @@ class GamdSimulationFactory:
 
         elif config.input_files.charmm is not None:
 
-            def read_toppar(filename):
-                extlist = ['rtf', 'prm', 'str']
-
-                parFiles = ()
-                for line in open(filename, 'r'):
-                    if '!' in line: line = line.split('!')[0]
-                    parfile = line.strip()
-                    if len(parfile) != 0:
-                        ext = parfile.lower().split('.')[-1]
-                        if not ext in extlist: continue
-                        parFiles += ( parfile, )
-
-                params = openmm_app.CharmmParameterSet( *parFiles )
-                return params
-
             def gen_box(psf, boxsize):
-
                 boxvectors = boxsize
-
                 boxlx = boxvectors[0]*unit.nanometer
                 boxly = boxvectors[1]*unit.nanometer
                 boxlz = boxvectors[2]*unit.nanometer
-
                 psf.setBox(boxlx, boxly, boxlz)
                 return psf
 
+            psf = openmm_app.CharmmPsfFile(config.input_files.charmm.topology)
+            if config.input_files.charmm.coordinates_filetype == "crd":
+                positions = openmm_app.CharmmCrdFile(config.input_files.charmm.coordinates)
+            elif config.input_files.charmm.coordinates_filetype == "pdb":
+                positions = openmm_app.PDBFile(config.input_files.charmm.coordinates)
+            else:
+                raise Exception("Invalid input type: %s. Allowed types are: "\
+                                "'crd' and 'pdb'.")
 
-
-            psf = openmm_app.CharmmPsfFile(
-                config.input_files.charmm.topology)
-            positions = openmm_app.CharmmCrdFile(config.input_files.charmm.coordinates)
-            box_vector = float(config.input_files.charmm.box_vector)
-            box_vectors = [box_vector, box_vector, box_vector]
-
-            psf = gen_box(psf, box_vectors)
-            toppar = config.input_files.charmm.parameters
-            charmm_params = read_toppar(toppar)
+            psf = gen_box(psf, config.input_files.charmm.box_vectors)
+            params = openmm_app.CharmmParameterSet(
+                *config.input_files.charmm.parameters)
 
             topology = psf
             gamdSimulation.system = psf.createSystem(
-                params=charmm_params,
+                params=params,
                 nonbondedMethod=nonbondedMethod,
                 nonbondedCutoff=config.system.nonbonded_cutoff,
-                switchDistance=1.0*unit.nanometer,
-                ewaldErrorTolerance = 0.0005,
+                switchDistance=config.system.switch_distance,
+                ewaldErrorTolerance = config.system.ewald_error_tolerance,
                 constraints=constraints)
-                
-	
+
+
         elif config.input_files.gromacs is not None:
             gro = openmm_app.GromacsGroFile(
                 config.input_files.gromacs.coordinates)
