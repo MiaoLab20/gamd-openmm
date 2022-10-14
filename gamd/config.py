@@ -129,8 +129,11 @@ class CharmmConfig:
         self.topology = ""
         self.coordinates = ""
         self.coordinates_filetype = ""
-        self.parameters = ""
+        self.parameters = []
         self.box_vectors = []
+        self.alpha = 90 * unit.degree
+        self.beta  = 90 * unit.degree
+        self.gamma = 90 * unit.degree
         return
 
     def serialize(self, root):

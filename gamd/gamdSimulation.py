@@ -118,25 +118,26 @@ class GamdSimulationFactory:
 
 
         elif config.input_files.charmm is not None:
-
-            def gen_box(psf, boxsize):
-                boxvectors = boxsize
-                boxlx = boxvectors[0]*unit.nanometer
-                boxly = boxvectors[1]*unit.nanometer
-                boxlz = boxvectors[2]*unit.nanometer
-                psf.setBox(boxlx, boxly, boxlz)
-                return psf
-
             psf = openmm_app.CharmmPsfFile(config.input_files.charmm.topology)
             if config.input_files.charmm.coordinates_filetype == "crd":
-                positions = openmm_app.CharmmCrdFile(config.input_files.charmm.coordinates)
+                positions = openmm_app.CharmmCrdFile(
+                                          config.input_files.charmm.coordinates)
             elif config.input_files.charmm.coordinates_filetype == "pdb":
-                positions = openmm_app.PDBFile(config.input_files.charmm.coordinates)
+                positions = openmm_app.PDBFile(
+                                          config.input_files.charmm.coordinates)
             else:
                 raise Exception("Invalid input type: %s. Allowed types are: "\
                                 "'crd' and 'pdb'.")
 
-            psf = gen_box(psf, config.input_files.charmm.box_vectors)
+            boxinfo = config.input_files.charmm.box_vectors
+            boxlx = boxinfo["a"]
+            boxly = boxinfo["b"]
+            boxlz = boxinfo["c"]
+            alpha = boxinfo["alpha"]
+            beta  = boxinfo["beta"]
+            gamma = boxinfo["gamma"]
+            psf.setBox(boxlx, boxly, boxlz, alpha, beta, gamma)
+
             params = openmm_app.CharmmParameterSet(
                 *config.input_files.charmm.parameters)
 
@@ -148,8 +149,7 @@ class GamdSimulationFactory:
                 switchDistance=config.system.switch_distance,
                 ewaldErrorTolerance = config.system.ewald_error_tolerance,
                 constraints=constraints)
-
-
+	
         elif config.input_files.gromacs is not None:
             gro = openmm_app.GromacsGroFile(
                 config.input_files.gromacs.coordinates)
