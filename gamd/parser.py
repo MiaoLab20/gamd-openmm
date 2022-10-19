@@ -198,6 +198,7 @@ def parse_charmm_tag(input_files_tag):
         elif charmm_tag.tag == "box-vectors":
             box_dict = {}
             for box_info in charmm_tag:
+                charmm_config.config_box_vector_defined = True
                 if box_info.tag in ["a", "b", "c"]:
                     box_dict[box_info.tag] = (assign_tag(box_info, float, 
                                                         useunit=unit.nanometer))
@@ -209,19 +210,6 @@ def parse_charmm_tag(input_files_tag):
                          "Accepted box-vector parameters are 'a', 'b', 'c', "\
                          "'alpha', 'beta' and 'gamma'." )
 
-            # if angles are not set, use default values
-            if "alpha" not in box_dict.keys():
-                box_dict["alpha"] = charmm_config.alpha
-            if "beta" not in box_dict.keys():
-                box_dict["beta"] = charmm_config.beta
-            if "gamma" not in box_dict.keys():
-                box_dict["gamma"] = charmm_config.beta
-            # raise Exception if any box vector is not defined
-            for boxlength in ["a", "b","c"]:
-                if boxlength not in box_dict.keys():
-                    raise Exception("box-vector 'a', 'b' and 'c' must be "\
-                    "defined! Missing parameter " + "'" + boxlength + "'.")
-
             charmm_config.box_vectors = box_dict
 
         elif charmm_tag.tag == "parameters":
@@ -230,22 +218,14 @@ def parse_charmm_tag(input_files_tag):
                 if "type" in xml_params_filename.attrib:
                     if xml_params_filename.attrib["type"] == "charmm-gui-toppar":
                         # parsing list of parameter files like CHARMM-GUI does
-                        extlist = ['rtf', 'prm', 'str']
-                        parFiles = ()
-                        for line in open(xml_params_filename.text, 'r'):
-                            if '!' in line: line = line.split('!')[0]
-                            parfile = line.strip()
-                            if len(parfile) != 0:
-                                ext = parfile.lower().split('.')[-1]
-                                if not ext in extlist: continue
-                                charmm_config.parameters.append(parfile)
+                        charmm_config.parse_charmm_gui_toppar(
+                        xml_params_filename)
                 else:
                     charmm_config.parameters.append(
                         assign_tag(xml_params_filename, str))
         else:
             print("Warning: parameter in XML not found in "\
-                  "charmm tag. Spelling error?", 
-                  charmm_tag.tag)
+                  "charmm tag. Spelling error?", charmm_tag.tag)
     return charmm_config
 
 def parse_gromacs_tag(input_files_tag):

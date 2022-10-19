@@ -129,15 +129,11 @@ class GamdSimulationFactory:
                 raise Exception("Invalid input type: %s. Allowed types are: "\
                                 "'crd' and 'pdb'.")
 
-            boxinfo = config.input_files.charmm.box_vectors
-            boxlx = boxinfo["a"]
-            boxly = boxinfo["b"]
-            boxlz = boxinfo["c"]
-            alpha = boxinfo["alpha"]
-            beta  = boxinfo["beta"]
-            gamma = boxinfo["gamma"]
-            psf.setBox(boxlx, boxly, boxlz, alpha, beta, gamma)
+            # Call a method to parse box vectors
+            if config.input_files.charmm.is_config_box_vector_defined:
+                psf.setBox(*config.input_files.charmm.get_box_vectors())
 
+            # Call a method to parse parameters files to be used
             params = openmm_app.CharmmParameterSet(
                 *config.input_files.charmm.parameters)
 

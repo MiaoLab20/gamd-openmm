@@ -134,6 +134,7 @@ class CharmmConfig:
         self.alpha = 90 * unit.degree
         self.beta  = 90 * unit.degree
         self.gamma = 90 * unit.degree
+        self.config_box_vector_defined = False
         return
 
     def serialize(self, root):
@@ -142,6 +143,40 @@ class CharmmConfig:
         assign_tag(root, "parameters", self.parameters)
         assign_tag(root, "box_vector", self.box_vectors)
         return
+
+    def parse_charmm_gui_toppar(self, xml_params_filename):
+        extlist = ['rtf', 'prm', 'str']
+        # inputfile is the toppar.str with the list of parameter files
+        for line in open(xml_params_filename.text, 'r'):
+            if '!' in line: line = line.split('!')[0]
+            parfile = line.strip()
+            if len(parfile) != 0:
+                ext = parfile.lower().split('.')[-1]
+                if not ext in extlist: continue
+                # Appending each file listed in inputfile to the existing 
+                # list of parameters files to be read
+                self.parameters.append(parfile)
+        return
+
+    def get_box_vectors(self):
+        errorMessage = "The box vectors were only partially defined. " \
+                   "Box lengths 'a', 'b', and 'c' must be present, along with "\
+                    "box angles 'alpha', 'beta' and 'gamma'."
+        if not self.is_whole_box_defined():
+            raise RuntimeError(errorMessage)
+        return [self.box_vectors["a"], self.box_vectors["b"],
+                self.box_vectors["c"],
+                self.alpha, self.beta, self.gamma]
+
+    def is_whole_box_defined(self):
+        box_props = ["a", "b", "c", "alpha", "beta", "gamma"]
+        result = True
+        for property in box_props:
+            result = result and property in self.box_vectors
+        return result
+
+    def is_config_box_vector_defined(self):
+        return self.config_box_vector_defined
 
 class GromacsConfig:
     def __init__(self):
