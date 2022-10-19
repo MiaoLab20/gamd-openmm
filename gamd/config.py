@@ -144,20 +144,6 @@ class CharmmConfig:
         assign_tag(root, "box_vector", self.box_vectors)
         return
 
-    def parse_charmm_gui_toppar(self, xml_params_filename):
-        extlist = ['rtf', 'prm', 'str']
-        # inputfile is the toppar.str with the list of parameter files
-        for line in open(xml_params_filename.text, 'r'):
-            if '!' in line: line = line.split('!')[0]
-            parfile = line.strip()
-            if len(parfile) != 0:
-                ext = parfile.lower().split('.')[-1]
-                if not ext in extlist: continue
-                # Appending each file listed in inputfile to the existing 
-                # list of parameters files to be read
-                self.parameters.append(parfile)
-        return
-
     def get_box_vectors(self):
         errorMessage = "The box vectors were only partially defined. " \
                    "Box lengths 'a', 'b', and 'c' must be present, along with "\

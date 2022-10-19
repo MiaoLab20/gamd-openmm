@@ -48,6 +48,21 @@ def assign_tag(tag, func, useunit=None):
         else:
             return None
 
+def parse_and_assign_charmm_gui_toppar_file(charmm_config, xml_params_filename):
+    extlist = ['rtf', 'prm', 'str']
+    parFiles = ()
+    # this input file lists a series of parameter files to be parsed. This is 
+    # the default approach used by CHARMM-GUI (in their toppar.str file)
+    for line in open(xml_params_filename.text, 'r'):
+        if '!' in line: line = line.split('!')[0]
+        parfile = line.strip()
+        if len(parfile) != 0:
+            ext = parfile.lower().split('.')[-1]
+            if not ext in extlist: continue
+            # Appending each file listed in inputfile to the existing 
+            # list of parameters files to be read
+            charmm_config.parameters.append(parfile)
+    return charmm_config
 
 class Parser:
     def __init__(self):
@@ -218,8 +233,8 @@ def parse_charmm_tag(input_files_tag):
                 if "type" in xml_params_filename.attrib:
                     if xml_params_filename.attrib["type"] == "charmm-gui-toppar":
                         # parsing list of parameter files like CHARMM-GUI does
-                        charmm_config.parse_charmm_gui_toppar(
-                        xml_params_filename)
+                        charmm_config = parse_and_assign_charmm_gui_toppar_file(
+                        charmm_config, xml_params_filename)
                 else:
                     charmm_config.parameters.append(
                         assign_tag(xml_params_filename, str))
