@@ -22,7 +22,7 @@ def assign_tag(root, tagname, value, attributes=None):
         xmlTag.text = str(value)
     for attribute in attributes:
         xmlTag.set(attribute, attributes[attribute])
-        
+
     return
 
 class SystemConfig:
@@ -30,12 +30,16 @@ class SystemConfig:
         self.nonbonded_method = "PME"
         self.nonbonded_cutoff = 0.9*unit.nanometer
         self.constraints = "HBonds"
+        self.switch_distance = 1.0*unit.nanometer
+        self.ewald_error_tolerance = 0.0005
         return
-    
+
     def serialize(self, root):
         assign_tag(root, "nonbonded-method", self.nonbonded_method)
         assign_tag(root, "nonbonded-cutoff", self.nonbonded_cutoff.value_in_unit(unit.nanometers))
         assign_tag(root, "constraints", self.constraints)
+        assign_tag(root, "switch-distance", self.switch_distance.value_in_unit(unit.nanometers))
+        assign_tag(root, "ewald-error-tolerance", self.ewald_error_tolerance)
         return
 
 class BarostatConfig:
@@ -43,7 +47,7 @@ class BarostatConfig:
         self.pressure = 1.0 * unit.bar
         self.frequency = 25
         return
-    
+
     def serialize(self, root):
         assign_tag(root, "pressure", self.pressure.value_in_unit(unit.bar))
         assign_tag(root, "frequency", self.frequency)
@@ -54,7 +58,7 @@ class IntegratorSigmaConfig:
         self.primary = 6.0 * unit.kilocalories_per_mole
         self.secondary = 6.0 * unit.kilocalories_per_mole
         return
-    
+
     def serialize(self, root):
         assign_tag(root, "primary", self.primary.value_in_unit(unit.kilocalories_per_mole))
         assign_tag(root, "secondary", self.secondary.value_in_unit(unit.kilocalories_per_mole))
@@ -70,7 +74,7 @@ class IntegratorNumberOfStepsConfig:
         self.total_simulation_length = 0
         self.averaging_window_interval = 0
         return
-    
+
     def serialize(self, root):
         assign_tag(root, "conventional-md-prep", self.conventional_md_prep)
         assign_tag(root, "conventional-md", self.conventional_md)
@@ -80,7 +84,7 @@ class IntegratorNumberOfStepsConfig:
         #assign_tag(root, "total-simulation-length", self.total_simulation_length)
         assign_tag(root, "averaging-window-interval", self.averaging_window_interval)
         return
-    
+
     def compute_total_simulation_length(self):
         self.total_simulation_length = self.conventional_md \
             + self.gamd_equilibration + self.gamd_production
@@ -95,7 +99,7 @@ class IntegratorConfig:
         self.friction_coefficient = 1.0 * unit.picoseconds ** -1
         self.number_of_steps = IntegratorNumberOfStepsConfig()
         return
-        
+
     def serialize(self, root):
         assign_tag(root, "algorithm", self.algorithm)
         assign_tag(root, "boost-type", self.boost_type)
@@ -114,27 +118,51 @@ class AmberConfig:
         self.coordinates = ""
         self.coordinates_filetype = ""
         return
-    
+
     def serialize(self, root):
         assign_tag(root, "topology", self.topology)
         assign_tag(root, "coordinates", self.coordinates, {"type": self.coordinates_filetype})
         return
 
-
 class CharmmConfig:
     def __init__(self):
         self.topology = ""
         self.coordinates = ""
+        self.coordinates_filetype = ""
         self.parameters = []
+        self.box_vectors = []
+        self.alpha = 90 * unit.degree
+        self.beta  = 90 * unit.degree
+        self.gamma = 90 * unit.degree
+        self.config_box_vector_defined = False
         return
-    
+
     def serialize(self, root):
         assign_tag(root, "topology", self.topology)
-        assign_tag(root, "coordinates", self.coordinates)
-        xmlParams = ET.SubElement(root, 'parameters')
-        for params_filename in self.parameters:
-            assign_tag(xmlParams, "file", params_filename)
+        assign_tag(root, "coordinates", self.coordinates, {"type": self.coordinates_filetype})
+        assign_tag(root, "parameters", self.parameters)
+        assign_tag(root, "box_vector", self.box_vectors)
         return
+
+    def get_box_vectors(self):
+        errorMessage = "The box vectors were only partially defined. " \
+                   "Box lengths 'a', 'b', and 'c' must be present, along with "\
+                    "box angles 'alpha', 'beta' and 'gamma'."
+        if not self.is_whole_box_defined():
+            raise RuntimeError(errorMessage)
+        return [self.box_vectors["a"], self.box_vectors["b"],
+                self.box_vectors["c"],
+                self.alpha, self.beta, self.gamma]
+
+    def is_whole_box_defined(self):
+        box_props = ["a", "b", "c", "alpha", "beta", "gamma"]
+        result = True
+        for property in box_props:
+            result = result and property in self.box_vectors
+        return result
+
+    def is_config_box_vector_defined(self):
+        return self.config_box_vector_defined
 
 class GromacsConfig:
     def __init__(self):
@@ -142,7 +170,7 @@ class GromacsConfig:
         self.coordinates = ""
         self.include_dir = ""
         return
-    
+
     def serialize(self, root):
         assign_tag(root, "topology", self.topology)
         assign_tag(root, "coordinates", self.coordinates)
@@ -155,7 +183,7 @@ class ForceFieldConfig:
         self.forcefield_list_native = []
         self.forcefield_list_external = []
         return
-    
+
     def serialize(self, root):
         assign_tag(root, "coordinates", self.coordinates)
         xmlForcefields = ET.SubElement(root, "forcefields")
@@ -174,7 +202,7 @@ class InputFilesConfig:
         self.gromacs = None
         self.forcefield = None
         return
-    
+
     def serialize(self, root):
         if self.amber is not None:
             xml_amber_tags = ET.SubElement(root, "amber")
@@ -198,13 +226,13 @@ class OutputsReportingConfig:
         self.restart_checkpoint_interval = 50000
         self.statistics_interval = 500
         return
-    
+
     def compute_chunk_size(self):
         gcd = np.gcd.reduce(
             [self.energy_interval, self.coordinates_interval,
              self.restart_checkpoint_interval, self.statistics_interval])
         return gcd
-    
+
     def serialize(self, root):
         xml_energy_tags = ET.SubElement(root, "energy")
         assign_tag(xml_energy_tags, "interval", self.energy_interval)
@@ -220,7 +248,7 @@ class OutputsConfig:
         self.overwrite_output = True
         self.reporting = OutputsReportingConfig()
         return
-    
+
     def serialize(self, root):
         assign_tag(root, "directory", self.directory)
         assign_tag(root, "overwrite-output", self.overwrite_output)
@@ -231,7 +259,7 @@ class OutputsConfig:
 class Config:
     def __init__(self):
         # set all the default values
-        
+
         self.temperature = 298.15 * unit.kelvin
         self.system = SystemConfig()
         self.barostat = None #BarostatConfig()
@@ -239,7 +267,7 @@ class Config:
         self.integrator = IntegratorConfig()
         self.input_files = InputFilesConfig()
         self.outputs = OutputsConfig()
-    
+
     def serialize(self, filename):
         root = ET.Element('gamd')
         assign_tag(root, "temperature", self.temperature.value_in_unit(unit.kelvin))
@@ -255,13 +283,13 @@ class Config:
         self.input_files.serialize(xml_input_files)
         xml_outputs = ET.SubElement(root, "outputs")
         self.outputs.serialize(xml_outputs)
-        
+
         xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(
             indent="    ")
         our_file=open(filename, 'w')
         our_file.write(xmlstr)
         our_file.close()
-        
+
 
 if __name__ == "__main__":
     pass

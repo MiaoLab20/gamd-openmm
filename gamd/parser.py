@@ -48,6 +48,21 @@ def assign_tag(tag, func, useunit=None):
         else:
             return None
 
+def parse_and_assign_charmm_gui_toppar_file(charmm_config, xml_params_filename):
+    extlist = ['rtf', 'prm', 'str']
+    parFiles = ()
+    # this input file lists a series of parameter files to be parsed. This is 
+    # the default approach used by CHARMM-GUI (in their toppar.str file)
+    for line in open(xml_params_filename.text, 'r'):
+        if '!' in line: line = line.split('!')[0]
+        parfile = line.strip()
+        if len(parfile) != 0:
+            ext = parfile.lower().split('.')[-1]
+            if not ext in extlist: continue
+            # Appending each file listed in inputfile to the existing 
+            # list of parameters files to be read
+            charmm_config.parameters.append(parfile)
+    return charmm_config
 
 class Parser:
     def __init__(self):
@@ -71,6 +86,13 @@ def parse_system_tag(tag):
         elif system_tag.tag == "constraints":
             system_config.constraints \
                 = assign_tag(system_tag, str).lower()
+        elif system_tag.tag == "switch-distance":
+            system_config.switch_distance \
+                = assign_tag(system_tag, float, 
+                                  useunit=unit.nanometer)
+        elif system_tag.tag == "ewald-error-tolerance":
+            system_config.ewald_error_tolerance \
+                = assign_tag(system_tag, float)
         else:
             print("Warning: parameter in XML not found in system "\
                   "tag. Spelling error?", system_tag.tag)
@@ -185,15 +207,40 @@ def parse_charmm_tag(input_files_tag):
             charmm_config.topology = assign_tag(charmm_tag, str)
         elif charmm_tag.tag == "coordinates":
             charmm_config.coordinates = assign_tag(charmm_tag, str)
+            if "type" in charmm_tag.attrib:
+                type_attrib = charmm_tag.attrib["type"]
+                charmm_config.coordinates_filetype = type_attrib
+        elif charmm_tag.tag == "box-vectors":
+            box_dict = {}
+            for box_info in charmm_tag:
+                charmm_config.config_box_vector_defined = True
+                if box_info.tag in ["a", "b", "c"]:
+                    box_dict[box_info.tag] = (assign_tag(box_info, float, 
+                                                        useunit=unit.nanometer))
+                elif box_info.tag in ["alpha", "beta", "gamma"]:
+                    box_dict[box_info.tag] = (assign_tag(box_info, float, 
+                                                        useunit=unit.degree))
+                else:
+                    raise Exception("Unkown parameter '" +box_info.tag+ "'. "\
+                         "Accepted box-vector parameters are 'a', 'b', 'c', "\
+                         "'alpha', 'beta' and 'gamma'." )
+
+            charmm_config.box_vectors = box_dict
+
         elif charmm_tag.tag == "parameters":
             charmm_config.parameters = []
             for xml_params_filename in charmm_tag:
-                charmm_config.parameters.append(
-                    assign_tag(xml_params_filename, str))
+                if "type" in xml_params_filename.attrib:
+                    if xml_params_filename.attrib["type"] == "charmm-gui-toppar":
+                        # parsing list of parameter files like CHARMM-GUI does
+                        charmm_config = parse_and_assign_charmm_gui_toppar_file(
+                        charmm_config, xml_params_filename)
+                else:
+                    charmm_config.parameters.append(
+                        assign_tag(xml_params_filename, str))
         else:
             print("Warning: parameter in XML not found in "\
-                  "charmm tag. Spelling error?", 
-                  charmm_tag.tag)
+                  "charmm tag. Spelling error?", charmm_tag.tag)
     return charmm_config
 
 def parse_gromacs_tag(input_files_tag):
