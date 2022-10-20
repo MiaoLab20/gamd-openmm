@@ -1,11 +1,11 @@
-'''
+"""
 Created on Oct 28, 2020
 
 Creates all OpenMM objects from Config() object that can be used in a
 GaMD simulation.
 
 @author: lvotapka
-'''
+"""
 import os
 
 import parmed
@@ -116,7 +116,6 @@ class GamdSimulationFactory:
                 nonbondedCutoff=config.system.nonbonded_cutoff,
                 constraints=constraints)
 
-
         elif config.input_files.charmm is not None:
             psf = openmm_app.CharmmPsfFile(config.input_files.charmm.topology)
             if config.input_files.charmm.coordinates_filetype == "crd":
@@ -145,7 +144,7 @@ class GamdSimulationFactory:
                 switchDistance=config.system.switch_distance,
                 ewaldErrorTolerance = config.system.ewald_error_tolerance,
                 constraints=constraints)
-	
+
         elif config.input_files.gromacs is not None:
             gro = openmm_app.GromacsGroFile(
                 config.input_files.gromacs.coordinates)
