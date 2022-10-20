@@ -1,11 +1,11 @@
-'''
+"""
 Created on Oct 28, 2020
 
 Define the Config, Parser, and ParserFactory objects for reading and storing
 GaMD simulation parameters.
 
 @author: lvotapka
-'''
+"""
 
 from __future__ import absolute_import
 import xml.etree.ElementTree as ET
@@ -48,6 +48,7 @@ def assign_tag(tag, func, useunit=None):
         else:
             return None
 
+
 def parse_and_assign_charmm_gui_toppar_file(charmm_config, xml_params_filename):
     extlist = ['rtf', 'prm', 'str']
     parFiles = ()
@@ -63,14 +64,6 @@ def parse_and_assign_charmm_gui_toppar_file(charmm_config, xml_params_filename):
             # list of parameters files to be read
             charmm_config.parameters.append(parfile)
     return charmm_config
-
-class Parser:
-    def __init__(self):
-        self.config = config.Config()
-    
-    @abstractmethod
-    def parse_file(self, filename):
-        raise NotImplementedError("must implement parse_file")
 
 
 def parse_system_tag(tag):
@@ -102,7 +95,6 @@ def parse_system_tag(tag):
 def parse_barostat_tag(tag):
     if len(tag) == 0:
         return None
-        
 
     barostat_config = config.BarostatConfig()
     for barostat_tag in tag:
@@ -243,6 +235,7 @@ def parse_charmm_tag(input_files_tag):
                   "charmm tag. Spelling error?", charmm_tag.tag)
     return charmm_config
 
+
 def parse_gromacs_tag(input_files_tag):
     gromacs_config = config.GromacsConfig()
     for gromacs_tag in input_files_tag:
@@ -341,6 +334,15 @@ def parse_outputs_tag(tag):
                   outputs_tag.tag)
             
     return outputs_config
+
+
+class Parser:
+    def __init__(self):
+        self.config = config.Config()
+
+    @abstractmethod
+    def parse_file(self, filename):
+        raise NotImplementedError("must implement parse_file")
 
 
 class XmlParser(Parser):
