@@ -1,11 +1,11 @@
-'''
+"""
 Created on Oct 29, 2020
 
 Represents a configuration for a GaMD run: all the settings provided by the
 user.
 
 @author: lvotapka
-'''
+"""
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -25,6 +25,7 @@ def assign_tag(root, tagname, value, attributes=None):
 
     return
 
+
 class SystemConfig:
     def __init__(self):
         self.nonbonded_method = "PME"
@@ -42,6 +43,7 @@ class SystemConfig:
         assign_tag(root, "ewald-error-tolerance", self.ewald_error_tolerance)
         return
 
+
 class BarostatConfig:
     def __init__(self):
         self.pressure = 1.0 * unit.bar
@@ -53,6 +55,7 @@ class BarostatConfig:
         assign_tag(root, "frequency", self.frequency)
         return
 
+
 class IntegratorSigmaConfig:
     def __init__(self):
         self.primary = 6.0 * unit.kilocalories_per_mole
@@ -63,6 +66,7 @@ class IntegratorSigmaConfig:
         assign_tag(root, "primary", self.primary.value_in_unit(unit.kilocalories_per_mole))
         assign_tag(root, "secondary", self.secondary.value_in_unit(unit.kilocalories_per_mole))
         return
+
 
 class IntegratorNumberOfStepsConfig:
     def __init__(self):
@@ -89,6 +93,7 @@ class IntegratorNumberOfStepsConfig:
         self.total_simulation_length = self.conventional_md \
             + self.gamd_equilibration + self.gamd_production
 
+
 class IntegratorConfig:
     def __init__(self):
         self.algorithm = "langevin"
@@ -112,6 +117,7 @@ class IntegratorConfig:
         self.number_of_steps.serialize(xml_number_of_steps_tags)
         return
 
+
 class AmberConfig:
     def __init__(self):
         self.topology = ""
@@ -123,6 +129,7 @@ class AmberConfig:
         assign_tag(root, "topology", self.topology)
         assign_tag(root, "coordinates", self.coordinates, {"type": self.coordinates_filetype})
         return
+
 
 class CharmmConfig:
     def __init__(self):
@@ -164,6 +171,7 @@ class CharmmConfig:
     def is_config_box_vector_defined(self):
         return self.config_box_vector_defined
 
+
 class GromacsConfig:
     def __init__(self):
         self.topology = ""
@@ -176,6 +184,7 @@ class GromacsConfig:
         assign_tag(root, "coordinates", self.coordinates)
         assign_tag(root, "include-dir", self.include_dir)
         return
+
 
 class ForceFieldConfig:
     def __init__(self):
@@ -194,6 +203,7 @@ class ForceFieldConfig:
         for external_filename in self.forcefield_list_external:
             assign_tag(xmlExternal, "file", external_filename)
         return
+
 
 class InputFilesConfig:
     def __init__(self):
@@ -217,6 +227,7 @@ class InputFilesConfig:
             xml_forcefield_tags = ET.SubElement(root, "forcefield")
             self.forcefield.serialize(xml_forcefield_tags)
         return
+
 
 class OutputsReportingConfig:
     def __init__(self):
@@ -242,6 +253,7 @@ class OutputsReportingConfig:
         assign_tag(xml_statistics_tags, "interval", self.statistics_interval)
         return
 
+
 class OutputsConfig:
     def __init__(self):
         self.directory = ""
@@ -255,6 +267,7 @@ class OutputsConfig:
         xml_reporting_tags = ET.SubElement(root, "reporting")
         self.reporting.serialize(xml_reporting_tags)
         return
+
 
 class Config:
     def __init__(self):
