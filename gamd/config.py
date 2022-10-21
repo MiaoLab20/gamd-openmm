@@ -138,10 +138,7 @@ class CharmmConfig:
         self.coordinates_filetype = ""
         self.parameters = []
         self.box_vectors = []
-        self.alpha = 90 * unit.degree
-        self.beta  = 90 * unit.degree
-        self.gamma = 90 * unit.degree
-        self.config_box_vector_defined = False
+        self.is_config_box_vector_defined = False
         return
 
     def serialize(self, root):
@@ -149,27 +146,8 @@ class CharmmConfig:
         assign_tag(root, "coordinates", self.coordinates, {"type": self.coordinates_filetype})
         assign_tag(root, "parameters", self.parameters)
         assign_tag(root, "box_vector", self.box_vectors)
+        assign_tag(root, "is_config_box_vector_defined", self.is_config_box_vector_defined)
         return
-
-    def get_box_vectors(self):
-        errorMessage = "The box vectors were only partially defined. " \
-                   "Box lengths 'a', 'b', and 'c' must be present, along with "\
-                    "box angles 'alpha', 'beta' and 'gamma'."
-        if not self.is_whole_box_defined():
-            raise RuntimeError(errorMessage)
-        return [self.box_vectors["a"], self.box_vectors["b"],
-                self.box_vectors["c"],
-                self.alpha, self.beta, self.gamma]
-
-    def is_whole_box_defined(self):
-        box_props = ["a", "b", "c", "alpha", "beta", "gamma"]
-        result = True
-        for property in box_props:
-            result = result and property in self.box_vectors
-        return result
-
-    def is_config_box_vector_defined(self):
-        return self.config_box_vector_defined
 
 
 class GromacsConfig:

@@ -250,7 +250,6 @@ class Runner:
         elif traj_reporter == openmm_app.PDBReporter:
             simulation.reporters.append(traj_reporter(
                 traj_name, self.config.outputs.reporting.coordinates_interval))
-        
 
     def register_state_data_reporter(self, restart):
         if self.state_data_reporter_enabled:

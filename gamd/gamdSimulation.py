@@ -128,11 +128,12 @@ class GamdSimulationFactory:
                 raise Exception("Invalid input type: %s. Allowed types are: "\
                                 "'crd' and 'pdb'.")
 
-            # Call a method to parse box vectors
+            # if a custom set of box vectors were defined in the configuration file,
+            # then we need to set it in the psf object prior to system creation
+            # from the psf object.
             if config.input_files.charmm.is_config_box_vector_defined:
-                psf.setBox(*config.input_files.charmm.get_box_vectors())
+                psf.setBox(*config.input_files.charmm.box_vectors)
 
-            # Call a method to parse parameters files to be used
             params = openmm_app.CharmmParameterSet(
                 *config.input_files.charmm.parameters)
 
@@ -244,6 +245,12 @@ class GamdSimulationFactory:
             gamdSimulation.platform = platform_name
 
         gamdSimulation.simulation.context.setPositions(positions.positions)
+        #
+        # If this isn't a charmm configuration, but box vectors were defined,
+        # then we can setup the box vectors after the simulation
+        # object has been created.  (charmm psf requires it prior to the
+        # simulation creation.)
+        #
         if box_vectors is not None and config.input_files.charmm is None:
             gamdSimulation.simulation.context.setPeriodicBoxVectors(
                 *box_vectors)

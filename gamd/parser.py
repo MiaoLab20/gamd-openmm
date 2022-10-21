@@ -87,7 +87,7 @@ def parse_system_tag(tag):
             system_config.ewald_error_tolerance \
                 = assign_tag(system_tag, float)
         else:
-            print("Warning: parameter in XML not found in system "\
+            print("Warning: parameter in XML not found in system "
                   "tag. Spelling error?", system_tag.tag)
     return system_config
 
@@ -106,7 +106,7 @@ def parse_barostat_tag(tag):
             barostat_config.frequency \
                 = assign_tag(barostat_tag, int)
         else:
-            print("Warning: parameter in XML not found in "\
+            print("Warning: parameter in XML not found in "
                   "barostat tag. Spelling error?", barostat_tag.tag)
     return barostat_config
 
@@ -129,7 +129,7 @@ def parse_integrator_tag(tag):
                     integrator_config.sigma0.secondary = assign_tag(
                         sigma0_tag, float, useunit=unit.kilocalories_per_mole)
                 else:
-                    print("Warning: parameter in XML not found in sigma0 tag. "\
+                    print("Warning: parameter in XML not found in sigma0 tag. "
                           "Spelling error?", sigma0_tag.tag)
         elif integrator_tag.tag == "random-seed":
             integrator_config.random_seed = assign_tag(integrator_tag, int)
@@ -165,11 +165,11 @@ def parse_integrator_tag(tag):
                         .averaging_window_interval \
                         = assign_tag(number_steps_tag, int)
                 else:
-                    print("Warning: parameter in XML not found in "\
+                    print("Warning: parameter in XML not found in "
                           "number-of-steps tag. Spelling error?", 
                           number_steps_tag.tag)
         else:
-            print("Warning: parameter in XML not found in "\
+            print("Warning: parameter in XML not found in "
                   "integrator tag. Spelling error?", 
                   integrator_tag.tag)
             
@@ -187,9 +187,37 @@ def parse_amber_tag(input_files_tag):
                 type_attrib = amber_tag.attrib["type"]
                 amber_config.coordinates_filetype = type_attrib
         else:
-            print("Warning: parameter in XML not found in amber tag. "\
+            print("Warning: parameter in XML not found in amber tag. "
                   "Spelling error?", amber_tag.tag)
     return amber_config
+
+
+def parse_charmm_box_vectors(charmm_config, charmm_tag):
+    box = {}
+    for box_info in charmm_tag:
+        if box_info.tag in ["a", "b", "c"]:
+            box[box_info.tag] = (assign_tag(box_info, float,
+                                                 useunit=unit.nanometer))
+        elif box_info.tag in ["alpha", "beta", "gamma"]:
+            box[box_info.tag] = (assign_tag(box_info, float,
+                                                 useunit=unit.degree))
+        else:
+            raise RuntimeError("Unkown parameter '" + box_info.tag + "'. "
+                               "Accepted box-vector parameters are 'a', 'b', 'c',"
+                               "'alpha', 'beta' and 'gamma'.")
+
+    box_props = ["a", "b", "c", "alpha", "beta", "gamma"]
+    is_whole_box_defined = True
+    for property in box_props:
+        is_whole_box_defined = is_whole_box_defined and property in box
+
+    if is_whole_box_defined:
+        charmm_config.box_vectors = [box["a"], box["b"], box["c"],
+                                     box["alpha"], box["beta"], box["gamma"]]
+        charmm_config.is_config_box_vector_defined = True
+    else:
+        raise RuntimeError("Box-vector parameters a,b,c,alpha,beta, "
+                           "and gamma must all be defined in the configuration file.")
 
 
 def parse_charmm_tag(input_files_tag):
@@ -203,22 +231,7 @@ def parse_charmm_tag(input_files_tag):
                 type_attrib = charmm_tag.attrib["type"]
                 charmm_config.coordinates_filetype = type_attrib
         elif charmm_tag.tag == "box-vectors":
-            box_dict = {}
-            for box_info in charmm_tag:
-                charmm_config.config_box_vector_defined = True
-                if box_info.tag in ["a", "b", "c"]:
-                    box_dict[box_info.tag] = (assign_tag(box_info, float, 
-                                                        useunit=unit.nanometer))
-                elif box_info.tag in ["alpha", "beta", "gamma"]:
-                    box_dict[box_info.tag] = (assign_tag(box_info, float, 
-                                                        useunit=unit.degree))
-                else:
-                    raise Exception("Unkown parameter '" +box_info.tag+ "'. "\
-                         "Accepted box-vector parameters are 'a', 'b', 'c', "\
-                         "'alpha', 'beta' and 'gamma'." )
-
-            charmm_config.box_vectors = box_dict
-
+            parse_charmm_box_vectors(charmm_config, charmm_tag)
         elif charmm_tag.tag == "parameters":
             charmm_config.parameters = []
             for xml_params_filename in charmm_tag:
@@ -247,7 +260,7 @@ def parse_gromacs_tag(input_files_tag):
             gromacs_config.include_dir = \
                 assign_tag(gromacs_tag, str)
         else:
-            print("Warning: parameter in XML not found in gromacs tag. "\
+            print("Warning: parameter in XML not found in gromacs tag. "
                   "Spelling error?", gromacs_tag.tag)
     return gromacs_config
 
@@ -272,11 +285,11 @@ def parse_forcefield_tag(input_files_tag):
                         forcefield_config.forcefield_list_external.append(
                             assign_tag(file_tag, str))
                 else:
-                    print("Warning: parameter in XML not found in forcefields "\
+                    print("Warning: parameter in XML not found in forcefields "
                           "tag. Spelling error?", forcefields_tag.tag)
                 
         else:
-            print("Warning: parameter in XML not found in forcefield tag. "\
+            print("Warning: parameter in XML not found in forcefield tag. "
                   "Spelling error?", forcefield_tag.tag)
     
     return forcefield_config
@@ -297,7 +310,7 @@ def parse_outputs_tag(tag):
                             outputs_config.reporting.energy_interval \
                                 = assign_tag(energy_tag, int)
                         else:
-                            print("Warning: parameter in XML not found in "\
+                            print("Warning: parameter in XML not found in "
                                   "energy tag. Spelling error?", energy_tag.tag)
                 
                 elif reporting_tag.tag == "coordinates":
@@ -306,7 +319,7 @@ def parse_outputs_tag(tag):
                             outputs_config.reporting.coordinates_file_type \
                                 = assign_tag(coordinates_tag, str).lower()
                         else:
-                            print("Warning: parameter in XML not found in "\
+                            print("Warning: parameter in XML not found in "
                                   "coordinates tag. Spelling error?", 
                                   coordinates_tag.tag)
                 
@@ -321,15 +334,15 @@ def parse_outputs_tag(tag):
                                 = assign_tag(statistics_tag, int)
                         
                         else:
-                            print("Warning: parameter in XML not found in "\
+                            print("Warning: parameter in XML not found in "
                                   "statistics tag. Spelling error?", 
                                   statistics_tag.tag)
                 else:
-                    print("Warning: parameter in XML not found in "\
+                    print("Warning: parameter in XML not found in "
                           "reporting tag. Spelling error?", 
                           reporting_tag.tag)
         else:
-            print("Warning: parameter in XML not found in "\
+            print("Warning: parameter in XML not found in "
                   "outputs tag. Spelling error?", 
                   outputs_tag.tag)
             
@@ -413,7 +426,7 @@ class XmlParser(Parser):
                 self.config.outputs = parse_outputs_tag(tag)
             
             else:
-                print("Warning: parameter in XML not found in config. "\
+                print("Warning: parameter in XML not found in config. "
                       "Spelling error?", tag.tag)
         
         self.config.integrator.number_of_steps.compute_total_simulation_length()
