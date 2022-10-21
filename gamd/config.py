@@ -144,9 +144,17 @@ class CharmmConfig:
     def serialize(self, root):
         assign_tag(root, "topology", self.topology)
         assign_tag(root, "coordinates", self.coordinates, {"type": self.coordinates_filetype})
-        assign_tag(root, "parameters", self.parameters)
-        assign_tag(root, "box_vector", self.box_vectors)
-        assign_tag(root, "is_config_box_vector_defined", self.is_config_box_vector_defined)
+        parameters_tag = ET.SubElement(root, "parameters")
+        for parameter in self.parameters:
+            assign_tag(parameters_tag, "parameters", parameter)
+        box_vector_tag = ET.SubElement(root, "box-vectors")
+        assign_tag(box_vector_tag, "a", self.box_vectors[0].value_in_unit(unit.nanometer))
+        assign_tag(box_vector_tag, "b", self.box_vectors[1].value_in_unit(unit.nanometer))
+        assign_tag(box_vector_tag, "c", self.box_vectors[2].value_in_unit(unit.nanometer))
+        assign_tag(box_vector_tag, "alpha", self.box_vectors[3].value_in_unit(unit.degree))
+        assign_tag(box_vector_tag, "beta", self.box_vectors[4].value_in_unit(unit.degree))
+        assign_tag(box_vector_tag, "gamma", self.box_vectors[5].value_in_unit(unit.degree))
+
         return
 
 
