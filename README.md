@@ -83,4 +83,4 @@ providing feedback, bug reports, or other comments.
 
 If you use GaMD-OpenMM, please cite the following paper:
 
-* <ins>Copeland, M., Do, HN,</ins> Votapka, L., Joshi, K., Wang, J., Amaro, R., and Miao, Y.* (2022) Gaussian accelerated molecular dynamics in OpenMM. The Journal of Physical Chemistry B. In Review. 
+* <ins>Copeland, M.M., Do, HN,</ins> Votapka, L., Joshi, K., Wang, J., Amaro, R., and Miao, Y.* (2022) Gaussian accelerated molecular dynamics in OpenMM. Journal of Physical Chemistry B, 126(31): 5810–5820.
