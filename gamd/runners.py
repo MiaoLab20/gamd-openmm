@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 
+import mdtraj
 import openmm.unit as unit
 import openmm.app as openmm_app
 
@@ -248,6 +249,9 @@ class Runner:
                 traj_name, self.config.outputs.reporting.coordinates_interval,
                 append=traj_append))
         elif traj_reporter == openmm_app.PDBReporter:
+            simulation.reporters.append(traj_reporter(
+                traj_name, self.config.outputs.reporting.coordinates_interval))
+        elif traj_reporter == mdtraj.reporters.HDF5Reporter:
             simulation.reporters.append(traj_reporter(
                 traj_name, self.config.outputs.reporting.coordinates_interval))
 
