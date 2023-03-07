@@ -122,27 +122,61 @@ class GamdSimulationFactory:
 
 
 
-    def createGamdSimulation(self, config, platform_name, device_index):
+    @staticmethod
+    def create_amber_simulation(config, need_box,
+                                nonbonded_method,
+                                constraints):
+        pass
+
+    @staticmethod
+    def create_charmm_simulation(config,
+                                 nonbonded_method,
+                                 constraints):
+        pass
+
+    @staticmethod
+    def create_gromacs_simulation(config, nonbonded_method, constraints):
+        pass
+
+    @staticmethod
+    def create_forcefield_simulation(config, need_box,
+                                     nonbonded_method,
+                                     constraints):
+        pass
+
+    @staticmethod
+    def get_nonbonded_method(config):
+        result = None
         need_box = True
-        if config.system.nonbonded_method == "pme":
-            nonbondedMethod = openmm_app.PME
-
-        elif config.system.nonbonded_method == "nocutoff":
-            nonbondedMethod = openmm_app.NoCutoff
+        method_str = config.system.nonbonded_method
+        if method_str == "pme":
+            result = openmm_app.PME
+        elif method_str == "nocutoff":
+            result = openmm_app.NoCutoff
             need_box = False
-
-        elif config.system.nonbonded_method == "cutoffnonperiodic":
-            nonbondedMethod = openmm_app.CutoffNonPeriodic
-
-        elif config.system.nonbonded_method == "cutoffperiodic":
-            nonbondedMethod = openmm_app.CutoffPeriodic
-
-        elif config.system.nonbonded_method == "ewald":
-            nonbondedMethod = openmm_app.Ewald
-
+        elif method_str == "cutoffnonperiodic":
+            result = openmm_app.CutoffNonPeriodic
+        elif method_str == "cutoffperiodic":
+            result = openmm_app.CutoffPeriodic
+        elif method_str == "ewald":
+            result = openmm_app.Ewald
         else:
             raise Exception("nonbonded method not found: %s",
-                            config.system.nonbonded_method)
+                            method_str)
+
+        return result, need_box
+
+    @staticmethod
+    def get_constraints(config):
+        pass
+
+
+    def _handle_inputs(self, config, need_box, nonbonded_method, constraints):
+        pass
+
+
+    def createGamdSimulation(self, config, platform_name, device_index):
+        nonbonded_method, need_box = self.get_nonbonded_method(config)
 
         if config.system.constraints == "none" \
                 or config.system.constraints is None:
