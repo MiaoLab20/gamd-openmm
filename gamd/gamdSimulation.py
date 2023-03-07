@@ -96,6 +96,32 @@ class GamdSimulationFactory:
                 config.barostat.frequency)
             gamd_simulation.system.addForce(barostat)
 
+
+    @staticmethod
+    def configure_gamd_langevin_integrator(config, gamd_simulation):
+        boost_type_str = config.integrator.boost_type
+        gamdIntegratorFactory = GamdIntegratorFactory()
+        result = gamdIntegratorFactory.get_integrator(
+            boost_type_str, gamd_simulation.system, config.temperature,
+            config.integrator.dt,
+            config.integrator.number_of_steps.conventional_md_prep,
+            config.integrator.number_of_steps.conventional_md,
+            config.integrator.number_of_steps.gamd_equilibration_prep,
+            config.integrator.number_of_steps.gamd_equilibration,
+            config.integrator.number_of_steps.total_simulation_length,
+            config.integrator.number_of_steps.averaging_window_interval,
+            sigma0p=config.integrator.sigma0.primary,
+            sigma0d=config.integrator.sigma0.secondary)
+        [gamd_simulation.first_boost_group,
+         gamd_simulation.second_boost_group,
+         integrator, gamd_simulation.first_boost_type,
+         gamd_simulation.second_boost_type] = result
+        integrator.setRandomNumberSeed(config.integrator.random_seed)
+        integrator.setFriction(config.integrator.friction_coefficient)
+        gamd_simulation.integrator = integrator
+
+
+
     def createGamdSimulation(self, config, platform_name, device_index):
         need_box = True
         if config.system.nonbonded_method == "pme":
@@ -223,27 +249,8 @@ class GamdSimulationFactory:
                             "not made.")
 
         if config.integrator.algorithm == "langevin":
-            boost_type_str = config.integrator.boost_type
-            gamdIntegratorFactory = GamdIntegratorFactory()
-            result = gamdIntegratorFactory.get_integrator(
-                boost_type_str, gamdSimulation.system, config.temperature,
-                config.integrator.dt,
-                config.integrator.number_of_steps.conventional_md_prep,
-                config.integrator.number_of_steps.conventional_md,
-                config.integrator.number_of_steps.gamd_equilibration_prep,
-                config.integrator.number_of_steps.gamd_equilibration,
-                config.integrator.number_of_steps.total_simulation_length,
-                config.integrator.number_of_steps.averaging_window_interval,
-                sigma0p=config.integrator.sigma0.primary,
-                sigma0d=config.integrator.sigma0.secondary)
-            [gamdSimulation.first_boost_group,
-             gamdSimulation.second_boost_group,
-             integrator, gamdSimulation.first_boost_type,
-             gamdSimulation.second_boost_type] = result
-            integrator.setRandomNumberSeed(config.integrator.random_seed)
-            integrator.setFriction(config.integrator.friction_coefficient)
-            gamdSimulation.integrator = integrator
-
+            self.configure_gamd_langevin_integrator(config,
+                                                    gamdSimulation)
         else:
             raise Exception("Algorithm not implemented:",
                             config.integrator.algorithm)
