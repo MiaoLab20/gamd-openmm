@@ -315,7 +315,17 @@ class GamdSimulationFactory:
 
         return gamd_simulation, topology, positions, box_vectors
 
+    @staticmethod
+    def configure_trajectory_reporting(config, gamd_simulation):
+        if config.outputs.reporting.coordinates_file_type == "dcd":
+            gamd_simulation.traj_reporter = openmm_app.DCDReporter
 
+        elif config.outputs.reporting.coordinates_file_type == "pdb":
+            gamd_simulation.traj_reporter = openmm_app.PDBReporter
+
+        else:
+            raise Exception("Reporter type not found:",
+                            config.outputs.reporting.coordinates_file_type)
 
     def createGamdSimulation(self, config, platform_name, device_index):
         nonbonded_method, need_box = self.get_nonbonded_method(config)
@@ -357,16 +367,7 @@ class GamdSimulationFactory:
             gamd_simulation.simulation.minimizeEnergy()
 
         simulation.context.setVelocitiesToTemperature(config.temperature)
-
-        if config.outputs.reporting.coordinates_file_type == "dcd":
-            gamd_simulation.traj_reporter = openmm_app.DCDReporter
-
-        elif config.outputs.reporting.coordinates_file_type == "pdb":
-            gamd_simulation.traj_reporter = openmm_app.PDBReporter
-
-        else:
-            raise Exception("Reporter type not found:",
-                            config.outputs.reporting.coordinates_file_type)
+        self.configure_trajectory_reporting(config, gamd_simulation)
     
         return gamd_simulation
 
