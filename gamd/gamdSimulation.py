@@ -168,7 +168,21 @@ class GamdSimulationFactory:
 
     @staticmethod
     def get_constraints(config):
-        pass
+        result = None
+        constraints_str = config.system.constraints
+        if constraints_str == "none" or constraints_str is None:
+            result = None
+        elif constraints_str == "hbonds":
+            result = openmm_app.HBonds
+        elif constraints_str == "allbonds":
+            result = openmm_app.AllBonds
+        elif constraints_str == "hangles":
+            result = openmm_app.HAngles
+        else:
+            raise Exception("constraints not found: %s",
+                            constraints_str)
+
+        return result
 
 
     def _handle_inputs(self, config, need_box, nonbonded_method, constraints):
@@ -177,23 +191,7 @@ class GamdSimulationFactory:
 
     def createGamdSimulation(self, config, platform_name, device_index):
         nonbonded_method, need_box = self.get_nonbonded_method(config)
-
-        if config.system.constraints == "none" \
-                or config.system.constraints is None:
-            constraints = None
-
-        elif config.system.constraints == "hbonds":
-            constraints = openmm_app.HBonds
-
-        elif config.system.constraints == "allbonds":
-            constraints = openmm_app.AllBonds
-
-        elif config.system.constraints == "hangles":
-            constraints = openmm_app.HAngles
-
-        else:
-            raise Exception("constraints not found: %s",
-                            config.system.constraints)
+        constraints = self.get_constraints(config)
 
         box_vectors = None
         gamdSimulation = GamdSimulation()
