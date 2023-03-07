@@ -121,28 +121,115 @@ class GamdSimulationFactory:
         gamd_simulation.integrator = integrator
 
 
-
     @staticmethod
     def create_amber_simulation(config, need_box,
                                 nonbonded_method,
                                 constraints):
-        pass
+        box_vectors = None
+        gamd_simulation = GamdSimulation()
+        prmtop = openmm_app.AmberPrmtopFile(
+            config.input_files.amber.topology)
+        topology = prmtop
+        if config.input_files.amber.coordinates_filetype in ["inpcrd",
+                                                             "rst7"]:
+            positions = openmm_app.AmberInpcrdFile(
+                config.input_files.amber.coordinates)
+            box_vectors = positions.boxVectors
+        elif config.input_files.amber.coordinates_filetype == "pdb":
+            pdb_coords_filename = config.input_files.amber.coordinates
+            positions, box_vectors = load_pdb_positions_and_box_vectors(
+                pdb_coords_filename, need_box)
+        else:
+            raise Exception("Invalid input type: %s. Allowed types are: " \
+                            "'pdb' and 'rst7'/'inpcrd'.")
+        gamd_simulation.system = prmtop.createSystem(
+            nonbondedMethod=nonbondedMethod,
+            nonbondedCutoff=config.system.nonbonded_cutoff,
+            constraints=constraints)
+
+        return gamd_simulation, topology, positions, box_vectors
 
     @staticmethod
     def create_charmm_simulation(config,
                                  nonbonded_method,
                                  constraints):
-        pass
+        box_vecotrs = None
+        gamd_simulation = GamdSimulation()
+        psf = openmm_app.CharmmPsfFile(config.input_files.charmm.topology)
+
+        if config.input_files.charmm.coordinates_filetype == "crd":
+            positions = openmm_app.CharmmCrdFile(
+                config.input_files.charmm.coordinates)
+        elif config.input_files.charmm.coordinates_filetype == "pdb":
+            positions = openmm_app.PDBFile(
+                config.input_files.charmm.coordinates)
+        else:
+            raise Exception("Invalid input type: %s. Allowed types are: " \
+                            "'crd' and 'pdb'.")
+
+        # if a custom set of box vectors were defined in the configuration file,
+        # then we need to set it in the psf object prior to system creation
+        # from the psf object.
+        if config.input_files.charmm.is_config_box_vector_defined:
+            psf.setBox(*config.input_files.charmm.box_vectors)
+
+        params = openmm_app.CharmmParameterSet(
+            *config.input_files.charmm.parameters)
+
+        topology = psf
+        gamd_simulation.system = psf.createSystem(
+            params=params,
+            nonbondedMethod=nonbondedMethod,
+            nonbondedCutoff=config.system.nonbonded_cutoff,
+            switchDistance=config.system.switch_distance,
+            ewaldErrorTolerance=config.system.ewald_error_tolerance,
+            constraints=constraints)
+
+        return gamd_simulation, topology, positions, box_vectors
 
     @staticmethod
     def create_gromacs_simulation(config, nonbonded_method, constraints):
-        pass
+        gamd_simulation = GamdSimulation()
+        gro = openmm_app.GromacsGroFile(
+            config.input_files.gromacs.coordinates)
+        top = openmm_app.GromacsTopFile(
+            config.input_files.gromacs.topology,
+            periodicBoxVectors=gro.getPeriodicBoxVectors(),
+            includeDir=config.input_files.gromacs.include_dir)
+        box_vectors = gro.getPeriodicBoxVectors()
+        topology = top
+        positions = gro
+        gamd_simulation.system = top.createSystem(
+            nonbondedMethod=nonbonded_method,
+            nonbondedCutoff=config.system.nonbonded_cutoff,
+            constraints=constraints)
+
+        return gamd_simulation, topology, positions, box_vectors
 
     @staticmethod
     def create_forcefield_simulation(config, need_box,
                                      nonbonded_method,
                                      constraints):
-        pass
+        gamd_simulation = GamdSimulation()
+        coords_filename = config.input_files.forcefield.coordinates
+
+        positions, box_vectors = load_pdb_positions_and_box_vectors(
+            coords_filename, need_box)
+
+        forcefield_filenames \
+            = config.input_files.forcefield.forcefield_list_native \
+              + config.input_files.forcefield.forcefield_list_external
+
+        forcefield = openmm_app.ForceField(*forcefield_filenames)
+        topology = positions
+        gamd_simulation.system = forcefield.createSystem(
+            topology.topology,
+            nonbondedMethod=nonbondedMethod,
+            nonbondedCutoff=config.system.nonbonded_cutoff,
+            constraints=constraints)
+
+        return gamd_simulation, topology, positions, box_vectors
+
 
     @staticmethod
     def get_nonbonded_method(config):
@@ -186,112 +273,76 @@ class GamdSimulationFactory:
 
 
     def _handle_inputs(self, config, need_box, nonbonded_method, constraints):
-        pass
+        gamd_simulation = None
+        topology = None
+        positions = None
+        box_vectors = None
+        if config.input_files.amber is not None:
+            gamd_simulation, \
+                topology, \
+                positions, \
+                box_vectors = self.create_amber_simulation(config,
+                                                           need_box,
+                                                           nonbonded_method,
+                                                           constraints)
+        elif config.input_files.charmm is not None:
+            gamd_simulation, \
+                topology, \
+                positions, \
+                box_vectors = self.create_charmm_simulation(config,
+                                                            nonbonded_method,
+                                                            constraints)
+
+        elif config.input_files.gromacs is not None:
+            gamd_simulation, \
+                topology, \
+                positions, \
+                box_vectors = self.create_gromacs_simulation(config,
+                                                             nonbonded_method,
+                                                             constraints)
+
+        elif config.input_files.forcefield is not None:
+            gamd_simulation, \
+                topology, \
+                positions, \
+                box_vectors = self.create_forcefield_simulation(config,
+                                                           need_box,
+                                                           nonbonded_method,
+                                                           constraints)
+        else:
+            raise Exception("No valid input files found. OpenMM simulation "
+                            "not made.")
+
+        return gamd_simulation, topology, positions, box_vectors
+
 
 
     def createGamdSimulation(self, config, platform_name, device_index):
         nonbonded_method, need_box = self.get_nonbonded_method(config)
         constraints = self.get_constraints(config)
 
-        box_vectors = None
-        gamdSimulation = GamdSimulation()
-        if config.input_files.amber is not None:
-            prmtop = openmm_app.AmberPrmtopFile(
-                config.input_files.amber.topology)
-            topology = prmtop
-            if config.input_files.amber.coordinates_filetype in ["inpcrd",
-                                                                 "rst7"]:
-                positions = openmm_app.AmberInpcrdFile(
-                    config.input_files.amber.coordinates)
-                box_vectors = positions.boxVectors
-            elif config.input_files.amber.coordinates_filetype == "pdb":
-                pdb_coords_filename = config.input_files.amber.coordinates
-                positions, box_vectors = load_pdb_positions_and_box_vectors(
-                    pdb_coords_filename, need_box)
-            else:
-                raise Exception("Invalid input type: %s. Allowed types are: "\
-                                "'pdb' and 'rst7'/'inpcrd'.")
-            gamdSimulation.system = prmtop.createSystem(
-                nonbondedMethod=nonbondedMethod,
-                nonbondedCutoff=config.system.nonbonded_cutoff,
-                constraints=constraints)
-
-        elif config.input_files.charmm is not None:
-            psf = openmm_app.CharmmPsfFile(config.input_files.charmm.topology)
-            if config.input_files.charmm.coordinates_filetype == "crd":
-                positions = openmm_app.CharmmCrdFile(
-                                          config.input_files.charmm.coordinates)
-            elif config.input_files.charmm.coordinates_filetype == "pdb":
-                positions = openmm_app.PDBFile(
-                                          config.input_files.charmm.coordinates)
-            else:
-                raise Exception("Invalid input type: %s. Allowed types are: "\
-                                "'crd' and 'pdb'.")
-
-            # if a custom set of box vectors were defined in the configuration file,
-            # then we need to set it in the psf object prior to system creation
-            # from the psf object.
-            if config.input_files.charmm.is_config_box_vector_defined:
-                psf.setBox(*config.input_files.charmm.box_vectors)
-
-            params = openmm_app.CharmmParameterSet(
-                *config.input_files.charmm.parameters)
-
-            topology = psf
-            gamdSimulation.system = psf.createSystem(
-                params=params,
-                nonbondedMethod=nonbondedMethod,
-                nonbondedCutoff=config.system.nonbonded_cutoff,
-                switchDistance=config.system.switch_distance,
-                ewaldErrorTolerance = config.system.ewald_error_tolerance,
-                constraints=constraints)
-
-        elif config.input_files.gromacs is not None:
-            gro = openmm_app.GromacsGroFile(
-                config.input_files.gromacs.coordinates)
-            top = openmm_app.GromacsTopFile(
-                config.input_files.gromacs.topology,
-                periodicBoxVectors=gro.getPeriodicBoxVectors(),
-                includeDir=config.input_files.gromacs.include_dir)
-            box_vectors = gro.getPeriodicBoxVectors()
-            topology = top
-            positions = gro
-            gamdSimulation.system = top.createSystem(
-                nonbondedMethod=nonbondedMethod,
-                nonbondedCutoff=config.system.nonbonded_cutoff,
-                constraints=constraints)
-
-        elif config.input_files.forcefield is not None:
-            pdb_coords_filename = config.input_files.forcefield.coordinates
-            positions, box_vectors = load_pdb_positions_and_box_vectors(
-                pdb_coords_filename, need_box)
-            forcefield_filenames \
-                = config.input_files.forcefield.forcefield_list_native \
-                + config.input_files.forcefield.forcefield_list_external
-            forcefield = openmm_app.ForceField(*forcefield_filenames)
-            topology = positions
-            gamdSimulation.system = forcefield.createSystem(
-                topology.topology,
-                nonbondedMethod=nonbondedMethod,
-                nonbondedCutoff=config.system.nonbonded_cutoff,
-                constraints=constraints)
-
-        else:
-            raise Exception("No valid input files found. OpenMM simulation "\
-                            "not made.")
+        gamd_simulation, \
+            topology, \
+            positions, \
+            box_vectors = self._handle_inputs(config,
+                                              need_box,
+                                              nonbonded_method,
+                                              constraints)
 
         if config.integrator.algorithm == "langevin":
             self.configure_gamd_langevin_integrator(config,
-                                                    gamdSimulation)
+                                                    gamd_simulation)
         else:
             raise Exception("Algorithm not implemented:",
                             config.integrator.algorithm)
 
-        self.configure_barostat(config, gamdSimulation)
-        self.configure_platform(gamdSimulation, topology,
+        self.configure_barostat(config, gamd_simulation)
+        self.configure_platform(gamd_simulation, topology,
                                 platform_name, device_index)
 
-        gamdSimulation.simulation.context.setPositions(positions.positions)
+        simulation = gamd_simulation.simulation
+        simulation.context.setPositions(positions.positions)
+
         #
         # If this isn't a charmm configuration, but box vectors were defined,
         # then we can setup the box vectors after the simulation
@@ -299,25 +350,25 @@ class GamdSimulationFactory:
         # simulation creation.)
         #
         if box_vectors is not None and config.input_files.charmm is None:
-            gamdSimulation.simulation.context.setPeriodicBoxVectors(
+            gamd_simulation.simulation.context.setPeriodicBoxVectors(
                 *box_vectors)
-        if config.run_minimization:
-            gamdSimulation.simulation.minimizeEnergy()
 
-        gamdSimulation.simulation.context.setVelocitiesToTemperature(
-            config.temperature)
+        if config.run_minimization:
+            gamd_simulation.simulation.minimizeEnergy()
+
+        simulation.context.setVelocitiesToTemperature(config.temperature)
 
         if config.outputs.reporting.coordinates_file_type == "dcd":
-            gamdSimulation.traj_reporter = openmm_app.DCDReporter
+            gamd_simulation.traj_reporter = openmm_app.DCDReporter
 
         elif config.outputs.reporting.coordinates_file_type == "pdb":
-            gamdSimulation.traj_reporter = openmm_app.PDBReporter
+            gamd_simulation.traj_reporter = openmm_app.PDBReporter
 
         else:
             raise Exception("Reporter type not found:",
                             config.outputs.reporting.coordinates_file_type)
     
-        return gamdSimulation
+        return gamd_simulation
 
 
 if __name__ == "__main__":
