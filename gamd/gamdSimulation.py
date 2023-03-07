@@ -34,7 +34,7 @@ def load_pdb_positions_and_box_vectors(file_type,
         message = "File Type " + str(file_type) + \
                   " not implemented for loading positions and vox vectors."
         raise NotImplementedError(message)
-    
+
     pdb_parmed = parmed.load_file(coords_filename)
     if need_box:
         assert pdb_parmed.box_vectors is not None, "No box vectors "\
