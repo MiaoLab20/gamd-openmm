@@ -26,8 +26,8 @@ from gamd.stage_integrator import BoostType
 
 def print_force_group_information(system):
     for force in system.getForces():
-        print("Force:  ", force)
-        print("Force Group:  ", force.getForceGroup())
+        print("Force Name, Group:  ", force.__class__.__name__,
+              ", ", force.getForceGroup())
 
 
 def set_all_forces_to_group(system, group):
@@ -35,12 +35,13 @@ def set_all_forces_to_group(system, group):
         force.setForceGroup(group)
 
 
-def set_dihedral_group(system):
-    return set_single_group(2, 'PeriodicTorsionForce', system)
-
-
-def set_non_bonded_group(system):
-    return set_single_group(1, 'NonbondedForce', system)
+def find_relevant_forces(forces_to_test, system):
+    system_forces = system.getForces()
+    result = []
+    for force in system_forces:
+        if force in forces_to_test:
+            result.append(force)
+    return result
 
 
 def set_single_group(group, name, system):
@@ -49,6 +50,26 @@ def set_single_group(group, name, system):
             force.setForceGroup(group)
             break
     return group
+
+
+def set_group(group, system, forces_to_test):
+    forces = find_relevant_forces(forces_to_test, system)
+
+    for force in forces:
+        result = set_single_group(group, force, system)
+    return group
+
+
+def set_dihedral_group(config, system):
+    group = 2
+    dihedral_forces_to_test = ['PeriodicTorsionForce']  # , 'CMAPTorsionForce'
+    return set_group(group, system, dihedral_forces_to_test)
+
+
+def set_non_bonded_group(config, system):
+    group = 1
+    nonbonded_forces_to_test = ['NonbondedForce'] # ,  'CustomNonbondedForce'
+    return set_group(group, system, nonbonded_forces_to_test)
 
 
 def create_gamd_cmd_integrator(config, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
