@@ -175,12 +175,14 @@ class GromacsConfig:
 class ForceFieldConfig:
     def __init__(self):
         self.coordinates = ""
+        self.coordinates_filetype = ""
         self.forcefield_list_native = []
         self.forcefield_list_external = []
         return
 
     def serialize(self, root):
-        assign_tag(root, "coordinates", self.coordinates)
+        assign_tag(root, "coordinates", self.coordinates,
+                   {"type": self.coordinates_filetype})
         xmlForcefields = ET.SubElement(root, "forcefields")
         xmlNative = ET.SubElement(xmlForcefields, "native")
         xmlExternal = ET.SubElement(xmlForcefields, "external")

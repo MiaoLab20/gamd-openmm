@@ -24,12 +24,21 @@ from gamd.langevin.dual_boost_integrators import UpperBoundIntegrator as DualUpp
 from gamd.integrator_factory import *
 
 
-def load_pdb_positions_and_box_vectors(pdb_coords_filename, need_box):
-    positions = openmm_app.PDBFile(pdb_coords_filename)
-    pdb_parmed = parmed.load_file(pdb_coords_filename)
+def load_pdb_positions_and_box_vectors(file_type,
+                                       coords_filename, need_box):
+    if file_type == "pdb":
+        positions = openmm_app.PDBFile(coords_filename)
+    elif file_type == "mmcif":
+        positions = openmm_app.PDBxFile(coords_filename)
+    else:
+        message = "File Type " + str(file_type) + \
+                  " not implemented for loading positions and vox vectors."
+        raise NotImplementedError(message)
+    
+    pdb_parmed = parmed.load_file(coords_filename)
     if need_box:
         assert pdb_parmed.box_vectors is not None, "No box vectors "\
-            "found in {}. ".format(pdb_coords_filename) \
+            "found in {}. ".format(coords_filename) \
             + "Box vectors for an anchor must be defined with a CRYST "\
             "line within the PDB file."
 
@@ -127,10 +136,13 @@ class GamdSimulationFactory:
             positions = openmm_app.AmberInpcrdFile(
                 config.input_files.amber.coordinates)
             box_vectors = positions.boxVectors
-        elif config.input_files.amber.coordinates_filetype == "pdb":
-            pdb_coords_filename = config.input_files.amber.coordinates
-            positions, box_vectors = load_pdb_positions_and_box_vectors(
-                pdb_coords_filename, need_box)
+        elif config.input_files.amber.coordinates_filetype in ["pdb", "mmcif"]:
+            coords_filename = config.input_files.amber.coordinates
+            file_type = config.input_files.amber.coordinates_filetype
+            positions, \
+                box_vectors = load_pdb_positions_and_box_vectors(file_type,
+                                                                 coords_filename,
+                                                                 need_box)
         else:
             raise Exception("Invalid input type: %s. Allowed types are: " \
                             "'pdb' and 'rst7'/'inpcrd'.")
@@ -154,6 +166,9 @@ class GamdSimulationFactory:
                 config.input_files.charmm.coordinates)
         elif config.input_files.charmm.coordinates_filetype == "pdb":
             positions = openmm_app.PDBFile(
+                config.input_files.charmm.coordinates)
+        elif config.input_files.charmm.coordinates_filetype == "mmcif":
+            positions = openmm_app.PDBxFile(
                 config.input_files.charmm.coordinates)
         else:
             raise Exception("Invalid input type: %s. Allowed types are: " \
@@ -204,9 +219,12 @@ class GamdSimulationFactory:
                                      constraints):
         gamd_simulation = GamdSimulation()
         coords_filename = config.input_files.forcefield.coordinates
+        file_type = config.input_files.forcefield.coordinates_filetype
 
-        positions, box_vectors = load_pdb_positions_and_box_vectors(
-            coords_filename, need_box)
+        positions, \
+            box_vectors = load_pdb_positions_and_box_vectors(file_type,
+                                                             coords_filename,
+                                                             need_box)
 
         forcefield_filenames \
             = config.input_files.forcefield.forcefield_list_native \
