@@ -88,6 +88,13 @@ class GamdSimulationFactory:
                 gamd_simulation.integrator, platform)
             gamd_simulation.platform = platform_name
 
+    def configure_barostat(config, gamd_simulation):
+        if config.barostat is not None:
+            barostat = openmm.MonteCarloBarostat(
+                config.barostat.pressure,
+                config.temperature,
+                config.barostat.frequency)
+            gamd_simulation.system.addForce(barostat)
 
     def createGamdSimulation(self, config, platform_name, device_index):
         need_box = True
@@ -241,13 +248,7 @@ class GamdSimulationFactory:
             raise Exception("Algorithm not implemented:",
                             config.integrator.algorithm)
 
-        if config.barostat is not None:
-            barostat = openmm.MonteCarloBarostat(
-                config.barostat.pressure,
-                config.temperature,
-                config.barostat.frequency)
-            gamdSimulation.system.addForce(barostat)
-
+        self.configure_barostat(config, gamdSimulation)
         self.configure_platform(gamdSimulation, topology,
                                 platform_name, device_index)
 
