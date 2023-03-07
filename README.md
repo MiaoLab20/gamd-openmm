@@ -64,6 +64,9 @@ gamd boosts:
 * non-bonded
 * dual non-bonded/dihedral
 
+## Questions
+
+Please direct questions on usage to the [gamd-discuss mailing list](https://lists.sourceforge.net/lists/listinfo/gamd-discuss).  Please make sure in your question to mention that you are using the OpenMM version of GaMD, since questions for the Amber and NAMD versions also go here.  Please leave GitHub issues for code/documentation problems or feature requests. 
 
 ## Authors and Contributors
 
