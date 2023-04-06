@@ -56,19 +56,19 @@ def set_group(group, system, forces_to_test):
     forces = find_relevant_forces(forces_to_test, system)
 
     for force in forces:
-        result = set_single_group(group, force, system)
+        set_single_group(group, force, system)
     return group
 
 
 def set_dihedral_group(config, system):
     group = 2
-    dihedral_forces_to_test = ['PeriodicTorsionForce']  # , 'CMAPTorsionForce'
+    dihedral_forces_to_test = ['PeriodicTorsionForce', 'CMAPTorsionForce']
     return set_group(group, system, dihedral_forces_to_test)
 
 
 def set_non_bonded_group(config, system):
     group = 1
-    nonbonded_forces_to_test = ['NonbondedForce'] # ,  'CustomNonbondedForce'
+    nonbonded_forces_to_test = ['NonbondedForce', 'CustomNonbondedForce']
     return set_group(group, system, nonbonded_forces_to_test)
 
 
@@ -81,7 +81,7 @@ def create_gamd_cmd_integrator(config, system, temperature, dt, ntcmdprep, ntcmd
     :param temperature:
     :return:
     """
-    group = set_dihedral_group(system)
+    group = set_dihedral_group(config,system)
     integrator = DihedralBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
                                                    ntebprep=ntebprep, nteb=nteb, nstlim=nstlim,
                                                    ntave=ntave, temperature=temperature,
@@ -95,7 +95,7 @@ def create_lower_total_boost_integrator(config, system, temperature, dt, ntcmdpr
                                         sigma0=6.0 * unit.kilocalories_per_mole):
     # The group is set, so that we can output the dihedral energy.  It doesn't impact calculations for total boost,
     # since we are utilizing the OpenMM provided variables with them not split out for total boost calculations.
-    group = set_dihedral_group(system)
+    group = set_dihedral_group(config,system)
     integrator = TotalBoostLowerBoundIntegrator(dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
                                                 ntebprep=ntebprep, nteb=nteb, nstlim=nstlim,
                                                 ntave=ntave, sigma0=sigma0, temperature=temperature)
@@ -108,7 +108,7 @@ def create_upper_total_boost_integrator(config, system, temperature, dt, ntcmdpr
                                         sigma0=6.0 * unit.kilocalories_per_mole):
     # The group is set, so that we can output the dihedral energy.  It doesn't impact calculations for total boost,
     # since we are utilizing the OpenMM provided variables with them not split out for total boost calculations.
-    group = set_dihedral_group(system)
+    group = set_dihedral_group(config,system)
     integrator = TotalBoostUpperBoundIntegrator(dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd,
                                                 ntebprep=ntebprep, nteb=nteb, nstlim=nstlim,
                                                 ntave=ntave, sigma0=sigma0,
@@ -120,7 +120,7 @@ def create_upper_total_boost_integrator(config, system, temperature, dt, ntcmdpr
 def create_lower_dihedral_boost_integrator(config, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
                                            ntave,
                                            sigma0=6.0 * unit.kilocalories_per_mole):
-    group = set_dihedral_group(system)
+    group = set_dihedral_group(config,system)
     integrator = DihedralBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                    nteb=nteb, nstlim=nstlim, ntave=ntave, sigma0=sigma0,
                                                    temperature=temperature)
@@ -131,7 +131,7 @@ def create_lower_dihedral_boost_integrator(config, system, temperature, dt, ntcm
 def create_upper_dihedral_boost_integrator(config, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
                                            ntave,
                                            sigma0=6.0 * unit.kilocalories_per_mole):
-    group = set_dihedral_group(system)
+    group = set_dihedral_group(config,system)
     integrator = DihedralBoostUpperBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                    nteb=nteb, nstlim=nstlim, ntave=ntave, sigma0=sigma0,
                                                    temperature=temperature)
@@ -142,7 +142,7 @@ def create_upper_dihedral_boost_integrator(config, system, temperature, dt, ntcm
 def create_lower_dual_boost_integrator(config, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave,
                                        sigma0p=6.0 * unit.kilocalories_per_mole,
                                        sigma0d=6.0 * unit.kilocalories_per_mole):
-    group = set_dihedral_group(system)
+    group = set_dihedral_group(config,system)
     integrator = DualBoostLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                nteb=nteb, nstlim=nstlim, ntave=ntave, sigma0p=sigma0p,
                                                sigma0d=sigma0d, temperature=temperature)
@@ -153,7 +153,7 @@ def create_lower_dual_boost_integrator(config, system, temperature, dt, ntcmdpre
 def create_upper_dual_boost_integrator(config, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave,
                                        sigma0p=6.0 * unit.kilocalories_per_mole,
                                        sigma0d=6.0 * unit.kilocalories_per_mole):
-    group = set_dihedral_group(system)
+    group = set_dihedral_group(config,system)
     integrator = DualBoostUpperBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                nteb=nteb, nstlim=nstlim, ntave=ntave,
                                                sigma0d=sigma0d,
@@ -165,7 +165,7 @@ def create_upper_dual_boost_integrator(config, system, temperature, dt, ntcmdpre
 def create_lower_non_bonded_boost_integrator(config, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
                                              ntave,
                                              sigma0=6.0 * unit.kilocalories_per_mole):
-    group = set_non_bonded_group(system)
+    group = set_non_bonded_group(config,system)
     integrator = NonBondedLowerBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                nteb=nteb, nstlim=nstlim, ntave=ntave, sigma0=sigma0,
                                                temperature=temperature)
@@ -176,7 +176,7 @@ def create_lower_non_bonded_boost_integrator(config, system, temperature, dt, nt
 def create_upper_non_bonded_boost_integrator(config, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim,
                                              ntave,
                                              sigma0=6.0 * unit.kilocalories_per_mole):
-    group = set_non_bonded_group(system)
+    group = set_non_bonded_group(config,system)
     integrator = NonBondedUpperBoundIntegrator(group, dt=dt, ntcmdprep=ntcmdprep, ntcmd=ntcmd, ntebprep=ntebprep,
                                                nteb=nteb, nstlim=nstlim, ntave=ntave, sigma0=sigma0,
                                                temperature=temperature)
@@ -188,8 +188,8 @@ def create_lower_dual_non_bonded_dihederal_boost_integrator(config, system, temp
                                                             ntebprep, nteb, nstlim, ntave,
                                                             sigma0p=6.0 * unit.kilocalories_per_mole,
                                                             sigma0d=6.0 * unit.kilocalories_per_mole):
-    nonbonded_group = set_non_bonded_group(system)
-    dihedral_group = set_dihedral_group(system)
+    nonbonded_group = set_non_bonded_group(config,system)
+    dihedral_group = set_dihedral_group(config,system)
     integrator = DualNonBondedDihedralLowerIntegrator(nonbonded_group, dihedral_group, dt=dt, ntcmdprep=ntcmdprep,
                                                       ntcmd=ntcmd, ntebprep=ntebprep,
                                                       nteb=nteb, nstlim=nstlim, ntave=ntave, sigma0p=sigma0p,
@@ -203,8 +203,8 @@ def create_upper_dual_non_bonded_dihederal_boost_integrator(config, system, temp
                                                             ntebprep, nteb, nstlim, ntave,
                                                             sigma0p=6.0 * unit.kilocalories_per_mole,
                                                             sigma0d=6.0 * unit.kilocalories_per_mole):
-    nonbonded_group = set_non_bonded_group(system)
-    dihedral_group = set_dihedral_group(system)
+    nonbonded_group = set_non_bonded_group(config,system)
+    dihedral_group = set_dihedral_group(config,system)
     integrator = DualNonBondedDihedralUpperIntegrator(nonbonded_group, dihedral_group, dt=dt, ntcmdprep=ntcmdprep,
                                                       ntcmd=ntcmd, ntebprep=ntebprep,
                                                       nteb=nteb, nstlim=nstlim, ntave=ntave, sigma0p=sigma0p,
@@ -243,7 +243,7 @@ class GamdIntegratorFactory:
     def get_integrator_by_parts(config, boost_type_str, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb,
                                 nstlim, ntave,
                                 sigma0p=6.0 * unit.kilocalories_per_mole, sigma0d=6.0 * unit.kilocalories_per_mole):
-        set_all_forces_to_group(system, 0)
+        set_all_forces_to_group(system,0)
         result = []
         first_boost_type = BoostType.TOTAL
         second_boost_type = BoostType.DIHEDRAL
