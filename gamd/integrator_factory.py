@@ -35,42 +35,20 @@ def set_all_forces_to_group(system, group):
         force.setForceGroup(group)
 
 
-def find_relevant_forces(forces_to_test, system):
-    system_forces = system.getForces()
-    result = []
-    for force in system_forces:
-        if force in forces_to_test:
-            result.append(force)
-    return result
-
-
-def set_single_group(group, name, system):
-    for force in system.getForces():
-        if force.__class__.__name__ == name:
-            force.setForceGroup(group)
-            break
-    return group
-
-
-def set_group(group, system, forces_to_test):
-    forces = find_relevant_forces(forces_to_test, system)
-
-    for force in forces:
-        set_single_group(group, force, system)
-    return group
-
-
 def set_dihedral_group(config, system):
-    group = 2
-    dihedral_forces_to_test = ['PeriodicTorsionForce', 'CMAPTorsionForce']
-    return set_group(group, system, dihedral_forces_to_test)
+    return set_single_group(2, ['PeriodicTorsionForce', 'CMAPTorsionForce'], system)
 
 
 def set_non_bonded_group(config, system):
-    group = 1
-    nonbonded_forces_to_test = ['NonbondedForce', 'CustomNonbondedForce']
-    return set_group(group, system, nonbonded_forces_to_test)
+    return set_single_group(1, ['NonbondedForce', 'CustomNonbondedForce'], system)
 
+
+def set_single_group(group, name_list, system):
+    for force in system.getForces():
+        if force.__class__.__name__ in name_list:
+            # print(force.__class__.__name__)
+            force.setForceGroup(group)
+    return group
 
 def create_gamd_cmd_integrator(config, system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
     """
