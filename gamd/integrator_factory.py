@@ -35,20 +35,21 @@ def set_all_forces_to_group(system, group):
         force.setForceGroup(group)
 
 
+
 def set_dihedral_group(system):
-    return set_single_group(2, 'PeriodicTorsionForce', system)
+    return set_single_group(2, ['PeriodicTorsionForce', 'CMAPTorsionForce'], system)
 
 
 def set_non_bonded_group(system):
-    return set_single_group(1, 'NonbondedForce', system)
+    return set_single_group(1, ['NonbondedForce','CustomNonbondedForce'], system)
 
 
-def set_single_group(group, name, system):
+def set_single_group(group, name_list, system):
     for force in system.getForces():
-        if force.__class__.__name__ == name:
+        if force.__class__.__name__ in name_list:
             force.setForceGroup(group)
-            break
     return group
+
 
 
 def create_gamd_cmd_integrator(system, temperature, dt, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
