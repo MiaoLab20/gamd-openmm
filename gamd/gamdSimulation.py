@@ -97,6 +97,7 @@ class GamdSimulationFactory:
                 gamd_simulation.integrator, platform)
             gamd_simulation.platform = platform_name
 
+    @staticmethod
     def configure_barostat(config, gamd_simulation):
         if config.barostat is not None:
             barostat = openmm.MonteCarloBarostat(
@@ -110,7 +111,8 @@ class GamdSimulationFactory:
     def configure_gamd_langevin_integrator(config, gamd_simulation):
         boost_type_str = config.integrator.boost_type
         gamdIntegratorFactory = GamdIntegratorFactory()
-        result = gamdIntegratorFactory.get_integrator(config, system)
+        result = gamdIntegratorFactory.get_integrator(config,
+                                                      gamd_simulation.system)
 
         [gamd_simulation.first_boost_group,
          gamd_simulation.second_boost_group,
@@ -147,7 +149,7 @@ class GamdSimulationFactory:
             raise Exception("Invalid input type: %s. Allowed types are: " \
                             "'pdb' and 'rst7'/'inpcrd'.")
         gamd_simulation.system = prmtop.createSystem(
-            nonbondedMethod=nonbondedMethod,
+            nonbondedMethod=nonbonded_method,
             nonbondedCutoff=config.system.nonbonded_cutoff,
             constraints=constraints)
 
@@ -157,7 +159,7 @@ class GamdSimulationFactory:
     def create_charmm_simulation(config,
                                  nonbonded_method,
                                  constraints):
-        box_vecotrs = None
+        box_vectors = None
         gamd_simulation = GamdSimulation()
         psf = openmm_app.CharmmPsfFile(config.input_files.charmm.topology)
 
@@ -178,6 +180,7 @@ class GamdSimulationFactory:
         # then we need to set it in the psf object prior to system creation
         # from the psf object.
         if config.input_files.charmm.is_config_box_vector_defined:
+            box_vectors = config.input_files.charmm.box_vectors
             psf.setBox(*config.input_files.charmm.box_vectors)
 
         params = openmm_app.CharmmParameterSet(
@@ -186,7 +189,7 @@ class GamdSimulationFactory:
         topology = psf
         gamd_simulation.system = psf.createSystem(
             params=params,
-            nonbondedMethod=nonbondedMethod,
+            nonbondedMethod=nonbonded_method,
             nonbondedCutoff=config.system.nonbonded_cutoff,
             switchDistance=config.system.switch_distance,
             ewaldErrorTolerance=config.system.ewald_error_tolerance,
@@ -234,7 +237,7 @@ class GamdSimulationFactory:
         topology = positions
         gamd_simulation.system = forcefield.createSystem(
             topology.topology,
-            nonbondedMethod=nonbondedMethod,
+            nonbondedMethod=nonbonded_method,
             nonbondedCutoff=config.system.nonbonded_cutoff,
             constraints=constraints)
 
