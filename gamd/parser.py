@@ -318,6 +318,9 @@ def parse_outputs_tag(tag):
                         if coordinates_tag.tag == "file-type":
                             outputs_config.reporting.coordinates_file_type \
                                 = assign_tag(coordinates_tag, str).lower()
+                        elif coordinates_tag.tag == "interval":
+                            outputs_config.reporting.coordinates_interval \
+                                = assign_tag(coordinates_tag, int)
                         else:
                             print("Warning: parameter in XML not found in "
                                   "coordinates tag. Spelling error?", 
