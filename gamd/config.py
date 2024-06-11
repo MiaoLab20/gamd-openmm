@@ -235,6 +235,7 @@ class OutputsReportingConfig:
         assign_tag(xml_energy_tags, "interval", self.energy_interval)
         xml_coordinates_tags = ET.SubElement(root, "coordinates")
         assign_tag(xml_coordinates_tags, "file-type", self.coordinates_file_type)
+        assign_tag(xml_coordinates_tags, "interval", self.coordinates_interval)
         xml_statistics_tags = ET.SubElement(root, "statistics")
         assign_tag(xml_statistics_tags, "interval", self.statistics_interval)
         return
