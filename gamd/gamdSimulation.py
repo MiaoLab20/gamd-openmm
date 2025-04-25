@@ -237,6 +237,14 @@ class GamdSimulationFactory:
                 gamdSimulation.integrator, platform, properties)
             gamdSimulation.device_index = device_index
             gamdSimulation.platform = 'OpenCL'
+        elif user_platform_name == "hip":
+            platform = openmm.Platform.getPlatformByName('HIP')
+            properties['DeviceIndex'] = device_index
+            gamdSimulation.simulation = openmm_app.Simulation(
+                topology.topology, gamdSimulation.system,
+                gamdSimulation.integrator, platform, properties)
+            gamdSimulation.device_index = device_index
+            gamdSimulation.platform = 'OpenCL'
         else:
             platform = openmm.Platform.getPlatformByName(platform_name)
             gamdSimulation.simulation = openmm_app.Simulation(
