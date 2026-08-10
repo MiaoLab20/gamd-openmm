@@ -312,7 +312,8 @@ class Runner:
                                      simulation, self.gamd_simulation.first_boost_type,
                                      self.gamd_simulation.first_boost_group,
                                      self.gamd_simulation.second_boost_type,
-                                     self.gamd_simulation.second_boost_group)
+                                     self.gamd_simulation.second_boost_group,
+                                     self.config.outputs.reporting.statistics_interval)
             if not restart:
                 gamd_logger.write_header()
         else:
@@ -337,7 +338,8 @@ class Runner:
                                                  self.gamd_simulation.first_boost_type,
                                                  self.gamd_simulation.first_boost_group,
                                                  self.gamd_simulation.second_boost_type,
-                                                 self.gamd_simulation.second_boost_group)
+                                                 self.gamd_simulation.second_boost_group,
+                                                 self.config.outputs.reporting.statistics_interval)
             if not restart:
                 gamd_reweighting_logger.write_header()
         else:

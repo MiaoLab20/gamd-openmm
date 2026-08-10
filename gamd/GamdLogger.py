@@ -83,7 +83,7 @@ class GamdLogger:
 
     def __init__(self, filename, mode, integrator, simulation,
                  first_boost_type, first_boost_group,
-                 second_boost_type, second_boost_group):
+                 second_boost_type, second_boost_group, statistics_interval=500):
         """
         Parameters
         ----------
@@ -95,6 +95,7 @@ class GamdLogger:
         :param first_boost_group:  The group associated with the 1st boost type.  Empty double quoted string for total.
         :param second_boost_type:  The simple boost type to record (no dual types)
         :param second_boost_group: The group associated with the 2nd boost type.  Empty double quoted string for total.
+        :param statistics_interval: The interval at which statistics are saved (default: 500)
 
         """
 
@@ -102,6 +103,7 @@ class GamdLogger:
         self.gamdLog = open(filename, mode)
         self.integrator = integrator
         self.simulation = simulation
+        self.statistics_interval = statistics_interval
         self.tracked_values = []
 
         if first_boost_type == BoostType.DUAL_TOTAL_DIHEDRAL or second_boost_type == BoostType.DUAL_TOTAL_DIHEDRAL:
@@ -146,7 +148,10 @@ class GamdLogger:
         first_effective_harmonic_constant = self.tracked_values[0].get_reporting_effective_harmonic_constant()
         second_effective_harmonic_constant = self.tracked_values[1].get_reporting_effective_harmonic_constant()
 
-        self.gamdLog.write("\t" + str(1) + "\t" + str(step * 1) + "\t" +
+        # Calculate ntwx as the number of times statistics have been written
+        ntwx = step // self.statistics_interval
+
+        self.gamdLog.write("\t" + str(ntwx) + "\t" + str(step) + "\t" +
                            first_energy + "\t" +
                            second_energy + "\t" +
                            first_force_scaling_factor + "\t" +
