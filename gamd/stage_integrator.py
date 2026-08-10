@@ -111,6 +111,9 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
         """
         CustomIntegrator.__init__(self, dt)
 
+        # Validate stage step configuration
+        self._validate_stage_configuration(ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave)
+
         if ntcmd < ntave or ntcmd % ntave != 0:
             raise ValueError(
                 "ntcmd must be greater than and a multiple of ntave.")
@@ -313,6 +316,128 @@ class GamdStageIntegrator(CustomIntegrator, ABC):
                         counter, "stepCount")}
 
         return results
+
+    def _validate_stage_configuration(self, ntcmdprep, ntcmd, ntebprep, nteb, nstlim, ntave):
+        """
+        Validate the GaMD stage configuration parameters to ensure proper stage boundaries.
+        
+        This method checks for common configuration errors that would prevent the simulation
+        from transitioning between stages correctly.
+        
+        Parameters
+        ----------
+        ntcmdprep : int
+            Number of conventional MD preparatory steps (individual stage length)
+        ntcmd : int
+            Total number of conventional MD steps (cumulative, including prep)
+        ntebprep : int
+            Number of GaMD pre-equilibration steps (individual stage length)
+        nteb : int
+            Total number of GaMD equilibration steps (cumulative, including prep)
+        nstlim : int
+            Total number of simulation steps
+        ntave : int
+            Averaging window interval
+            
+        Raises
+        ------
+        ValueError
+            If any validation check fails, with a detailed error message
+        """
+        
+        errors = []
+        
+        # Check that cumulative values are greater than prep values
+        if ntcmd <= ntcmdprep:
+            errors.append(
+                f"conventional-md ({ntcmd}) must be greater than conventional-md-prep ({ntcmdprep}). "
+                f"The conventional-md value should be cumulative (prep + actual conventional MD steps)."
+            )
+        
+        if nteb <= ntebprep:
+            errors.append(
+                f"gamd-equilibration ({nteb}) must be greater than gamd-equilibration-prep ({ntebprep}). "
+                f"The gamd-equilibration value should be cumulative (prep + actual GaMD equilibration steps)."
+            )
+        
+        # Check that all stage boundaries are valid
+        stage_1_end = ntcmdprep
+        stage_2_start = ntcmdprep + 1
+        stage_2_end = ntcmd
+        stage_3_start = ntcmd + 1
+        stage_3_end = ntcmd + ntebprep
+        stage_4_start = ntcmd + ntebprep + 1
+        stage_4_end = ntcmd + nteb
+        stage_5_start = ntcmd + nteb + 1
+        stage_5_end = nstlim
+        
+        if stage_2_start > stage_2_end:
+            errors.append(
+                f"Stage 2 (Conventional MD) has invalid boundaries: start={stage_2_start}, end={stage_2_end}. "
+                f"This occurs when conventional-md ({ntcmd}) <= conventional-md-prep ({ntcmdprep})."
+            )
+        
+        if stage_4_start > stage_4_end:
+            errors.append(
+                f"Stage 4 (GaMD Equilibration) has invalid boundaries: start={stage_4_start}, end={stage_4_end}. "
+                f"This occurs when gamd-equilibration ({nteb}) <= gamd-equilibration-prep ({ntebprep})."
+            )
+        
+        if stage_5_start > stage_5_end:
+            errors.append(
+                f"Stage 5 (GaMD Production) has invalid boundaries: start={stage_5_start}, end={stage_5_end}. "
+                f"This occurs when total simulation length ({nstlim}) is too small."
+            )
+        
+        # Check divisibility requirements
+        if ntcmd % ntave != 0:
+            errors.append(
+                f"conventional-md ({ntcmd}) must be divisible by averaging-window-interval ({ntave}). "
+                f"Current remainder: {ntcmd % ntave}"
+            )
+        
+        if nteb % ntave != 0:
+            errors.append(
+                f"gamd-equilibration ({nteb}) must be divisible by averaging-window-interval ({ntave}). "
+                f"Current remainder: {nteb % ntave}"
+            )
+        
+        # Check minimum values
+        if ntcmdprep <= 0:
+            errors.append("conventional-md-prep must be greater than 0")
+        
+        if ntebprep <= 0:
+            errors.append("gamd-equilibration-prep must be greater than 0")
+        
+        if ntcmd < ntave:
+            errors.append(f"conventional-md ({ntcmd}) must be at least as large as averaging-window-interval ({ntave})")
+        
+        if nteb < ntave:
+            errors.append(f"gamd-equilibration ({nteb}) must be at least as large as averaging-window-interval ({ntave})")
+        
+        # Check that total simulation length is consistent
+        expected_nstlim = ntcmd + nteb + (nstlim - (ntcmd + nteb))  # This is just nstlim, but let's check it's reasonable
+        if stage_5_end != nstlim:
+            errors.append(f"Internal error: stage_5_end ({stage_5_end}) != nstlim ({nstlim})")
+        
+        # If there are errors, raise a comprehensive error message
+        if errors:
+            error_msg = (
+                "Invalid GaMD stage configuration detected:\n\n" +
+                "\n".join(f"  • {error}" for error in errors) +
+                "\n\nStage boundaries would be:\n" +
+                f"  Stage 1 (Conv MD Prep): 0 to {stage_1_end}\n" +
+                f"  Stage 2 (Conv MD): {stage_2_start} to {stage_2_end}\n" +
+                f"  Stage 3 (GaMD Eq Prep): {stage_3_start} to {stage_3_end}\n" +
+                f"  Stage 4 (GaMD Eq): {stage_4_start} to {stage_4_end}\n" +
+                f"  Stage 5 (GaMD Prod): {stage_5_start} to {stage_5_end}\n\n" +
+                "Please check your XML configuration. Remember:\n" +
+                "  • conventional-md should be CUMULATIVE (prep + actual conventional MD steps)\n" +
+                "  • gamd-equilibration should be CUMULATIVE (prep + actual GaMD equilibration steps)\n" +
+                "  • Both conventional-md and gamd-equilibration must be divisible by averaging-window-interval\n" +
+                "  • All prep values are individual stage lengths, not cumulative"
+            )
+            raise ValueError(error_msg)
 
     def _add_stage_one_instructions(self):
         self.beginIfBlock("stepCount <= " + str(self.stage_1_end))

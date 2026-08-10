@@ -445,6 +445,8 @@ class XmlParser(Parser):
                       "Spelling error?", tag.tag)
         
         self.config.integrator.number_of_steps.compute_total_simulation_length()
+        # Validate the step configuration after parsing
+        self.config.integrator.number_of_steps.validate_step_configuration()
         return
 
 

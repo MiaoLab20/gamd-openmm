@@ -93,6 +93,95 @@ class IntegratorNumberOfStepsConfig:
         self.total_simulation_length = self.conventional_md \
             + self.gamd_equilibration + self.gamd_production
 
+    def validate_step_configuration(self):
+        """
+        Validate the step configuration for common errors.
+        
+        This method performs the same validation as the integrator but at the
+        configuration level, allowing for earlier error detection.
+        
+        Raises
+        ------
+        ValueError
+            If any validation check fails
+        """
+        errors = []
+        
+        # Check that cumulative values are greater than prep values
+        if self.conventional_md <= self.conventional_md_prep:
+            errors.append(
+                f"<conventional-md> ({self.conventional_md}) must be greater than "
+                f"<conventional-md-prep> ({self.conventional_md_prep}). "
+                f"The conventional-md value should be cumulative (prep + actual conventional MD steps)."
+            )
+        
+        if self.gamd_equilibration <= self.gamd_equilibration_prep:
+            errors.append(
+                f"<gamd-equilibration> ({self.gamd_equilibration}) must be greater than "
+                f"<gamd-equilibration-prep> ({self.gamd_equilibration_prep}). "
+                f"The gamd-equilibration value should be cumulative (prep + actual GaMD equilibration steps)."
+            )
+        
+        # Check divisibility requirements
+        if self.averaging_window_interval > 0:
+            if self.conventional_md % self.averaging_window_interval != 0:
+                errors.append(
+                    f"<conventional-md> ({self.conventional_md}) must be divisible by "
+                    f"<averaging-window-interval> ({self.averaging_window_interval}). "
+                    f"Current remainder: {self.conventional_md % self.averaging_window_interval}"
+                )
+            
+            if self.gamd_equilibration % self.averaging_window_interval != 0:
+                errors.append(
+                    f"<gamd-equilibration> ({self.gamd_equilibration}) must be divisible by "
+                    f"<averaging-window-interval> ({self.averaging_window_interval}). "
+                    f"Current remainder: {self.gamd_equilibration % self.averaging_window_interval}"
+                )
+        
+        # Check minimum values
+        if self.conventional_md_prep <= 0:
+            errors.append("<conventional-md-prep> must be greater than 0")
+        
+        if self.gamd_equilibration_prep <= 0:
+            errors.append("<gamd-equilibration-prep> must be greater than 0")
+        
+        if self.gamd_production <= 0:
+            errors.append("<gamd-production> must be greater than 0")
+        
+        if self.averaging_window_interval <= 0:
+            errors.append("<averaging-window-interval> must be greater than 0")
+        
+        # Check minimum values for averaging
+        if self.conventional_md < self.averaging_window_interval:
+            errors.append(
+                f"<conventional-md> ({self.conventional_md}) must be at least as large as "
+                f"<averaging-window-interval> ({self.averaging_window_interval})"
+            )
+        
+        if self.gamd_equilibration < self.averaging_window_interval:
+            errors.append(
+                f"<gamd-equilibration> ({self.gamd_equilibration}) must be at least as large as "
+                f"<averaging-window-interval> ({self.averaging_window_interval})"
+            )
+        
+        # If there are errors, raise a comprehensive error message
+        if errors:
+            error_msg = (
+                "Invalid step configuration in XML file:\n\n" +
+                "\n".join(f"  • {error}" for error in errors) +
+                "\n\nRemember:\n" +
+                "  • <conventional-md> should be CUMULATIVE (prep + actual conventional MD steps)\n" +
+                "  • <gamd-equilibration> should be CUMULATIVE (prep + actual GaMD equilibration steps)\n" +
+                "  • Both <conventional-md> and <gamd-equilibration> must be divisible by <averaging-window-interval>\n" +
+                "  • All prep values are individual stage lengths, not cumulative\n\n" +
+                "Example valid configuration:\n" +
+                "  <conventional-md-prep>200000</conventional-md-prep>\n" +
+                "  <conventional-md>400000</conventional-md>  <!-- 200k prep + 200k actual -->\n" +
+                "  <gamd-equilibration-prep>200000</gamd-equilibration-prep>\n" +
+                "  <gamd-equilibration>400000</gamd-equilibration>  <!-- 200k prep + 200k actual -->"
+            )
+            raise ValueError(error_msg)
+
 
 class IntegratorConfig:
     def __init__(self):
