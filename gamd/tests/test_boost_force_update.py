@@ -3,7 +3,8 @@ test_boost_force_update.py
 
 Check that the velocity update of every boost type applies the force that
 GaMD prescribes, using a small system whose forces live in group 0 plus the
-boosted groups. The expected forces are built from per-group forces queried
+boosted groups (and, for one dual-boost case, an extra force in an otherwise
+unused group). The expected forces are built from per-group forces queried
 from the Context, independently of how the integrator expresses the update.
 """
 
@@ -72,11 +73,27 @@ CASES = {
 }
 
 
-@pytest.mark.parametrize("case", sorted(CASES))
-def test_boosted_velocity_update_matches_gamd_forces(case):
-    create, boosted_groups = CASES[case]
+def add_restraint(system, positions, group):
+    """A harmonic position restraint on every other particle, in `group`."""
+    restraint = openmm.CustomExternalForce(
+        "k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
+    restraint.addGlobalParameter("k", 500.0)
+    for name in ("x0", "y0", "z0"):
+        restraint.addPerParticleParameter(name)
+    for i in range(0, len(positions), 2):
+        restraint.addParticle(i, [positions[i][0] + 0.02, positions[i][1],
+                                  positions[i][2] - 0.02])
+    restraint.setForceGroup(group)
+    system.addForce(restraint)
+
+
+def run_case(create, boosted_groups, extra_group=None):
     system, positions = make_chain_system()
     integrator = create(system, 300 * unit.kelvin, **STAGE_ARGS)[2]
+    if extra_group is not None:
+        # Added after the factory call, so the factory does not move it into
+        # group 0 and it stays in a group that is neither 0 nor boosted.
+        add_restraint(system, positions, extra_group)
     integrator.setRandomNumberSeed(1234)
     context = openmm.Context(system, integrator,
                              openmm.Platform.getPlatformByName("Reference"))
@@ -84,6 +101,9 @@ def test_boosted_velocity_update_matches_gamd_forces(case):
     context.setVelocitiesToTemperature(300 * unit.kelvin, 5)
     integrator.step(PRODUCTION_STEP)
     assert integrator.getGlobalVariableByName("stage") >= 4
+    if extra_group is not None:
+        extra = group_forces(context, extra_group)
+        assert np.abs(extra).max() > 1.0
 
     # Turn off the stochastic kick so the update is deterministic.
     integrator.setGlobalVariableByName("noisescale", 0.0)
@@ -99,10 +119,26 @@ def test_boosted_velocity_update_matches_gamd_forces(case):
     assert boost_seen
 
 
+@pytest.mark.parametrize("case", sorted(CASES))
+def test_boosted_velocity_update_matches_gamd_forces(case):
+    create, boosted_groups = CASES[case]
+    run_case(create, boosted_groups)
+
+
+def test_dual_boost_scales_force_in_unboosted_group_by_total_factor():
+    """
+    A force in a group that is neither 0 nor boosted is part of the total
+    potential, so the dual boost must scale it by the total factor rather than
+    drop it: the applied force is k_T * (f0 + f5 + k_D * f2).
+    """
+    run_case(factory.create_lower_dual_boost_integrator, {2: "Dihedral"},
+             extra_group=5)
+
+
 def check_one_step(context, integrator, masses, boosted_groups):
     v0 = context.getState(getVelocities=True).getVelocities(
         asNumpy=True).value_in_unit(NM / unit.picosecond)
-    forces = {g: group_forces(context, g) for g in [0] + list(boosted_groups)}
+    forces = {g: group_forces(context, g) for g in boosted_groups}
     total_force = context.getState(getForces=True).getForces(
         asNumpy=True).value_in_unit(KJ / NM)
     vscale = integrator.getGlobalVariableByName("vscale")
@@ -122,7 +158,9 @@ def check_one_step(context, integrator, masses, boosted_groups):
         expected = k_total * total_force
         factors["Total"] = k_total
     else:
-        expected = forces[0].copy()
+        # Everything outside the boosted groups: f0, plus any force in a
+        # group that is neither 0 nor boosted.
+        expected = total_force - sum(forces[g] for g in boosted_groups)
         for group, name in boosted_groups.items():
             expected += factors[name] * forces[group]
         if method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:

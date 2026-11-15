@@ -463,9 +463,12 @@ class GroupBoostIntegrator(GamdLangevinIntegrator, ABC):
         if self._boost_method == BoostMethod.DUAL_DEPENDENT_GROUP_TOTAL:
             # The total term uses "f", not "f0", so that it shares OpenMM force
             # group -1 with the "energy" request and the two fuse into a single
-            # force evaluation. f == f0 + sum(f_group), so scaling f by the
-            # total factor and each group by (group_factor - 1) is identical to
-            # scaling f0 by the total factor and each group by both factors.
+            # force evaluation. When every force is in group 0 or a boosted
+            # group, f == f0 + sum(f_group), so scaling f by the total factor
+            # and each group by (group_factor - 1) is identical to scaling f0
+            # by the total factor and each group by both factors. A force in
+            # any other group is part of f and so gets the total factor, which
+            # matches the total boost energy (computed from all groups).
             self.addComputePerDof("v", "v + fscale*f*{0}/m".format(
                 total_force_scaling_factor))
             for group_id in self.get_group_dict():
